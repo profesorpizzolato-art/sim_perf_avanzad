@@ -132,6 +132,8 @@ def render_home():
 
     st.divider()
     if st.button("📖 MANUAL DE USUARIO API", use_container_width=True): st.session_state.menu = "MANUAL"; st.rerun()
+# Agregar esto después de los otros botones de módulos
+st.write("---")
 
 def modulo_pesca():
     st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
@@ -235,3 +237,4 @@ else:
         st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
         st.write("Cargue aquí las instrucciones técnicas para el alumno.")
     elif st.session_state.menu == "PERFIL": render_perfil_grafico()
+    elif st.session_state.menu == "MANUAL": render_manual()
