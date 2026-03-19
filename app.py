@@ -24,9 +24,9 @@ st.markdown("""
     .module-card:hover { border-color: #f39c12; background-color: #1c222d; }
     </style>
     """, unsafe_allow_html=True)
-
+mostrar_imagen_segura("logo_menfa.png", width=250)
 # --- 3. FUNCIONES DE UTILIDAD Y MOTOR ---
-def mostrar_imagen_segura(nombre_archivo, ancho=None, subtitulo=""):
+def mostrar_imagen_segura(nombre_archivo, width=None, subtitulo=""):
     if os.path.exists(nombre_archivo):
         st.image(nombre_archivo, width=ancho, caption=subtitulo)
     else:
@@ -56,7 +56,6 @@ except ImportError:
 
 def login_screen():
     st.markdown('<div style="text-align: center;">', unsafe_allow_html=True)
-    mostrar_imagen_segura("logo_menfa.png", ancho=250)
     st.title("SISTEMA DE ENTRENAMIENTO MENFA V5.0")
     st.subheader("Cátedra de Perforación - UTN Mendoza")
     st.markdown('</div>', unsafe_allow_html=True)
