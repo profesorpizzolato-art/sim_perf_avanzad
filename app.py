@@ -165,3 +165,10 @@ elif st.session_state.menu == "REPORTE":
     st.title("🏆 REPORTE FINAL DE OPERACIÓN")
     st.table(st.session_state.history.tail(10))
     st.download_button("📥 DESCARGAR LOG CSV", st.session_state.history.to_csv().encode('utf-8'), "reporte_menfa.csv", "text/csv")
+# En el selector de menú:
+if st.session_state.menu == "T&D":
+    modulo_torque_drag(curr['DEPTH'], 89.5, 11.5)
+elif st.session_state.menu == "GEOFI":
+    modulo_geofisica()
+elif st.session_state.menu == "GEONAV":
+    modulo_geonavegacion()
