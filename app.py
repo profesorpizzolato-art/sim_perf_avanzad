@@ -181,3 +181,54 @@ if st.button("AVANZAR PERFORACIÓN"):
         st.session_state.tasa_perdida = random.randint(5, 20)
         st.session_state.menu = "PERDIDA" # Salta automáticamente al módulo de alerta
         st.warning("⚠️ ¡CAÍDA REPENTINA DE NIVEL EN TANQUES!")
+def login_screen():
+    st.markdown('<div style="text-align: center;">', unsafe_allow_html=True)
+    mostrar_imagen_segura("logo_menfa.png", ancho=250)
+    st.title("SISTEMA DE ENTRENAMIENTO MENFA V5.0")
+    st.subheader("Cátedra de Perforación - UTN Mendoza")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    with st.form("login_form"):
+        nombre = st.text_input("Nombre Completo del Alumno:")
+        legajo = st.text_input("Número de Legajo:")
+        yacimiento = st.selectbox("Asignación de Yacimiento:", 
+                                 ["Barrancas", "Cruz de Piedra", "Malargüe (V VM)", "Vizcacheral"])
+        
+        btn_ingresar = st.form_submit_state = st.form_submit_button("INICIAR GUARDIA DE PERFORACIÓN")
+
+        if btn_ingresar:
+            if nombre and legajo:
+                st.session_state.usuario = nombre
+                st.session_state.legajo = legajo
+                st.session_state.yacimiento_activo = yacimiento
+                st.session_state.auth = True
+                st.session_state.menu = "HOME"
+                st.rerun()
+            else:
+                st.error("Por favor, complete sus datos para ingresar.")
+
+def generar_diploma():
+    st.title("🏆 EVALUACIÓN FINAL DE COMPETENCIAS")
+    
+    # Cálculos de desempeño
+    mse_promedio = st.session_state.history['MSE'].mean()
+    seguridad = "APROBADO" if st.session_state.get('bop_cerrada', False) == False else "CRÍTICO (Pozo Cerrado)"
+    
+    st.markdown(f"""
+    ---
+    ### CERTIFICADO DE SIMULACIÓN
+    **Operador:** {st.session_state.usuario}  
+    **Legajo:** {st.session_state.legajo}  
+    **Yacimiento:** {st.session_state.yacimiento_activo}
+    
+    **RESULTADOS TÉCNICOS:**
+    * **Eficiencia de Perforación (MSE):** {round(mse_promedio, 2)} kpsi
+    * **Estado de Seguridad:** {seguridad}
+    * **Metros Perforados:** {len(st.session_state.history)} m
+    
+    ---
+    """)
+    
+    if st.button("📥 DESCARGAR REPORTE PARA PROFESOR PIZZOLATO"):
+        csv = st.session_state.history.to_csv(index=False).encode('utf-8')
+        st.download_button("Click aquí para descargar .CSV", csv, f"Reporte_{st.session_state.usuario}.csv", "text/csv")
