@@ -232,3 +232,29 @@ def generar_diploma():
     if st.button("📥 DESCARGAR REPORTE PARA PROFESOR PIZZOLATO"):
         csv = st.session_state.history.to_csv(index=False).encode('utf-8')
         st.download_button("Click aquí para descargar .CSV", csv, f"Reporte_{st.session_state.usuario}.csv", "text/csv")
+# --- LÓGICA DE NAVEGACIÓN PRINCIPAL ---
+
+if "auth" not in st.session_state:
+    st.session_state.auth = False
+
+if not st.session_state.auth:
+    login_screen()
+else:
+    # Una vez logueado, mostramos el menú elegido
+    if st.session_state.menu == "HOME":
+        render_home()
+    elif st.session_state.menu == "SCADA":
+        render_scada()
+    elif st.session_state.menu == "BOP":
+        render_bop()
+    elif st.session_state.menu == "LWD":
+        render_lwd()
+    elif st.session_state.menu == "PERDIDA":
+        modulo_perdida_circulacion()
+    elif st.session_state.menu == "REPORTE":
+        generar_diploma()
+
+    # Botón para cerrar sesión
+    if st.sidebar.button("Cerrar Guardia (Logout)"):
+        st.session_state.auth = False
+        st.rerun()
