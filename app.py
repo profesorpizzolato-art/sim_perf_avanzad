@@ -35,27 +35,27 @@ if "history" not in st.session_state:
 curr = st.session_state.history.iloc[-1]
 
 # --- 3. MÓDULOS DEL SIMULADOR ---
-
 def login_menfa():
     st.markdown('<div style="text-align: center;">', unsafe_allow_html=True)
     mostrar_imagen("logo_menfa.png", ancho=300)
-    st.title("SISTEMA DE ENTRENAMIENTO PETROLERO")
-    st.subheader("IPCL MENFA - MENDOZA")
+    st.title("SISTEMA DE ENTRENAMIENTO - IPCL MENFA")
+    st.subheader("INGRESO DE OPERADOR")
     st.markdown('</div>', unsafe_allow_html=True)
     
-    with st.form("acceso_operador"):
-        nombre = st.text_input("Nombre del Operador:")
-        legajo = st.text_input("Legajo / ID:")
-        yacimiento = st.selectbox("Yacimiento:", ["Barrancas", "Vizcacheral", "Malargüe", "Puesto Pozo Cercado"])
-        if st.form_submit_button("INGRESAR A CABINA"):
+    with st.form("acceso_directo"):
+        nombre = st.text_input("Nombre y Apellido:")
+        legajo = st.text_input("Número de Legajo:")
+        
+        if st.form_submit_button("CONECTAR A CABINA"):
             if nombre and legajo:
                 st.session_state.usuario = nombre
                 st.session_state.legajo = legajo
-                st.session_state.yacimiento = yacimiento
+                # Definimos el yacimiento internamente para el reporte
+                st.session_state.yacimiento = "OPERACIÓN MENDOZA" 
                 st.session_state.auth = True
                 st.rerun()
             else:
-                st.error("Por favor, complete todos los datos para el registro API.")
+                st.warning("Complete los campos para habilitar el simulador.")
                 
 def render_perfil_grafico():
     st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
