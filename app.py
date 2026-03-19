@@ -202,7 +202,74 @@ else:
             }
             st.session_state.history = pd.concat([st.session_state.history, pd.DataFrame([nueva_fila])], ignore_index=True)
             st.rerun()
+def render_manual_interactivo():
+    st.button("🔙 VOLVER AL MONITOR", on_click=lambda: st.session_state.update({"menu": "HOME"}))
+    st.title("📖 MANUAL DEL OPERADOR - IPCL MENFA")
+    st.info("Siga estas instrucciones para una operación segura bajo normas API.")
+    st.divider()
 
+    # Definición de las 5 pestañas
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🚀 Operación", 
+        "🛡️ Control de Pozo", 
+        "🔩 Sartas y Pesca", 
+        "🧪 Fluidos",
+        "📚 Glosario"
+    ])
+
+    with tab1:
+        st.subheader("🕹️ Guía de Inicio y Perforación")
+        st.write("""
+        1. **Ingreso:** Registre su Nombre y Legajo. El sistema asignará automáticamente el yacimiento de Mendoza.
+        2. **Control de Sarta:** Use los deslizadores (Sliders) en la barra lateral para ajustar el **WOB** (Peso) y las **RPM**.
+        3. **Avance:** Presione 'AVANZAR PERFORACIÓN'. Cada clic representa un avance de 1 metro.
+        4. **Monitoreo:** Observe el panel **SCADA**. Si el Torque sube demasiado, reduzca el WOB inmediatamente para evitar fatiga.
+        """)
+        st.success("🎯 Objetivo: Llegar a la profundidad programada manteniendo la integridad de la herramienta arriba del 80%.")
+
+    with tab2:
+        st.subheader("🛡️ Protocolo de Emergencia (API S53)")
+        st.write("""
+        Si detecta un incremento en el nivel de **TANQUES** o una alerta de **KICK**:
+        1. Deje de perforar (suelte los controles).
+        2. Ingrese rápidamente al módulo **PANEL BOP**.
+        3. Presione el botón **'CIERRE DE EMERGENCIA'**.
+        4. El sistema calculará su tiempo de respuesta. Un tiempo menor a 30 segundos es 'Excelente'.
+        """)
+        st.warning("⚠️ No intente seguir perforando con un Kick activo; el pozo podría entrar en surgencia descontrolada.")
+
+    with tab3:
+        st.subheader("🔩 Integridad Mecánica y Pesca (API 7G)")
+        st.write("""
+        * **Fatiga:** La sarta sufre desgaste por fricción y torque. Si llega a **0%**, la tubería se corta (Broken Pipe).
+        * **Procedimiento de Pesca:**
+            * El sistema lo derivará al módulo de Pesca automáticamente.
+            * Seleccione la herramienta **Overshot** (es la más efectiva para pescados cilíndricos).
+            * Ajuste la tensión de tracción. Se requiere vencer el peso de la sarta (aprox. **180-220 klbs** en este simulador).
+            * Si falla, intente variar la tensión o cambiar de herramienta.
+        """)
+
+    with tab4:
+        st.subheader("🧪 Cálculos de Ingeniería (API 13B)")
+        st.write("El simulador aplica las siguientes fórmulas automáticas:")
+        st.latex(r"Presión Hidrostática (psi) = 0.052 \cdot \text{Densidad (ppg)} \cdot \text{Profundidad (ft)}")
+        st.latex(r"Potencia Hidráulica (HHP) = \frac{\text{Caudal (GPM)} \cdot \text{Presión (PSI)}}{1714}")
+        st.info("Recuerde: Mantener la Ph > Pf (Presión de formación) es la primera barrera de seguridad.")
+
+    with tab5:
+        st.subheader("📚 Diccionario Técnico")
+        glosario = {
+            "WOB": "Weight on Bit. Peso real aplicado sobre el trépano para cortar la roca.",
+            "ROP": "Rate of Penetration. Velocidad a la que el trépano avanza en el subsuelo.",
+            "SPP": "Standpipe Pressure. Presión de circulación del lodo medida en la superficie.",
+            "Overshot": "Herramienta de pesca externa que 'agarra' la tubería caída por su diámetro exterior.",
+            "Gamma Ray": "Herramienta LWD que mide la radiactividad natural para identificar arenas o arcillas."
+        }
+        for k, v in glosario.items():
+            st.write(f"**{k}:** {v}")
+
+    st.divider()
+    st.caption("Instrucciones de entrenamiento - Propiedad de IPCL MENFA")
     
     # --- 6. RUTEADOR DE MENÚS ---
     if st.session_state.menu == "HOME": render_home()
@@ -237,4 +304,4 @@ else:
         st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
         st.write("Cargue aquí las instrucciones técnicas para el alumno.")
     elif st.session_state.menu == "PERFIL": render_perfil_grafico()
-    elif st.session_state.menu == "MANUAL": render_manual()
+    elif st.session_state.menu == "MANUAL": render_manual_interactivo()
