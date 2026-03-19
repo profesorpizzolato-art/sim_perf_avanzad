@@ -172,3 +172,12 @@ elif st.session_state.menu == "GEOFI":
     modulo_geofisica()
 elif st.session_state.menu == "GEONAV":
     modulo_geonavegacion()
+# Dentro de tu lógica de perforación en app.py
+if st.button("AVANZAR PERFORACIÓN"):
+    # ... cálculos normales ...
+    
+    # Probabilidad de evento (10% de chance de pérdida en zonas fracturadas)
+    if random.random() < 0.10:
+        st.session_state.tasa_perdida = random.randint(5, 20)
+        st.session_state.menu = "PERDIDA" # Salta automáticamente al módulo de alerta
+        st.warning("⚠️ ¡CAÍDA REPENTINA DE NIVEL EN TANQUES!")
