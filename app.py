@@ -56,7 +56,52 @@ def login_menfa():
                 st.rerun()
             else:
                 st.error("Por favor, complete todos los datos para el registro API.")
+                
+def render_perfil_grafico():
+    st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
+    st.title("📉 PERFIL DE AVANCE DINÁMICO")
+    
+    # Creamos un gráfico de trayectoria vertical
+    df = st.session_state.history
+    
+    fig = go.Figure()
 
+    # Dibujamos el pozo (Trayectoria)
+    fig.add_trace(go.Scatter(
+        x=[0] * len(df), 
+        y=df['DEPTH'],
+        mode='lines+markers',
+        name='Trayectoria del Pozo',
+        line=dict(color='white', width=4),
+        marker=dict(size=2, color='yellow')
+    ))
+
+    # Añadimos franjas de colores para simular capas geológicas (Formaciones)
+    # Basado en el Gamma Ray (GR) capturado por el LWD
+    for i in range(1, len(df)):
+        depth_start = df.iloc[i-1]['DEPTH']
+        depth_end = df.iloc[i]['DEPTH']
+        gr_val = df.iloc[i]['GR']
+        
+        # Lógica de color por formación (Norma API para litología)
+        color_capa = "gold" if gr_val < 60 else "gray" if gr_val < 100 else "darkred"
+        
+        fig.add_hrect(
+            y0=depth_start, y1=depth_end, 
+            fillcolor=color_capa, opacity=0.3, 
+            layer="below", line_width=0
+        )
+
+    fig.update_layout(
+        title="Visualización de Penetración y Litología",
+        yaxis=dict(title="Profundidad (m)", autorange="reversed"), # El pozo va hacia abajo
+        xaxis=dict(title="Desviación Lateral (m)", range=[-10, 10]),
+        template="plotly_dark",
+        height=700
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    st.info("🟡 Arena (Reservorio) | ⚪ Arcilla | 🔴 Roca Dura / Basalto")
 def render_home():
     if st.session_state.kick_alert:
         st.error(f"⚠️ ¡ALERTA DE ARREMETIDA! TIEMPO DE REACCIÓN: {int(time.time() - st.session_state.time_kick)}s")
@@ -156,6 +201,7 @@ else:
             st.session_state.history = pd.concat([st.session_state.history, pd.DataFrame([nueva_fila])], ignore_index=True)
             st.rerun()
 
+    
     # --- 6. RUTEADOR DE MENÚS ---
     if st.session_state.menu == "HOME": render_home()
     elif st.session_state.menu == "SCADA":
@@ -188,3 +234,4 @@ else:
     elif st.session_state.menu == "MANUAL":
         st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
         st.write("Cargue aquí las instrucciones técnicas para el alumno.")
+    elif st.session_state.menu == "PERFIL": render_perfil_grafico()
