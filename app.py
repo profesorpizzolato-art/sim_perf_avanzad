@@ -3,17 +3,16 @@ import pandas as pd
 import numpy as np
 import random
 import plotly.graph_objects as go
-import os
 import time
 
-# --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL (ESTILO SEPIA) ---
-st.set_page_config(page_title="SIMULADOR MENFA V5", layout="wide", initial_sidebar_state="collapsed")
+# --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL ---
+st.set_page_config(page_title="SIMULADOR MENFA V5 - IPCL", layout="wide", initial_sidebar_state="collapsed")
 
-# Inyección de CSS para fondo Sepia y Alarmas
+# Estilo CSS: Fondo Sepia, Alarmas y Tipografía Industrial
 st.markdown("""
     <style>
     .stApp {
-        background-color: #f4ecd8; /* Tono Sepia Suave */
+        background-color: #f4ecd8; /* Estética Retro/Industrial */
         color: #5d4037;
     }
     @keyframes blinker { 50% { opacity: 0; } }
@@ -25,6 +24,15 @@ st.markdown("""
         text-align: center;
         animation: blinker 1s linear infinite;
         color: white;
+        margin-bottom: 20px;
+    }
+    .warning-pesca {
+        background-color: #610000;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        color: #ffaa00;
+        font-weight: bold;
     }
     .target-reached {
         background-color: #2e7d32;
@@ -34,142 +42,117 @@ st.markdown("""
         color: white;
         border: 4px double #ffd700;
     }
+    .manual-box {
+        background-color: #eaddca;
+        padding: 15px;
+        border-left: 5px solid #8b4513;
+        font-family: monospace;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-def mostrar_imagen(archivo, ancho=None):
-    if os.path.exists(archivo):
-        st.image(archivo, width=ancho)
-    else:
-        st.warning(f"Cargue {archivo} para ver el logo institucional.")
-
-# --- 2. ESTADO DEL SISTEMA ---
+# --- 2. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
 if "auth" not in st.session_state: st.session_state.auth = False
 if "menu" not in st.session_state: st.session_state.menu = "HOME"
 if "kick_alert" not in st.session_state: st.session_state.kick_alert = False
-if "time_kick" not in st.session_state: st.session_state.time_kick = 0
-if "reaccion_sec" not in st.session_state: st.session_state.reaccion_sec = 0
 if "vida_sarta" not in st.session_state: st.session_state.vida_sarta = 100.0 
 if "pesca_activa" not in st.session_state: st.session_state.pesca_activa = False
 if "target_met" not in st.session_state: st.session_state.target_met = False
+if "kicks_recibidos" not in st.session_state: st.session_state.kicks_recibidos = 0
 
-TARGET_DEPTH = 3000.0 # Objetivo final de la perforación
+TARGET_DEPTH = 3000.0
 
 if "history" not in st.session_state:
     st.session_state.history = pd.DataFrame([{
-        "DEPTH": 2500.0, "WOB": 20.0, "RPM": 100, "TORQUE": 15000, 
-        "SPP": 2800, "ROP": 10.0, "GR": 120, "TANQUES": 1000, "GPM": 500
+        "DEPTH": 2500.0, "WOB": 20.0, "RPM": 100, "TORQUE": 8000, 
+        "SPP": 2800, "ROP": 12.0, "GR": 110, "TANQUES": 1200
     }])
 
+# --- 3. LÓGICA DE LOGIN ---
+if not st.session_state.auth:
+    st.markdown("<h1 style='text-align: center;'>🛡️ IPCL MENFA - MENDOZA</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>SIMULADOR TÉCNICO DE PERFORACIÓN V5.0</p>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1,2,1])
+    with c2:
+        with st.form("login"):
+            u = st.text_input("Nombre del Operador:")
+            l = st.text_input("Legajo / Matrícula:")
+            if st.form_submit_button("INICIAR TURNO"):
+                if u and l:
+                    st.session_state.usuario = u
+                    st.session_state.auth = True
+                    st.rerun()
+    st.stop()
+
+# --- 4. CÁLCULOS Y SIMULACIÓN (SIDEBAR) ---
 curr = st.session_state.history.iloc[-1]
 
-# --- 3. MÓDULOS ---
-
-def login_menfa():
-    st.markdown('<div style="text-align: center;">', unsafe_allow_html=True)
-    mostrar_imagen("logo_menfa.png", ancho=300)
-    st.title("SISTEMA DE ENTRENAMIENTO - IPCL MENFA")
-    st.subheader("INGRESO DE OPERADOR")
-    st.markdown('</div>', unsafe_allow_html=True)
-    with st.form("acceso"):
-        nombre = st.text_input("Nombre y Apellido:")
-        legajo = st.text_input("Número de Legajo:")
-        if st.form_submit_button("CONECTAR A CABINA"):
-            if nombre and legajo:
-                st.session_state.usuario, st.session_state.legajo = nombre, legajo
-                st.session_state.yacimiento, st.session_state.auth = "OPERACIÓN MENDOZA", True
-                st.rerun()
-
-def render_home():
-    # Alarmas Visuales
-    if st.session_state.kick_alert:
-        st.markdown('<div class="alarm-kick"><h1>🚨 ¡KICK DETECTADO! 🚨</h1><p>CIERRE BOP INMEDIATO</p></div>', unsafe_allow_html=True)
+with st.sidebar:
+    st.title("🕹️ COMANDOS")
+    wob_in = st.slider("WOB (Peso - klbs)", 0, 60, int(curr['WOB']))
+    rpm_in = st.slider("RPM (Giro)", 0, 180, int(curr['RPM']))
     
-    if st.session_state.target_met:
-        st.markdown(f'<div class="target-reached"><h1>🎯 OBJETIVO ALCANZADO: {TARGET_DEPTH}m</h1><p>Guardia completada con éxito. Descargue su reporte.</p></div>', unsafe_allow_html=True)
-
-    st.title(f"🕹️ CENTRAL MENFA - {st.session_state.yacimiento}")
-    st.write(f"Operador: **{st.session_state.usuario}** | Integridad Sarta: **{round(st.session_state.vida_sarta, 1)}%**")
     st.divider()
     
-    c1, c2, c3 = st.columns(3)
-    with c1: 
-        if st.button("📊 MONITOR SCADA", use_container_width=True): st.session_state.menu = "SCADA"; st.rerun()
-    with c2: 
-        tipo = "primary" if st.session_state.kick_alert else "secondary"
-        if st.button("🛡️ PANEL BOP", use_container_width=True, type=tipo): st.session_state.menu = "BOP"; st.rerun()
-    with c3: 
-        if st.button("🔩 SARTA / PESCA", use_container_width=True): st.session_state.menu = "SARTAS"; st.rerun()
-    
-    st.write("")
-    c4, c5, c6 = st.columns(3)
-    with c4: 
-        if st.button("🧪 FLUIDOS", use_container_width=True): st.session_state.menu = "LODOS"; st.rerun()
-    with c5: 
-        if st.button("📈 AVANCE GRÁFICO", use_container_width=True): st.session_state.menu = "PERFIL"; st.rerun()
-    with c6: 
-        if st.button("🏆 REPORTE FINAL", use_container_width=True): st.session_state.menu = "EXAMEN"; st.rerun()
-
-    st.divider()
-    if st.button("📖 MANUAL DE USUARIO API", use_container_width=True): st.session_state.menu = "MANUAL"; st.rerun()
-
-def render_perfil_grafico():
-    st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
-    st.title("📈 PERFIL DE PERFORACIÓN")
-    df = st.session_state.history
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=[0]*len(df), y=df['DEPTH'], mode='lines', line=dict(color='white', width=5)))
-    fig.add_hline(y=TARGET_DEPTH, line_dash="dash", line_color="lime", annotation_text="TARGET")
-    fig.update_layout(yaxis=dict(title="Profundidad (m)", autorange="reversed"), template="plotly_dark", height=600)
-    st.plotly_chart(fig, use_container_width=True)
-
-def render_manual():
-    st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
-    t1, t2, t3, t4 = st.tabs(["🚀 Operación", "🛡️ Control", "🔩 Pesca", "📚 Glosario"])
-    with t1: st.write("Controle WOB/RPM. Objetivo final: 3000m.")
-    with t2: st.write("Ante alarma roja parpadeante, cierre la BOP.")
-    with t3: st.write("Si la sarta falla, use Overshot con 180+ klbs.")
-    with t4: st.write("**WOB:** Peso sobre trépano. **Kick:** Ingreso de fluido.")
-
-# --- 4. LÓGICA DE CONTROL ---
-
-if not st.session_state.auth:
-    login_menfa()
-else:
-    with st.sidebar:
-        mostrar_imagen("logo_menfa.png", ancho=150)
-        st.divider()
-        wob = st.slider("WOB (klbs)", 0, 60, int(curr['WOB']))
-        rpm = st.slider("RPM", 0, 180, int(curr['RPM']))
-        if st.button("AVANZAR 1m") and not st.session_state.pesca_activa and not st.session_state.target_met:
-            st.session_state.vida_sarta -= (wob * 0.05)
-            if curr['DEPTH'] + 1 >= TARGET_DEPTH: st.session_state.target_met = True
+    if st.button("⏩ AVANZAR 1 METRO", use_container_width=True):
+        if not st.session_state.pesca_activa and not st.session_state.target_met:
+            # Desgaste de herramienta
+            st.session_state.vida_sarta -= (wob_in * 0.18)
+            if st.session_state.vida_sarta <= 0:
+                st.session_state.pesca_activa = True
+                st.session_state.vida_sarta = 0
             
-            kick = 20 if (random.random() < 0.05 and not st.session_state.kick_alert) else 0
-            if kick > 0: 
+            # Profundidad
+            nueva_p = curr['DEPTH'] + 1.0
+            if nueva_p >= TARGET_DEPTH: st.session_state.target_met = True
+            
+            # Geología Dinámica (Zona de reservorio 2850-2950)
+            gr_val = random.randint(25, 45) if 2850 < nueva_p < 2950 else random.randint(85, 125)
+            
+            # Evento de Kick (5% probabilidad)
+            vol_tanque = curr['TANQUES']
+            if random.random() < 0.05 and not st.session_state.kick_alert:
                 st.session_state.kick_alert = True
-                st.session_state.time_kick = time.time()
+                st.session_state.kicks_recibidos += 1
+                vol_tanque += 35 
             
-            nueva = {
-                "DEPTH": curr['DEPTH'] + 1.0, "WOB": wob, "RPM": rpm, "TORQUE": (wob * 400),
-                "SPP": 2800, "ROP": 10.0, "GR": random.randint(60, 140), 
-                "TANQUES": curr['TANQUES'] + kick, "GPM": 500
+            # Registro
+            nueva_fila = {
+                "DEPTH": nueva_p, "WOB": wob_in, "RPM": rpm_in,
+                "TORQUE": (wob_in * 310) + random.randint(-40, 40),
+                "SPP": 2850 + random.randint(-15, 15),
+                "ROP": (wob_in * rpm_in) / 480,
+                "GR": gr_val, "TANQUES": vol_tanque
             }
-            st.session_state.history = pd.concat([st.session_state.history, pd.DataFrame([nueva])], ignore_index=True)
+            st.session_state.history = pd.concat([st.session_state.history, pd.DataFrame([nueva_fila])], ignore_index=True)
             st.rerun()
 
-    # Ruteador
-    m = st.session_state.menu
-    if m == "HOME": render_home()
-    elif m == "PERFIL": render_perfil_grafico()
-    elif m == "MANUAL": render_manual()
-    elif m == "BOP":
-        st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
-        if st.button("ACTIVAR CIERRE", type="primary"):
-            if st.session_state.kick_alert:
-                st.session_state.reaccion_sec = int(time.time() - st.session_state.time_kick)
-                st.session_state.kick_alert = False
-                st.success(f"POZO SEGURO. Reacción: {st.session_state.reaccion_sec}s")
-    elif m == "EXAMEN":
-        st.button("🔙 VOLVER", on_click=lambda: st.session_state.update({"menu": "HOME"}))
-        st.download_button("📥 DESCARGAR REPORTE MENFA", st.session_state.history.to_csv(), "reporte_guardia.csv")
+# --- 5. INTERFAZ MULTI-PESTAÑA ---
+
+# Alertas Críticas siempre visibles arriba
+if st.session_state.kick_alert:
+    st.markdown('<div class="alarm-kick"><h1>🚨 ¡KICK! SURGENCIA EN TANQUES</h1><p>CIERRE BOP ANULAR DE INMEDIATO</p></div>', unsafe_allow_html=True)
+if st.session_state.pesca_activa:
+    st.markdown('<div class="warning-pesca">⚠️ HERRAMIENTA CORTADA (FISURA POR WOB). OPERACIÓN DE PESCA REQUERIDA.</div>', unsafe_allow_html=True)
+if st.session_state.target_met:
+    st.markdown('<div class="target-reached"><h1>🎯 OBJETIVO ALCANZADO</h1><p>Profundidad Final Lograda. Genere su reporte.</p></div>', unsafe_allow_html=True)
+
+tabs = st.tabs(["📊 SCADA", "🔩 SARTA & PESCA", "🛡️ CONTROL DE POZO", "📈 GEOLOGÍA", "📖 MANUAL & EVALUACIÓN"])
+
+with tabs[0]: # SCADA
+    st.title("Monitor en Tiempo Real")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("PROFUNDIDAD", f"{curr['DEPTH']} m")
+    c2.metric("WOB", f"{curr['WOB']} klbs")
+    c3.metric("ROP", f"{round(curr['ROP'], 1)} m/h")
+    c4.metric("GAMMA RAY", f"{curr['GR']} API")
+    
+    st.subheader("Historial de Operación")
+    st.dataframe(st.session_state.history.tail(8), use_container_width=True)
+
+with tabs[1]: # SARTA & PESCA
+    st.title("Mantenimiento de Sarta")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("### Integridad del BHA")
+        st.progress(st.session_state.vida_sarta / 100)
