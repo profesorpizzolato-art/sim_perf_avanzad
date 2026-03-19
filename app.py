@@ -3,55 +3,34 @@ import pandas as pd
 import numpy as np
 import random
 import plotly.graph_objects as go
-from datetime import datetime
-import time
 import os
+from datetime import datetime
 
-# --- 1. CONFIGURACIÓN ÚNICA DE PÁGINA ---
+# --- 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO) ---
 st.set_page_config(page_title="IPCL MENFA WELL SIM V5", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. ESTILO CSS PARA TARJETAS Y MÉTRICAS ---
-st.markdown("""
-    <style>
-    .block-container {padding-top: 1rem; background-color: #0e1117;}
-    .stMetric {background-color: #1c222d; border: 1px solid #34495e; border-radius: 8px; padding: 15px;}
-    [data-testid="stMetricValue"] {color: #f39c12; font-size: 1.8rem; font-weight: bold;}
-    .module-card {
-        text-align: center; padding: 25px; border-radius: 15px; 
-        background-color: #161b22; border: 2px solid #34495e;
-        transition: 0.3s; height: 200px;
-    }
-    .module-card:hover { border-color: #f39c12; background-color: #1c222d; }
-    </style>
-    """, unsafe_allow_html=True)
-mostrar_imagen_segura("logo_menfa.png", width=250)
-# --- 3. FUNCIONES DE UTILIDAD Y MOTOR ---
+# --- 2. DEFINICIÓN DE FUNCIONES (ANTES DE USARLAS) ---
 def mostrar_imagen_segura(nombre_archivo, width=None, subtitulo=""):
+    """
+    Función blindada para que la app no se caiga si falta el logo.
+    """
     if os.path.exists(nombre_archivo):
-        st.image(nombre_archivo, width=ancho, caption=subtitulo)
+        st.image(nombre_archivo, width=width, caption=subtitulo)
     else:
-        st.info(f"ℹ️ Sistema: {nombre_archivo} no detectado (Modo técnico).")
+        # Si no existe, solo muestra un texto informativo sin romper la app
+        st.info(f"ℹ️ Sistema: Archivo '{nombre_archivo}' no detectado en el servidor.")
 
-# Inicialización de variables de sesión (Singleton)
+# --- 3. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
 if "auth" not in st.session_state: st.session_state.auth = False
 if "menu" not in st.session_state: st.session_state.menu = "HOME"
 if "usuario" not in st.session_state: st.session_state.usuario = "Invitado"
-if "history" not in st.session_state:
-    st.session_state.history = pd.DataFrame([{
-        "DEPTH": 2850.0, "WOB": 25.0, "RPM": 120, "TORQUE": 18500, 
-        "SPP": 3200, "ROP": 15.0, "MSE": 35.0, "GR": 140, "TANQUES": 1000
-    }])
 
-# Datos actuales para cálculos rápidos
-curr = st.session_state.history.iloc[-1]
-
-# Intentar importar módulos externos
-try:
-    from motor_calculos_avanzados import calcular_fisica_perforacion
-except ImportError:
-    def calcular_fisica_perforacion(wob, rpm, torque, rop, depth, flow_rate):
-        return {"MSE": round(35.0, 2), "AV": 120.0, "KMW": 11.5, "HOOK_LOAD": 250.0}
-
+# --- 4. AHORA SÍ, PODEMOS LLAMAR A LA FUNCIÓN ---
+# (Esto soluciona tu error de la línea 27)
+if not st.session_state.auth:
+    st.markdown('<div style="text-align: center;">', unsafe_allow_html=True)
+    mostrar_imagen_segura("logo_menfa.png", width=250)
+    # ... resto de tu login_screen ...
 # --- 4. DEFINICIÓN DE PANTALLAS (MÓDULOS) ---
 
 def login_screen():
