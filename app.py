@@ -5,7 +5,13 @@ import random
 import plotly.graph_objects as go
 from datetime import datetime
 import time
-
+# --- INICIALIZACIÓN DE ESTADO (Pegar después de los imports) ---
+if "auth" not in st.session_state: 
+    st.session_state.auth = False
+if "menu" not in st.session_state: 
+    st.session_state.menu = "HOME"
+if "usuario" not in st.session_state: 
+    st.session_state.usuario = "Invitado"
 # IMPORTACIÓN DE TUS MÓDULOS SUBIDOS (Asegúrate que estén en la misma carpeta)
 try:
     from motor_calculos_avanzados import calcular_fisica_perforacion
@@ -79,7 +85,43 @@ def render_home():
     with c6:
         st.markdown('<div class="module-card"><h1>🏆</h1><h3>EVALUACIÓN</h3><p>IADC CERTIFIED</p></div>', unsafe_allow_html=True)
         if st.button("GENERAR REPORTE", use_container_width=True): st.session_state.menu = "REPORTE"
+def render_home():
+    st.title(f"👷 BIENVENIDO, {st.session_state.usuario}")
+    st.markdown(f"**Yacimiento Asignado:** {st.session_state.get('yacimiento_activo', 'Mendoza General')}")
+    st.divider()
 
+    st.subheader("Seleccione el Módulo de Operación:")
+    
+    # Grilla de Navegación
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("📊 MONITOR SCADA", use_container_width=True): 
+            st.session_state.menu = "SCADA"
+            st.rerun()
+    with c2:
+        if st.button("🛡️ CONTROL DE POZOS (BOP)", use_container_width=True): 
+            st.session_state.menu = "BOP"
+            st.rerun()
+    with c3:
+        if st.button("📡 GEONAVEGACIÓN LWD", use_container_width=True): 
+            st.session_state.menu = "LWD"
+            st.rerun()
+
+    st.write("") # Espacio
+    c4, c5, c6 = st.columns(3)
+    with c4:
+        if st.button("📉 GESTIÓN DE PÉRDIDAS", use_container_width=True): 
+            st.session_state.menu = "PERDIDA"
+            st.rerun()
+    with c5:
+        if st.button("🔩 DISEÑO DE SARTA (API)", use_container_width=True): 
+            st.session_state.menu = "SARTAS"
+            st.rerun()
+    with c6:
+        if st.button("🏆 REPORTE Y DIPLOMA", use_container_width=True): 
+            st.session_state.menu = "REPORTE"
+            st.rerun()
+            
 def render_scada():
     st.button("🔙 VOLVER AL INICIO", on_click=lambda: st.session_state.update({"menu": "HOME"}))
     st.title("🖥️ MONITOR SCADA - MÉTRICAS EN TIEMPO REAL")
@@ -234,7 +276,36 @@ def generar_diploma():
         csv = st.session_state.history.to_csv(index=False).encode('utf-8')
         st.download_button("Click aquí para descargar .CSV", csv, f"Reporte_{st.session_state.usuario}.csv", "text/csv")
 # --- LÓGICA DE NAVEGACIÓN PRINCIPAL ---
+# --- LÓGICA DE NAVEGACIÓN FINAL ---
 
+if not st.session_state.auth:
+    login_screen() # Primero el Login
+else:
+    # Si ya se logueó, mostramos el Sidebar con info del Alumno
+    with st.sidebar:
+        mostrar_imagen_segura("logo_menfa.png", ancho=100)
+        st.write(f"👤 **Alumno:** {st.session_state.usuario}")
+        st.write(f"📍 **Pozo:** {st.session_state.yacimiento_activo}")
+        st.divider()
+        if st.button("🚪 CERRAR SESIÓN"):
+            st.session_state.auth = False
+            st.rerun()
+
+    # RUTEADOR DE PÁGINAS
+    if st.session_state.menu == "HOME":
+        render_home()
+    elif st.session_state.menu == "SCADA":
+        render_scada() # Asegurate que esta función esté definida arriba
+    elif st.session_state.menu == "BOP":
+        render_bop()   # Asegurate que esta función esté definida arriba
+    elif st.session_state.menu == "LWD":
+        modulo_geonavegacion() 
+    elif st.session_state.menu == "PERDIDA":
+        modulo_perdida_circulacion()
+    elif st.session_state.menu == "SARTAS":
+        modulo_sartas_api()
+    elif st.session_state.menu == "REPORTE":
+        generar_diploma()
 if "auth" not in st.session_state:
     st.session_state.auth = False
 
@@ -259,3 +330,6 @@ else:
     if st.sidebar.button("Cerrar Guardia (Logout)"):
         st.session_state.auth = False
         st.rerun()
+def modulo_sartas_api():
+    st.title("🔩 Módulo en Construcción")
+    if st.button("Volver"): st.session_state.menu = "HOME"; st.rerun()
