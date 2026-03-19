@@ -5,6 +5,16 @@ import random
 import plotly.graph_objects as go
 from datetime import datetime
 import time
+st.set_page_config(page_title="IPCL MENFA V5", layout="wide")
+def mostrar_imagen_segura(nombre_archivo, ancho=None, subtitulo=""):
+    if os.path.exists(nombre_archivo):
+        st.image(nombre_archivo, width=ancho, caption=subtitulo)
+    else:
+        st.info(f"ℹ️ Sistema: {nombre_archivo} no detectado.")
+
+# Inicialización de variables de sesión
+if "auth" not in st.session_state: st.session_state.auth = False
+if "menu" not in st.session_state: st.session_state.menu = "HOME"
 # --- INICIALIZACIÓN DE ESTADO (Pegar después de los imports) ---
 if "auth" not in st.session_state: 
     st.session_state.auth = False
@@ -18,7 +28,19 @@ try:
     from mud_pumps import dashboard_bombas
 except ImportError:
     st.error("⚠️ Algunos módulos secundarios no se encuentran. Usando lógica interna de respaldo.")
+def login_screen():
+    st.title("INGRESO AL SISTEMA")
+    mostrar_imagen_segura("logo_menfa.png", ancho=200) # Aquí ya no fallará
+    with st.form("login"):
+        user = st.text_input("Alumno:")
+        if st.form_submit_button("Entrar"):
+            st.session_state.auth = True
+            st.session_state.usuario = user
+            st.rerun()
 
+def render_home():
+    # ... código que te pasé de los botones ...
+    pass
 # --- 1. CONFIGURACIÓN DE PÁGINA ESTILO ROC ---
 st.set_page_config(page_title="IPCL MENFA WELL SIM V5", layout="wide", initial_sidebar_state="collapsed")
 
@@ -333,3 +355,13 @@ else:
 def modulo_sartas_api():
     st.title("🔩 Módulo en Construcción")
     if st.button("Volver"): st.session_state.menu = "HOME"; st.rerun()
+# --- ESTO VA AL FINAL DEL ARCHIVO ---
+if not st.session_state.auth:
+    login_screen()
+else:
+    if st.session_state.menu == "HOME":
+        render_home()
+    elif st.session_state.menu == "SCADA":
+        # llamar a tu función de scada
+        pass
+    # ... resto de elif ...
