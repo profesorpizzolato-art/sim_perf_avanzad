@@ -341,70 +341,88 @@ with st.expander("🔐 PANEL DE INSTRUCTOR (FABRICIO)"):
 from fpdf import FPDF
 import datetime
 
+# --- CONFIGURACIÓN DE COLORES INSTITUCIONALES MENFA ---
+# Azul Petróleo MENFA: R=0, G=51, B=102
+# Naranja Energía MENFA: R=255, G=102, B=0
+
 def generar_pdf_certificado(nombre, legajo, nota):
     pdf = FPDF(orientation="L", unit="mm", format="A4")
     pdf.add_page()
     
-    # --- BORDE ESTÉTICO ---
-    pdf.set_line_width(2)
-    pdf.rect(10, 10, 277, 190)
+    # 1. --- BORDE ESTÉTICO EN AZUL PETRÓLEO ---
+    pdf.set_draw_color(0, 51, 102) # Azul Petróleo
+    pdf.set_line_width(4)
+    pdf.rect(10, 10, 277, 190) # Borde principal
     
-    # --- LOGO (Asegurate de tener 'logo_menfa.png' en la carpeta) ---
+    pdf.set_line_width(1)
+    pdf.rect(12, 12, 273, 186) # Borde interno fino
+
+    # 2. --- LOGO (Asegurate de tener 'logo_menfa.png' en la carpeta) ---
     try:
+        # Intenta cargar el logo si existe
         pdf.image("logo_menfa.png", x=120, y=20, w=50)
     except:
-        pdf.set_font("Arial", "B", 16)
+        # Si no, pone el nombre institucional en Azul Petróleo
+        pdf.set_text_color(0, 51, 102) # Azul Petróleo
+        pdf.set_font("Arial", "B", 20)
         pdf.text(125, 30, "IPCL MENFA")
+        pdf.set_text_color(0, 0, 0) # Volver a negro
 
-    # --- TEXTO DEL CERTIFICADO ---
-    pdf.set_font("Arial", "B", 30)
-    pdf.ln(60)
+    # 3. --- TÍTULO PRINCIPAL ---
+    pdf.set_font("Arial", "B", 35)
+    pdf.set_text_color(0, 51, 102) # Azul Petróleo
+    pdf.ln(65)
     pdf.cell(0, 15, "CERTIFICADO DE APROBACIÓN", ln=True, align="C")
     
+    # 4. --- TEXTO DEL CERTIFICADO ---
+    pdf.set_text_color(0, 0, 0) # Volver a negro para el texto normal
     pdf.set_font("Arial", "", 18)
     pdf.ln(10)
     pdf.cell(0, 10, "Se otorga el presente a:", ln=True, align="C")
     
-    pdf.set_font("Arial", "B", 25)
+    # 5. --- NOMBRE DEL ALUMNO EN AZUL ---
+    pdf.set_font("Arial", "B", 28)
+    pdf.set_text_color(0, 51, 102) # Azul Petróleo
     pdf.ln(5)
     pdf.cell(0, 15, nombre.upper(), ln=True, align="C")
     
+    # 6. --- CUERPO DEL TEXTO ---
+    pdf.set_text_color(0, 0, 0) # Negro
     pdf.set_font("Arial", "", 14)
     pdf.ln(10)
     fecha_hoy = datetime.date.today().strftime("%d/%m/%Y")
-    cuerpo = (f"Por haber completado y aprobado el Simulador Técnico de Perforación "
-              f"con un desempeño de {nota}/100. Validado bajo normas internas de "
-              f"capacitación laboral de la industria petrolera.")
-    pdf.multi_cell(0, 10, cuerpo, align="C")
     
-    pdf.ln(20)
+    # Creamos el texto de la nota destacada en Naranja
+    cuerpo_1 = "Por haber completado y aprobado el Simulador Técnico de Perforación con un desempeño de "
+    nota_texto = f"{nota}/100."
+    cuerpo_2 = " Validado bajo normas de capacitación laboral del IPCL MENFA."
+
+    # Usamos multi_cell para texto normal
+    pdf.multi_cell(0, 8, cuerpo_1 + nota_texto + cuerpo_2, align="C")
+    
+    # 7. --- DETALLES DE FECHA Y LEGAJO ---
+    pdf.ln(18)
     pdf.set_font("Arial", "I", 12)
+    pdf.set_text_color(100, 100, 100) # Gris oscuro
     pdf.cell(0, 10, f"Mendoza, Argentina - {fecha_hoy} | Legajo: {legajo}", ln=True, align="C")
     
-    # --- FIRMA DIGITAL ---
-    pdf.ln(10)
+    # 8. --- FIRMA DIGITAL EN AZUL PETRÓLEO ---
+    pdf.ln(12)
+    pdf.set_draw_color(0, 51, 102) # Azul Petróleo
+    pdf.set_line_width(1)
+    pdf.cell(90) # Espacio a la izquierda
+    pdf.cell(100, 10, "", ln=True, align="C") # Línea de firma
+    pdf.line(pdf.get_x() + 95, pdf.get_y(), pdf.get_x() + 195, pdf.get_y())
+
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "__________________________", ln=True, align="C")
-    pdf.cell(0, 5, "Inst. Fabricio - IPCL MENFA", ln=True, align="C")
+    pdf.set_text_color(0, 51, 102) # Azul Petróleo
+    pdf.cell(0, 5, "Inst. Fabricio", ln=True, align="C")
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 5, "Capacitación Técnica IPCL MENFA Mendoza", ln=True, align="C")
+
+    # Reseteamos color de texto para Streamlit por las dudas
+    pdf.set_text_color(0, 0, 0)
 
     return pdf.output()
 
-# --- DENTRO DE LA PESTAÑA 5 (EVALUACIÓN) ---
-with tabs[5]:
-    # ... (lógica anterior de guardar examen) ...
-    
-    nota_final = max(0, score) # 'score' es la variable que ya calculamos antes
-    
-    if nota_final >= 60:
-        st.success("🎉 ¡Felicidades! Has aprobado la capacitación.")
-        pdf_bytes = generar_pdf_certificado(st.session_state.usuario, st.session_state.legajo, nota_final)
-        
-        st.download_button(
-            label="📜 DESCARGAR MI CERTIFICADO (PDF)",
-            data=pdf_bytes,
-            file_name=f"Certificado_{st.session_state.usuario}.pdf",
-            mime="application/pdf",
-            use_container_width=True
-        )
-    else:
-        st.error("La nota obtenida no alcanza para la certificación. Repase los manuales e intente nuevamente.")
+# --- USAR ESTA FUNCIÓN EN LA PESTAÑA DE EVALUACIÓN ---
