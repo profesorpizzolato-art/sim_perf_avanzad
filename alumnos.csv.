@@ -1,0 +1,50 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import random
+import plotly.graph_objects as go
+import os
+
+# --- 1. CONFIGURACIÓN E IDENTIDAD ---
+st.set_page_config(page_title="SIMULADOR MENFA V6.1 - PRIVADO", layout="wide")
+
+# --- 2. FUNCIÓN DE CARGA DE LEGAJOS ---
+def validar_acceso(legajo_ingresado):
+    if os.path.exists("alumnos.csv"):
+        df = pd.read_csv("alumnos.csv")
+        # Buscamos el legajo (lo tratamos como string por las dudas)
+        match = df[df['legajo'].astype(str) == str(legajo_ingresado)]
+        if not match.empty:
+            return match.iloc[0]['nombre']
+    return None
+
+# --- 3. LÓGICA DE LOGIN ---
+if "auth" not in st.session_state:
+    st.session_state.auth = False
+
+if not st.session_state.auth:
+    st.markdown("<h1 style='text-align: center;'>🛡️ SISTEMA DE ACCESO MENFA</h1>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1,1.5,1])
+    
+    with c2:
+        st.write("### Identificación de Operador")
+        legajo_input = st.text_input("Ingrese su Número de Legajo:")
+        
+        if st.button("VERIFICAR CREDENCIALES", use_container_width=True):
+            nombre_alumno = validar_acceso(legajo_input)
+            
+            if nombre_alumno:
+                st.session_state.usuario = nombre_alumno
+                st.session_state.legajo = legajo_input
+                st.session_state.auth = True
+                st.success(f"Acceso Concedido: Bienvenido {nombre_alumno}")
+                st.rerun()
+            else:
+                st.error("Legajo no reconocido. Verifique el archivo alumnos.csv")
+    st.stop()
+
+# --- 4. SI ESTÁ AUTENTICADO, INICIA EL SIMULADOR ---
+st.title(f"🚀 Cabina de Perforación - Op: {st.session_state.usuario} (Legajo: {st.session_state.legajo})")
+
+# AQUÍ VA TODO EL RESTO DEL CÓDIGO (TABS, SIDEBAR, GRÁFICAS) QUE YA TENEMOS
+st.write("Simulador activo y validado localmente.")
