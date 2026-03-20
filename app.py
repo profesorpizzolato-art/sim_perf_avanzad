@@ -227,3 +227,61 @@ with tabs[5]:
 
     st.divider()
     st.info("Nota: Una vez guardado, el instructor Fabricio revisará su ROP promedio y el control de Kicks.")
+# --- PANEL DE NOTAS AUTOMÁTICO PARA FABRICIO ---
+def generar_acta_notas():
+    carpeta = "EXAMENES_MENFA"
+    if not os.path.exists(carpeta):
+        return pd.DataFrame()
+    
+    archivos = [f for f in os.listdir(carpeta) if f.endswith('.csv')]
+    resumen = []
+    
+    for arc in archivos:
+        try:
+            df_temp = pd.read_csv(os.path.join(carpeta, arc))
+            # Extraemos info del nombre del archivo: Examen_LEGAJO_NOMBRE_FECHA.csv
+            partes = arc.replace(".csv", "").split("_")
+            legajo_arc = partes[1]
+            nombre_arc = partes[2]
+            
+            # Cálculos de desempeño
+            rop_prom = df_temp['ROP'].mean()
+            max_depth = df_temp['DEPTH'].max()
+            
+            # Evaluamos errores (si el volumen de tanques subió mucho y no bajó, hubo error)
+            kicks_mal_gestionados = len(df_temp[df_temp['TANQUES'] > 1300])
+            
+            # Nota lógica
+            nota = 100
+            if kicks_mal_gestionados > 5: nota -= 30
+            if rop_prom < 5: nota -= 10 # Muy lento
+            if max_depth < 3000: nota -= 20 # No terminó el pozo
+            
+            resumen.append({
+                "Legajo": legajo_arc,
+                "Alumno": nombre_arc,
+                "ROP Promedio": round(rop_prom, 2),
+                "Prof. Final": max_depth,
+                "Estado": "APROBADO" if nota >= 60 else "REPROBADO",
+                "Nota Sugerida": max(0, nota)
+            })
+        except:
+            continue
+    return pd.DataFrame(resumen)
+
+# --- NUEVA PESTAÑA PARA EL PROFESOR ---
+with st.expander("🔐 PANEL DE INSTRUCTOR (FABRICIO)"):
+    pass_docente = st.text_input("Contraseña de Bedelía:", type="password")
+    if pass_docente == "menfa2026":
+        st.subheader("📋 Acta de Examen Automática")
+        df_notas = generar_acta_notas()
+        if not df_notas.empty:
+            st.dataframe(df_notas, use_container_width=True)
+            
+            # Opción para exportar el acta final
+            csv_notas = df_notas.to_csv(index=False)
+            st.download_button("📥 Descargar Acta de Notas (.csv)", csv_notas, "Acta_Examen_MENFA.csv")
+        else:
+            st.warning("Todavía no hay exámenes guardados en la carpeta EXAMENES_MENFA.")
+    elif pass_docente != "":
+        st.error("Contraseña incorrecta.")
