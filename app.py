@@ -338,3 +338,73 @@ with st.expander("🔐 PANEL DE INSTRUCTOR (FABRICIO)"):
             st.download_button("📥 Descargar Acta Final", df_notas.to_csv(index=False), "Acta_Oficial_MENFA.csv")
         else:
             st.warning("Aún no hay exámenes procesados.")
+from fpdf import FPDF
+import datetime
+
+def generar_pdf_certificado(nombre, legajo, nota):
+    pdf = FPDF(orientation="L", unit="mm", format="A4")
+    pdf.add_page()
+    
+    # --- BORDE ESTÉTICO ---
+    pdf.set_line_width(2)
+    pdf.rect(10, 10, 277, 190)
+    
+    # --- LOGO (Asegurate de tener 'logo_menfa.png' en la carpeta) ---
+    try:
+        pdf.image("logo_menfa.png", x=120, y=20, w=50)
+    except:
+        pdf.set_font("Arial", "B", 16)
+        pdf.text(125, 30, "IPCL MENFA")
+
+    # --- TEXTO DEL CERTIFICADO ---
+    pdf.set_font("Arial", "B", 30)
+    pdf.ln(60)
+    pdf.cell(0, 15, "CERTIFICADO DE APROBACIÓN", ln=True, align="C")
+    
+    pdf.set_font("Arial", "", 18)
+    pdf.ln(10)
+    pdf.cell(0, 10, "Se otorga el presente a:", ln=True, align="C")
+    
+    pdf.set_font("Arial", "B", 25)
+    pdf.ln(5)
+    pdf.cell(0, 15, nombre.upper(), ln=True, align="C")
+    
+    pdf.set_font("Arial", "", 14)
+    pdf.ln(10)
+    fecha_hoy = datetime.date.today().strftime("%d/%m/%Y")
+    cuerpo = (f"Por haber completado y aprobado el Simulador Técnico de Perforación "
+              f"con un desempeño de {nota}/100. Validado bajo normas internas de "
+              f"capacitación laboral de la industria petrolera.")
+    pdf.multi_cell(0, 10, cuerpo, align="C")
+    
+    pdf.ln(20)
+    pdf.set_font("Arial", "I", 12)
+    pdf.cell(0, 10, f"Mendoza, Argentina - {fecha_hoy} | Legajo: {legajo}", ln=True, align="C")
+    
+    # --- FIRMA DIGITAL ---
+    pdf.ln(10)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "__________________________", ln=True, align="C")
+    pdf.cell(0, 5, "Inst. Fabricio - IPCL MENFA", ln=True, align="C")
+
+    return pdf.output()
+
+# --- DENTRO DE LA PESTAÑA 5 (EVALUACIÓN) ---
+with tabs[5]:
+    # ... (lógica anterior de guardar examen) ...
+    
+    nota_final = max(0, score) # 'score' es la variable que ya calculamos antes
+    
+    if nota_final >= 60:
+        st.success("🎉 ¡Felicidades! Has aprobado la capacitación.")
+        pdf_bytes = generar_pdf_certificado(st.session_state.usuario, st.session_state.legajo, nota_final)
+        
+        st.download_button(
+            label="📜 DESCARGAR MI CERTIFICADO (PDF)",
+            data=pdf_bytes,
+            file_name=f"Certificado_{st.session_state.usuario}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+    else:
+        st.error("La nota obtenida no alcanza para la certificación. Repase los manuales e intente nuevamente.")
