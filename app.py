@@ -270,18 +270,71 @@ def generar_acta_notas():
     return pd.DataFrame(resumen)
 
 # --- NUEVA PESTAÑA PARA EL PROFESOR ---
-with st.expander("🔐 PANEL DE INSTRUCTOR (FABRICIO)"):
-    pass_docente = st.text_input("Contraseña de Bedelía:", type="password")
-    if pass_docente == "menfa2026":
-        st.subheader("📋 Acta de Examen Automática")
-        df_notas = generar_acta_notas()
-        if not df_notas.empty:
-            st.dataframe(df_notas, use_container_width=True)
+# --- PANEL DE NOTAS ACTUALIZADO (LÓGICA DE 2 INTENTOS) ---
+def generar_acta_notas():
+    carpeta = "EXAMENES_MENFA"
+    if not os.path.exists(carpeta):
+        return pd.DataFrame()
+    
+    archivos = sorted([f for f in os.listdir(carpeta) if f.endswith('.csv')])
+    resumen = {}
+    
+    for arc in archivos:
+        try:
+            df_temp = pd.read_csv(os.path.join(carpeta, arc))
+            partes = arc.replace(".csv", "").split("_")
+            legajo_arc = partes[1]
+            nombre_arc = partes[2]
             
-            # Opción para exportar el acta final
-            csv_notas = df_notas.to_csv(index=False)
-            st.download_button("📥 Descargar Acta de Notas (.csv)", csv_notas, "Acta_Examen_MENFA.csv")
+            # Cálculos de desempeño base
+            rop_prom = df_temp['ROP'].mean()
+            max_depth = df_temp['DEPTH'].max()
+            kicks_mal_gestionados = len(df_temp[df_temp['TANQUES'] > 1300])
+            sartas_rotas = len(df_temp[df_temp['WOB'] > 50]) # Detección por exceso de peso
+            
+            # Nota base
+            nota = 100
+            if kicks_mal_gestionados > 3: nota -= 25
+            if sartas_rotas > 0: nota -= 20
+            if max_depth < 3000: nota -= 15
+            
+            # --- LÓGICA DE INTENTOS ---
+            if legajo_arc not in resumen:
+                # PRIMER INTENTO
+                resumen[legajo_arc] = {
+                    "Legajo": legajo_arc,
+                    "Alumno": nombre_arc,
+                    "Intentos": 1,
+                    "Nota Final": nota,
+                    "Detalle": "Primer intento limpio."
+                }
+            else:
+                # SEGUNDO INTENTO (Penalización de 2 puntos)
+                resumen[legajo_arc]["Intentos"] = 2
+                nota_final = nota - 2 # Descuento por re-intento
+                resumen[legajo_arc]["Nota Final"] = nota_final
+                resumen[legajo_arc]["Detalle"] = "Segundo intento (-2 pts pen.)"
+                
+        except Exception as e:
+            continue
+            
+    return pd.DataFrame(resumen.values())
+
+# --- INTERFAZ DEL PROFESOR (DENTRO DEL EXPANDER) ---
+with st.expander("🔐 PANEL DE INSTRUCTOR (FABRICIO)"):
+    pass_docente = st.text_input("Clave de Seguridad:", type="password")
+    if pass_docente == "menfa2026":
+        st.subheader("📋 Acta de Examen - IPCL MENFA")
+        df_notas = generar_acta_notas()
+        
+        if not df_notas.empty:
+            # Colorear aprobados y reprobados
+            def color_nota(val):
+                color = 'green' if val >= 60 else 'red'
+                return f'color: {color}; font-weight: bold'
+            
+            st.dataframe(df_notas.style.applymap(color_nota, subset=['Nota Final']), use_container_width=True)
+            
+            st.download_button("📥 Descargar Acta Final", df_notas.to_csv(index=False), "Acta_Oficial_MENFA.csv")
         else:
-            st.warning("Todavía no hay exámenes guardados en la carpeta EXAMENES_MENFA.")
-    elif pass_docente != "":
-        st.error("Contraseña incorrecta.")
+            st.warning("Aún no hay exámenes procesados.")
