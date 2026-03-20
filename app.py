@@ -57,7 +57,7 @@ st.sidebar.divider()
 wob = st.sidebar.slider("WOB (klbs)", 0, 60, 20)
 rpm = st.sidebar.slider("RPM", 0, 150, 80)
 
-if st.sidebar.button("⏩ PERFORAR 1 METRO"):
+if st.sidebar.button("⏩ PERFORAR 300 METROS"):
     # Lógica de perforación simple
     n_prof = curr['DEPTH'] + 1.0
     nueva_fila = {
