@@ -20,6 +20,17 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 2. INICIALIZACIÓN DE VARIABLES ---
+if "auth" not in st.session_state: 
+    st.session_state.auth = False
+if "usuario" not in st.session_state: 
+    st.session_state.usuario = "Invitado" # Valor por defecto
+if "legajo" not in st.session_state: 
+    st.session_state.legajo = "0000"     # Valor por defecto
+if "history" not in st.session_state:
+    st.session_state.history = pd.DataFrame([{
+        "DEPTH": 2500.0, "WOB": 20.0, "RPM": 100, "GR": 110, "TANQUES": 1200, "ROP": 0, "DENS": 1.15
+    }])
+# ... el resto de tus variables (kick_alert, vida_sarta, etc.)
 if "auth" not in st.session_state: st.session_state.auth = False
 if "kick_alert" not in st.session_state: st.session_state.kick_alert = False
 if "vida_sarta" not in st.session_state: st.session_state.vida_sarta = 100.0 
