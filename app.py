@@ -189,3 +189,41 @@ with tabs[5]: # MANUAL & EVALUACIÓN
         file_name=f"Evaluacion_{st.session_state.usuario}.csv",
         mime="text/csv"
     )
+    import os
+
+# --- FUNCIÓN DE AUTOGUARDADO EN CARPETA LOCAL ---
+def guardar_examen_local(df_historial, nombre_alumno, nro_legajo):
+    # Creamos la carpeta si no existe
+    carpeta = "EXAMENES_MENFA"
+    if not os.path.exists(carpeta):
+        os.makedirs(carpeta)
+    
+    # Nombre del archivo con Legajo y Fecha/Hora para que no se pisen
+    timestamp = time.strftime("%Y%m%d-%H%M")
+    nombre_archivo = f"{carpeta}/Examen_{nro_legajo}_{nombre_alumno}_{timestamp}.csv"
+    
+    # Guardamos el CSV
+    df_historial.to_csv(nombre_archivo, index=False)
+    return nombre_archivo
+
+# --- DENTRO DE LA PESTAÑA DE EVALUACIÓN (TAB 5) ---
+with tabs[5]:
+    st.title("Finalizar y Entregar Evaluación")
+    st.warning("Al presionar el botón, su desempeño se guardará en el servidor local de IPCL MENFA.")
+    
+    if st.button("🏁 FINALIZAR TURNO Y GUARDAR EXAMEN", type="primary", use_container_width=True):
+        if not st.session_state.history.empty:
+            ruta = guardar_examen_local(
+                st.session_state.history, 
+                st.session_state.usuario, 
+                st.session_state.legajo
+            )
+            st.success(f"✅ ¡Examen Guardado! Archivo: {ruta}")
+            st.balloons()
+            # Bloqueamos para que no sigan tocando
+            st.session_state.target_met = True 
+        else:
+            st.error("No hay datos de perforación para guardar.")
+
+    st.divider()
+    st.info("Nota: Una vez guardado, el instructor Fabricio revisará su ROP promedio y el control de Kicks.")
