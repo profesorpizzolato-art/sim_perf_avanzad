@@ -4,7 +4,11 @@ import numpy as np
 import plotly.graph_objects as go
 import random
 import time
+if "loss" not in st.session_state:
+    st.session_state.loss = False
 
+if "formacion" not in st.session_state:
+    st.session_state.formacion = "normal"
 # -----------------------------------
 # CONFIGURACIÓN GENERAL
 # -----------------------------------
@@ -92,17 +96,55 @@ wob = st.sidebar.slider("WOB", 0, 60, 25)
 rpm = st.sidebar.slider("RPM", 0, 180, 100)
 flow = st.sidebar.slider("Flow", 200, 1200, 600)
 mw = st.sidebar.slider("Mud Weight", 8.5, 15.0, 10.0)
+# -----------------------------------
+# MODO INSTRUCTOR (OCULTO)
+# -----------------------------------
+if "modo_instructor" not in st.session_state:
+    st.session_state.modo_instructor = False
 
+with st.sidebar.expander("🔐 PANEL INSTRUCTOR"):
+    clave = st.text_input("Clave", type="password")
+
+    if clave == "menfa2026":
+        st.session_state.modo_instructor = True
+        st.success("Modo instructor activo")
+
+        st.markdown("### 🎮 CONTROL DE EVENTOS")
+
+        if st.button("🚨 GENERAR KICK"):
+            st.session_state.kick = True
+
+        if st.button("💧 PÉRDIDA DE CIRCULACIÓN"):
+            st.session_state.loss = True
+
+        if st.button("🔩 ROMPER SARTA"):
+            st.session_state.bit_health = 0
+
+        if st.button("🪨 FORMACIÓN DURA"):
+            st.session_state.formacion = "dura"
+
+        if st.button("🟢 FORMACIÓN BLANDA"):
+            st.session_state.formacion = "blanda"
 # -----------------------------------
 # MOTOR DE CÁLCULO
 # -----------------------------------
+
+
 def calcular(wob, rpm, flow, depth):
+
+    factor_formacion = 1
+
+    if st.session_state.formacion == "dura":
+        factor_formacion = 0.5
+    elif st.session_state.formacion == "blanda":
+        factor_formacion = 1.5
+
     torque = wob * 0.4 + rpm * 0.1
     spp = flow * 3
-    rop = (wob * rpm) / 500
-    return torque, spp, rop
 
-torque, spp, rop = calcular(wob, rpm, flow, st.session_state.depth)
+    rop = ((wob * rpm) / 500) * factor_formacion
+
+    return torque, spp, rop
 
 # -----------------------------------
 # EVENTOS
