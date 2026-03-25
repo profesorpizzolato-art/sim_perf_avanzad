@@ -2,157 +2,328 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import os
 import random
-from datetime import datetime
+import time
 
-# --- 1. CONFIGURACIÓN E IDENTIDAD VISUAL (ESTILO CYBERBASE) ---
-st.set_page_config(page_title="IPCL MENFA - Simulador Integral V16", layout="wide")
+# -----------------------------------
+# CONFIGURACIÓN GENERAL
+# -----------------------------------
+st.set_page_config(page_title="MENFA SIMULADOR PRO", layout="wide")
 
+# -----------------------------------
+# ESTILO MENFA
+# -----------------------------------
 st.markdown("""
-    <style>
-    .main { background-color: #05070a; color: #00ffcc; }
-    .stMetric { background-color: #10141b; border: 1px solid #1f2937; border-left: 5px solid #00ffcc; border-radius: 10px; padding: 15px; }
-    [data-testid="stMetricValue"] { color: #ffffff; font-family: 'Courier New'; font-weight: bold; }
-    .stButton>button { background: linear-gradient(135deg, #00ffcc 0%, #008b8b 100%); color: black; font-weight: bold; border: none; width: 100%; }
-    .stExpander { background-color: #0b0d10; border: 1px solid #1f2937; }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
+.stApp { background-color: #05070a; color: #00ffcc; }
+.stButton>button { background: linear-gradient(135deg, #00ffcc, #008b8b); color: black; }
+</style>
+""", unsafe_allow_html=True)
 
-# --- 2. MOTOR TÉCNICO: FÍSICA, GEOLOGÍA Y EVENTOS ---
-def generar_geologia_dinamica(prof):
-    # Simula cambios de formación (Mendoza/Vaca Muerta)
-    if 2850 <= prof <= 3050: # Payzone
-        gr, dureza = np.random.normal(130, 10), 1.7
-    elif 2100 <= prof < 2850:
-        gr, dureza = np.random.normal(40, 8), 1.2
-    else:
-        gr, dureza = np.random.normal(85, 15), 1.0
-    return gr, dureza
+# -----------------------------------
+# PRESENTACIÓN INICIAL
+# -----------------------------------
+if "inicio" not in st.session_state:
+    st.session_state.inicio = False
 
-def calcular_fisica_cabina(prof, inc, wob, rpm, flow, mw, health):
-    # Torque & Drag
-    drag = (prof * 0.12) * np.cos(np.radians(inc)) * 0.28
-    hkld = 220 - drag - (wob * 0.8)
-    torque = (wob * 0.4) + (prof * 0.01) + (rpm * 0.05)
-    
-    # Hidráulica (SPP y ECD)
-    spp = (flow**1.8 * 0.015) 
-    annular_loss = (flow**1.7 * prof) / 450000
-    ecd = mw + (annular_loss / (0.052 * prof * 3.28))
-    
-    # ROP y Desgaste
-    desgaste = (wob * 0.005) + (rpm * 0.002)
-    new_health = max(10, health - desgaste)
-    rop = (wob * rpm / (450 * (1.1 if prof > 2800 else 1.0))) * (new_health/100)
-    
-    return hkld, torque, spp, ecd, rop, new_health
+if not st.session_state.inicio:
+    st.title("🛢️ MENFA - Simulador de Perforación Profesional")
+    st.subheader("Entrenamiento Técnico en Tiempo Real")
 
-# --- 3. PERSISTENCIA Y REGISTRO (DB LOCAL) ---
-def guardar_registro(nombre, legajo, nota):
-    archivo = "registro_alumnos_menfa.csv"
-    existe = os.path.isfile(archivo)
-    with open(archivo, mode='a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        if not existe: writer.writerow(["Fecha", "Operador", "DNI", "Nota", "Estado"])
-        estado = "APROBADO" if nota >= 16 else "REPROBADO"
-        writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M"), nombre, legajo, nota, estado])
+    st.markdown("""
+    ### 🔹 ¿Qué incluye este simulador?
+    - Cabina del perforador tipo Cyberbase
+    - Control de pozo (Well Control)
+    - Geonavegación
+    - Eventos reales (Kick, pesca, desgaste)
+    - Evaluación certificada
 
-# --- 4. ESTADO DE SESIÓN ---
-if "s" not in st.session_state:
-    st.session_state.s = {
-        "auth": False, "user": "", "dni": "", "md": 2500.0, "inc": 0.0,
-        "health": 100.0, "history": pd.DataFrame(columns=["MD", "GR", "ROP", "ECD"]),
-        "score": 0, "exam_done": False
-    }
-s = st.session_state.s
+    ### 🔹 Objetivo:
+    Formar operadores con criterio operativo real.
+    """)
 
-# --- 5. INTERFAZ: LOGIN Y CABINA ---
-if not s["auth"]:
-    st.title("🛡️ ACCESO SISTEMA IPCL MENFA")
-    u = st.text_input("Nombre del Operador:")
-    d = st.text_input("DNI / Legajo:")
-    if st.button("INGRESAR A CABINA") and u and d:
-        s["user"], s["dni"], s["auth"] = u, d, True
+    if st.button("🚀 INGRESAR AL SIMULADOR"):
+        st.session_state.inicio = True
         st.rerun()
+
     st.stop()
 
-# --- SIDEBAR: MANDOS DE LA TORRE ---
-with st.sidebar:
-    st.header(f"👤 {s['user']}")
+# -----------------------------------
+# LOGIN
+# -----------------------------------
+if "auth" not in st.session_state:
+    st.session_state.auth = False
+
+if not st.session_state.auth:
+    st.title("🔐 Acceso Operador MENFA")
+
+    nombre = st.text_input("Nombre")
+    legajo = st.text_input("Legajo")
+
+    if st.button("Ingresar"):
+        if nombre:
+            st.session_state.auth = True
+            st.session_state.nombre = nombre
+            st.session_state.legajo = legajo
+            st.rerun()
+    st.stop()
+
+# -----------------------------------
+# VARIABLES
+# -----------------------------------
+if "depth" not in st.session_state:
+    st.session_state.depth = 2500
+
+if "bit_health" not in st.session_state:
+    st.session_state.bit_health = 100
+
+if "kick" not in st.session_state:
+    st.session_state.kick = False
+
+if "history" not in st.session_state:
+    st.session_state.history = pd.DataFrame(columns=["Depth","WOB","RPM","SPP","ROP"])
+
+# -----------------------------------
+# SIDEBAR (MANDOS)
+# -----------------------------------
+st.sidebar.title(f"👷 {st.session_state.nombre}")
+
+wob = st.sidebar.slider("WOB", 0, 60, 25)
+rpm = st.sidebar.slider("RPM", 0, 180, 100)
+flow = st.sidebar.slider("Flow", 200, 1200, 600)
+mw = st.sidebar.slider("Mud Weight", 8.5, 15.0, 10.0)
+
+# -----------------------------------
+# MOTOR DE CÁLCULO
+# -----------------------------------
+def calcular(wob, rpm, flow, depth):
+    torque = wob * 0.4 + rpm * 0.1
+    spp = flow * 3
+    rop = (wob * rpm) / 500
+    return torque, spp, rop
+
+torque, spp, rop = calcular(wob, rpm, flow, st.session_state.depth)
+
+# -----------------------------------
+# EVENTOS
+# -----------------------------------
+if random.random() < 0.05:
+    st.session_state.kick = True
+
+# desgaste
+st.session_state.bit_health -= (wob * 0.05)
+
+# -----------------------------------
+# CABINA DEL PERFORADOR
+# -----------------------------------
+st.title("📟 CABINA DEL PERFORADOR - MENFA")
+
+col1, col2, col3 = st.columns(3)
+
+def gauge(valor, titulo, maximo, color):
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=valor,
+        title={'text': titulo},
+        gauge={'axis': {'range': [0, maximo]},
+               'bar': {'color': color}}
+    ))
+    return fig
+
+col1.plotly_chart(gauge(st.session_state.depth, "DEPTH", 4000, "#00ffcc"), use_container_width=True)
+col2.plotly_chart(gauge(torque, "TORQUE", 100, "yellow"), use_container_width=True)
+col3.plotly_chart(gauge(spp, "SPP", 5000, "cyan"), use_container_width=True)
+
+# -----------------------------------
+# MÉTRICAS
+# -----------------------------------
+c1, c2, c3 = st.columns(3)
+c1.metric("ROP", round(rop,1))
+c2.metric("BIT HEALTH", round(st.session_state.bit_health,1))
+c3.metric("MW", mw)
+
+# -----------------------------------
+# ALERTAS
+# -----------------------------------
+if st.session_state.kick:
+    st.error("🚨 KICK DETECTADO - CERRAR BOP")
+
+# -----------------------------------
+# AVANCE
+# -----------------------------------
+if st.button("⛏️ PERFORAR 10m"):
+    st.session_state.depth += 10
+
+    nueva_fila = {
+        "Depth": st.session_state.depth,
+        "WOB": wob,
+        "RPM": rpm,
+        "SPP": spp,
+        "ROP": rop
+    }
+
+    st.session_state.history = pd.concat(
+        [st.session_state.history, pd.DataFrame([nueva_fila])],
+        ignore_index=True
+    )
+# -----------------------------------
+# CABINA MENFA - NIVEL EMPRESA
+# -----------------------------------
+st.subheader("🖥️ MENFA CYBERBASE - CABINA PROFESIONAL")
+
+df = st.session_state.history.copy()
+
+if len(df) > 5:
+
+    df["TIME"] = range(len(df))
+    df["TORQUE"] = df["WOB"] * 0.4 + np.random.randn(len(df)) * 2
+    df["HKLD"] = 220 - df["WOB"] * 1.2 + np.random.randn(len(df)) * 2
+
+    # -----------------------------
+    # LÓGICA DE ALARMAS INTELIGENTES
+    # -----------------------------
+    torque_alert = df["TORQUE"].iloc[-1] > 45
+    spp_alert = df["SPP"].iloc[-1] > 4000
+    rop_drop = df["ROP"].iloc[-1] < 5
+
+    if torque_alert:
+        st.error("⚠️ TORQUE ALTO → Posible pega o vibración")
+
+    if spp_alert:
+        st.warning("⚠️ SPP ALTO → Restricción hidráulica")
+
+    if rop_drop:
+        st.info("⚠️ BAJA ROP → Cambio de formación o desgaste")
+
+    # -----------------------------
+    # PANTALLA 1: HOOKLOAD / TORQUE
+    # -----------------------------
+    fig1 = go.Figure()
+
+    fig1.add_trace(go.Scatter(
+        x=df["TIME"], y=df["HKLD"],
+        name="Hook Load",
+        line=dict(color="lime", width=3)
+    ))
+
+    fig1.add_trace(go.Scatter(
+        x=df["TIME"], y=df["TORQUE"],
+        name="Torque",
+        line=dict(color="yellow", width=2)
+    ))
+
+    fig1.add_hrect(y0=0, y1=50, fillcolor="green", opacity=0.1)
+    fig1.add_hrect(y0=50, y1=70, fillcolor="yellow", opacity=0.1)
+    fig1.add_hrect(y0=70, y1=120, fillcolor="red", opacity=0.1)
+
+    fig1.update_layout(template="plotly_dark", height=300, title="HOOKLOAD / TORQUE")
+
+    # -----------------------------
+    # PANTALLA 2: SPP
+    # -----------------------------
+    fig2 = go.Figure()
+
+    fig2.add_trace(go.Scatter(
+        x=df["TIME"], y=df["SPP"],
+        name="SPP",
+        line=dict(color="cyan", width=3)
+    ))
+
+    fig2.add_hrect(y0=0, y1=3000, fillcolor="green", opacity=0.1)
+    fig2.add_hrect(y0=3000, y1=4000, fillcolor="yellow", opacity=0.1)
+    fig2.add_hrect(y0=4000, y1=6000, fillcolor="red", opacity=0.1)
+
+    fig2.update_layout(template="plotly_dark", height=300, title="STAND PIPE PRESSURE")
+
+    # -----------------------------
+    # PANTALLA 3: ROP vs DEPTH
+    # -----------------------------
+    fig3 = go.Figure()
+
+    fig3.add_trace(go.Scatter(
+        x=df["ROP"], y=df["Depth"],
+        name="ROP",
+        line=dict(color="orange", width=3)
+    ))
+
+    fig3.update_layout(
+        template="plotly_dark",
+        yaxis=dict(autorange="reversed"),
+        height=300,
+        title="ROP vs DEPTH"
+    )
+
+    # -----------------------------
+    # PANTALLA 4: CORRELACIÓN OPERATIVA
+    # -----------------------------
+    fig4 = go.Figure()
+
+    fig4.add_trace(go.Scatter(
+        x=df["WOB"], y=df["ROP"],
+        mode='markers',
+        name="Eficiencia",
+        marker=dict(color="white")
+    ))
+
+    fig4.update_layout(
+        template="plotly_dark",
+        height=300,
+        title="WOB vs ROP (Eficiencia de perforación)"
+    )
+
+    # -----------------------------
+    # GRID CABINA REAL
+    # -----------------------------
+    col1, col2 = st.columns(2)
+    col1.plotly_chart(fig1, use_container_width=True)
+    col2.plotly_chart(fig2, use_container_width=True)
+
+    col3, col4 = st.columns(2)
+    col3.plotly_chart(fig3, use_container_width=True)
+    col4.plotly_chart(fig4, use_container_width=True)
+
+    # -----------------------------
+    # DIAGNÓSTICO AUTOMÁTICO (CLAVE COMERCIAL)
+    # -----------------------------
     st.divider()
-    wob = st.slider("WOB (Klbs) - Peso sobre Trépano", 0, 70, 25)
-    rpm = st.slider("RPM - Rotación", 0, 160, 95)
-    flow = st.slider("GPM - Caudal Bombas", 300, 1100, 600)
-    mw = st.number_input("MW (ppg) - Lodo", 8.3, 16.5, 10.8)
-    
-    if st.button("▶️ PERFORAR TRAMO (30m)"):
-        gr, dur = generar_geologia_dinamica(s["md"])
-        hk, tq, sp, ec, rp, hl = calcular_fisica_cabina(s["md"], s["inc"], wob, rpm, flow, mw, s["health"])
-        
-        s["md"] += 30
-        s["inc"] += (2.0 if s["md"] > 2800 else 0)
-        s["health"] = hl
-        
-        new_data = pd.DataFrame([{"MD": s["md"], "GR": gr, "ROP": rp, "ECD": ec}])
-        s["history"] = pd.concat([s["history"], new_data], ignore_index=True)
-        st.rerun()
+    st.subheader("🧠 Diagnóstico Automático MENFA")
 
-# --- PANTALLA PRINCIPAL: CABINA SCADA ---
-t1, t2, t3, t4 = st.tabs(["📟 CABINA", "🧭 GEONAVEGACIÓN", "📚 MANUAL API", "🏁 EVALUACIÓN"])
+    if torque_alert and rop_drop:
+        st.error("🔴 POSIBLE PEGA DE TUBERÍA → Reducir WOB y circular")
 
-with t1:
-    # Gauges Estilo Martin-Decker
-    hk, tq, sp, ec, rp, hl = calcular_fisica_cabina(s["md"], s["inc"], wob, rpm, flow, mw, s["health"])
-    
-    col_g1, col_g2, col_g3 = st.columns(3)
-    
-    # Peso (HKLD)
-    fig_hk = go.Figure(go.Indicator(mode="gauge+number", value=hk, title={'text': "HOOK LOAD (Klbs)"},
-                                   gauge={'axis': {'range': [0, 300]}, 'bar': {'color': "#00ffcc"}}))
-    col_g1.plotly_chart(fig_hk, use_container_width=True)
-    
-    # Torque
-    fig_tq = go.Figure(go.Indicator(mode="gauge+number", value=tq, title={'text': "TORQUE (ft-lb)"},
-                                   gauge={'axis': {'range': [0, 50]}, 'bar': {'color': "#ffff00"}}))
-    col_g2.plotly_chart(fig_tq, use_container_width=True)
-    
-    # Bombas (SPP)
-    fig_sp = go.Figure(go.Indicator(mode="gauge+number", value=sp, title={'text': "SPP (PSI)"},
-                                   gauge={'axis': {'range': [0, 5000]}, 'bar': {'color': "#00ffff"}}))
-    col_g3.plotly_chart(fig_sp, use_container_width=True)
+    elif spp_alert:
+        st.warning("🟠 POSIBLE OBSTRUCCIÓN → Revisar boquillas o sólidos")
 
-    st.divider()
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("BIT DEPTH", f"{s['md']:.1f} m")
-    m2.metric("ROP", f"{rp:.1f} m/h")
-    m3.metric("ECD", f"{ec:.2f} ppg")
-    m4.metric("BIT HEALTH", f"{hl:.1f} %", delta=f"{hl-100:.1f}%")
+    elif rop_drop:
+        st.info("🔵 FORMACIÓN MÁS DURA → Ajustar parámetros")
 
-with t2:
-    st.subheader("🧭 Control de Geosteering (Trayectoria 3D)")
-    if not s["history"].empty:
-        fig_geo = make_subplots(rows=1, cols=2)
-        fig_geo.add_trace(go.Scatter(x=s["history"]["GR"], y=s["history"]["MD"], name="Gamma Ray", line=dict(color="green")), 1, 1)
-        fig_geo.add_trace(go.Scatter(x=s["history"]["ROP"], y=s["history"]["MD"], name="ROP", line=dict(color="orange")), 1, 2)
-        fig_geo.update_yaxes(autorange="reversed")
-        st.plotly_chart(fig_geo, use_container_width=True)
+    else:
+        st.success("🟢 PERFORACIÓN ÓPTIMA")
 
-with t3:
-    st.header("📖 Biblioteca Técnica MENFA")
-    with st.expander("📝 API RP 59: CONTROL DE POZOS"):
-        st.write("Procedimiento de cierre rápido: 1. Espaciar, 2. Parar, 3. Cerrar, 4. Notificar.")
-        st.latex(r"KMW = MW + \frac{SIDPP}{0.052 \cdot TVD}")
-    with st.expander("🔧 API RP 7G: DISEÑO DE SARTAS"):
-        st.write("Criterios de tracción, torque y fatiga en Drill Collars y HWDP.")
+else:
+    st.info("Iniciá perforación para activar cabina profesional.")
+# -----------------------------------
+# WELL CONTROL
+# -----------------------------------
+st.subheader("🛡️ WELL CONTROL")
 
-with t4:
-    st.header("🏁 EXAMEN FINAL UTN")
-    q1 = st.radio("¿Qué indica un aumento súbito de torque?", ["Falla de trépano o formación", "Falta de lodo"])
-    q2 = st.radio("¿Fórmula de Presión Hidrostática?", ["0.052 * MW * TVD", "MW / 10"])
-    
-    if st.button("FINALIZAR Y GUARDAR"):
-        nota = 20 if (q1.startswith("Falla") and q2.startswith("0.052")) else 0
-        st.success(f"Nota registrada: {nota}/20")
-        # Aquí llamarías a guardar_registro(s["user"], s["dni"], nota)
+if st.session_state.kick:
+    if st.button("🔒 CERRAR BOP"):
+        st.session_state.kick = False
+        st.success("Pozo controlado")
+
+# -----------------------------------
+# EVALUACIÓN
+# -----------------------------------
+st.subheader("🏁 EVALUACIÓN")
+
+score = 100 - (100 - st.session_state.bit_health)
+
+st.metric("PUNTAJE", int(score))
+
+if st.button("📥 DESCARGAR REPORTE"):
+    st.download_button(
+        "Descargar CSV",
+        st.session_state.history.to_csv(index=False),
+        file_name="reporte_menfa.csv"
+    )
