@@ -882,11 +882,21 @@ with col_dyn1:
 
 with col_dyn2:
     st.subheader("🎸 Análisis de Vibraciones (Stick-Slip)")
-    # El Stick-Slip ocurre cuando el torque es inestable
-    variacion_torque = random.uniform(0.8, 1.2) if torque_actual < 20 else random.uniform(0.5, 2.5)
-    rpm_bit_real = rpm_actual * variacion_torque # La mecha acelera y frena
-    
-    fig_vib = go.Figure()
+# --- SIMULACIÓN DE DINÁMICA DE ROTACIÓN ---
+
+# 1. Recuperamos las RPM del slider (asegurate que el key coincida)
+rpm_actual = s.get('rpm', 0.0) 
+
+# 2. Factor de variación (esto simula vibraciones torsionales)
+# Si no tenés 'variacion_torque' definida, usamos un valor base de 1.0
+variacion_torque = s.get('var_torque', 1.0)
+
+# 3. Cálculo corregido (Línea 887)
+rpm_bit_real = rpm_actual * variacion_torque
+
+# 4. Mostramos el efecto visual para el alumno de la UTN
+if variacion_torque < 0.8:
+    st.warning("⚠️ ALERTA: Stick-Slip detectado en el trépano.")
     # Simulación de onda de torsión
     t_v = np.linspace(0, 10, 50)
     wave = rpm_actual + (rpm_actual * (variacion_torque - 1) * np.sin(t_v * 2))
