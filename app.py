@@ -464,7 +464,7 @@ if not df_rank.empty:
     st.dataframe(df_rank, use_container_width=True)
 else:
     st.info("Sin datos aún.")
-    with st.expander("🔐 PANEL DOCENTE MENFA"):
+with st.expander("🔐 PANEL DOCENTE MENFA"):
 
     clave = st.text_input("Clave docente", type="password")
 
