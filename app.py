@@ -71,6 +71,38 @@ if not st.session_state.auth:
             st.session_state.legajo = legajo
             st.rerun()
     st.stop()
+# -----------------------------------
+# MODO ACADEMIA - REGISTRO
+# -----------------------------------
+import os
+
+if "curso" not in st.session_state:
+    st.session_state.curso = "Perforación MENFA"
+
+def guardar_alumno(nombre, legajo):
+    archivo = "alumnos_menfa.csv"
+
+    existe = os.path.isfile(archivo)
+
+    with open(archivo, "a", newline="", encoding="utf-8") as f:
+        import csv
+        writer = csv.writer(f)
+
+        if not existe:
+            writer.writerow(["Nombre", "Legajo", "Curso"])
+
+        writer.writerow([nombre, legajo, st.session_state.curso])
+
+guardar_alumno(st.session_state.nombre, st.session_state.legajo)
+def guardar_sesion(df, nombre, legajo):
+
+    carpeta = "SESIONES_MENFA"
+    if not os.path.exists(carpeta):
+        os.makedirs(carpeta)
+
+    archivo = f"{carpeta}/{legajo}_{nombre}.csv"
+    df.to_csv(archivo, index=False)
+   guardar_sesion(st.session_state.history, st.session_state.nombre, st.session_state.legajo)
 
 # -----------------------------------
 # VARIABLES
@@ -390,3 +422,70 @@ if st.session_state.bit_health <= 0:
     score -= 25
 
 st.metric("PUNTAJE OPERADOR", score)
+st.divider()
+st.subheader("🏆 Ranking MENFA (Tiempo Real)")
+
+def generar_ranking():
+
+    carpeta = "SESIONES_MENFA"
+    if not os.path.exists(carpeta):
+        return pd.DataFrame()
+
+    archivos = os.listdir(carpeta)
+
+    ranking = []
+
+    for arc in archivos:
+        try:
+            df = pd.read_csv(os.path.join(carpeta, arc))
+
+            nombre = arc.split("_")[1].replace(".csv","")
+
+            rop_prom = df["ROP"].mean()
+            prof = df["Depth"].max()
+
+            score = (rop_prom * 2) + (prof / 100)
+
+            ranking.append({
+                "Alumno": nombre,
+                "ROP Prom": round(rop_prom,2),
+                "Profundidad": prof,
+                "Score": round(score,2)
+            })
+
+        except:
+            pass
+
+    return pd.DataFrame(ranking).sort_values(by="Score", ascending=False)
+
+df_rank = generar_ranking()
+
+if not df_rank.empty:
+    st.dataframe(df_rank, use_container_width=True)
+else:
+    st.info("Sin datos aún.")
+    with st.expander("🔐 PANEL DOCENTE MENFA"):
+
+    clave = st.text_input("Clave docente", type="password")
+
+    if clave == "menfa_pro":
+
+        st.success("Acceso docente habilitado")
+
+        df_rank = generar_ranking()
+
+        if not df_rank.empty:
+            st.dataframe(df_rank)
+
+            st.download_button(
+                "📥 Descargar Ranking",
+                df_rank.to_csv(index=False),
+                "ranking_menfa.csv"
+            )
+
+        # RESET CURSO
+        if st.button("🧹 Reiniciar curso"):
+            import shutil
+            if os.path.exists("SESIONES_MENFA"):
+                shutil.rmtree("SESIONES_MENFA")
+                st.warning("Datos reiniciados")
