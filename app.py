@@ -356,9 +356,17 @@ else:
 
 # 3. Mostramos el resultado en el tablero de la UTN
 st.metric("MSE (psi)", f"{int(mse)}", help="Energía Mecánica Específica")
-    # Cálculo de Velocidad Crítica (Inicio de Turbulencia)
-    vel_critica = (97 * pv + 97 * np.sqrt(pv**2 + 6.2 * (8.5 - 5) * yp * densidad)) / (densidad * (8.5 - 5))
-    st.write(f"**Velocidad Crítica en el Anular:** {round(vel_critica, 2)} ft/min")
+# --- CÁLCULO DE VELOCIDAD CRÍTICA (HIDRÁULICA) ---
+# Asegurate de que no haya espacios extra al inicio de estas líneas
+pv = st.session_state.get('pv', 15) # Viscosidad Plástica
+yp = st.session_state.get('yp', 20) # Punto Cedente
+densidad = st.session_state.get('mw', 10.5)
+
+# Cálculo de la velocidad crítica (Fórmula de Walker simplificada)
+vel_critica = (97 * pv + 97 * np.sqrt(pv**2 + 6.2 * (8.5 - 5) * yp * densidad)) / (densidad * (8.5 - 5))
+
+# Visualización para el alumno
+st.metric("Velocidad Crítica (ft/min)", f"{vel_critica:.2f}")
 
 # --- GRÁFICA DE LIMPIEZA DE HOYO ---
 st.subheader("🧹 Capacidad de Transporte de Recortes (Cutting Transport)")
