@@ -909,53 +909,31 @@ if variacion_torque < 0.8:
         st.warning("⚠️ STICK-SLIP DETECTADO: Energía torsional acumulada liberándose peligrosamente.")
 
 
-# --- MÓDULO DE CINÉTICA DE FONDO Y TRANSPORTE DE SÓLIDOS (Advanced THM) ---
-st.divider()
-st.header("🧬 Cinética de Fondo y Transporte de Sólidos")
+# --- CÁLCULO DE LIMPIEZA DE POZO (CCI) ---
 
-col_kin1, col_kin2 = st.columns(2)
+# 1. Recuperamos las variables del estado de la sesión (usando 's')
+# Asegurate de que 'caudal_gpm', 'id_hoyo' y 'od_dp' estén definidos arriba
+caudal = s.get('caudal_gpm', 0.0)
+diam_hoyo = 8.5   # Pulgadas
+diam_dp = 5.0     # Pulgadas (Drill Pipe)
+densidad_lodo = s.get('mw', 10.0)
+k_index = s.get('k_index', 0.5) # Índice de consistencia del lodo
 
-with col_kin1:
-    st.subheader("⚡ Dinámica Axial (Bit Bounce)")
-    # Simulación de aceleración G en la mecha
-    vibracion_axial = (wob / 5) * (rpm_actual / 100) * random.uniform(0.5, 3.0)
-    
-    st.metric("Vibración Axial (G-RMS)", f"{round(vibracion_axial, 2)} G")
-    
-    if vibracion_axial > 4.5:
-        st.error("🚨 BIT BOUNCE CRÍTICO: Riesgo de rotura de cortadores PDC.")
-        registrar_error("Vibración axial excedida (Bit Bounce)")
-    elif vibracion_axial > 2.5:
-        st.warning("⚠️ VIBRACIÓN MODERADA: Optimice parámetros de perforación.")
+# 2. Calculamos la Velocidad Anular (v_actual_anular) en ft/min
+# Fórmula: GPM / (Capacidad Anular en bbl/ft * 42) o simplificada:
+if (diam_hoyo**2 - diam_dp**2) > 0:
+    v_actual_anular = (24.5 * caudal) / (diam_hoyo**2 - diam_dp**2)
+else:
+    v_actual_anular = 0
 
-with col_kin2:
-    st.subheader("🧪 Eficiencia de Acarreo (CCI - Cuttings Carrying Index)")
-    # El CCI es el estándar para asegurar que el pozo esté limpio
-    # CCI = (K * Densidad * Caudal) / (577 * Diametro)
-    # K (Consistency Index de Herschel-Bulkley calculado previamente)
-    
-    cci = (k_index * densidad_lodo * v_actual_anular) / 400000 # Simplificación de campo
-    
-    fig_cci = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = cci,
-        title = {'text': "Cuttings Carrying Index (CCI)"},
-        gauge = {
-            'axis': {'range': [0, 2.0]},
-            'steps': [
-                {'range': [0, 0.5], 'color': "maroon"},
-                {'range': [0.5, 1.0], 'color': "orange"},
-                {'range': [1.0, 2.0], 'color': "lime"}
-            ],
-            'threshold': {
-                'line': {'color': "white", 'width': 4},
-                'value': 1.0
-            }
-        }
-    ))
-    fig_cci.update_layout(height=280, paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_cci, use_container_width=True)
+# 3. Cálculo corregido del CCI (Línea 937)
+if v_actual_anular > 0:
+    cci = (k_index * densidad_lodo * v_actual_anular) / 400000
+else:
+    cci = 0
 
+# 4. Visualización para la UTN
+st.metric("Índice de Limpieza (CCI)", f"{cci:.2f}", help="Cuttings Carrying Index")
 # --- ANÁLISIS TÉCNICO DE LIMPIEZA ---
 if cci < 1.0:
     st.markdown(f"""
