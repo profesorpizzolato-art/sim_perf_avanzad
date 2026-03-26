@@ -169,8 +169,32 @@ with st.sidebar.expander("🔐 PANEL INSTRUCTOR"):
             st.session_state.formacion = "blanda"
 # -----------------------------------
 # MOTOR DE CÁLCULO
-# -----------------------------------
 
+def calcular(wob, rpm, flow, depth):
+
+    factor_formacion = 1
+
+    if st.session_state.get("formacion") == "dura":
+        factor_formacion = 0.5
+    elif st.session_state.get("formacion") == "blanda":
+        factor_formacion = 1.5
+
+    torque = wob * 0.4 + rpm * 0.1
+    spp = flow * 3
+    rop = ((wob * rpm) / 500) * factor_formacion
+
+    return torque, spp, rop
+
+
+# -----------------------------------
+# LLAMADA SIEMPRE ACTIVA
+# -----------------------------------
+torque, spp, rop = calcular(
+    wob,
+    rpm,
+    flow,
+    st.session_state.depth
+)
 
 def calcular(wob, rpm, flow, depth):
 
