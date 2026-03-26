@@ -33,26 +33,30 @@ if "gas" not in st.session_state:
 # -----------------------------------
 # LOGIN
 # -----------------------------------
-if not st.session_state.auth:
-    st.title("🔐 MENFA LOGIN")
+# --- 1. Definición de usuarios (Base de datos simple) ---
+usuarios_validos = {
+    "Fabricio": "1234",
+    "Johana": "5678",
+    "Alumno": "2026"
+}
 
-    nombre = st.text_input("Nombre")
-    legajo = st.text_input("Legajo")
+# --- 2. Interfaz de Login ---
+st.title("🔐 Acceso IPCL MENFA")
 
-    if st.button("Ingresar", key="login_btn"):
+# Inicializamos las variables vacías para que no den NameError
+nombre = st.text_input("Ingrese su Nombre completo:", key="login_nom")
+legajo = st.text_input("Ingrese su DNI o Legajo:", key="login_leg")
+
+if st.button("Ingresar al Simulador", key="btn_login"):
+    # REGLA DE ORO: Validamos solo si el usuario escribió algo
+    if nombre in usuarios_validos and legajo == usuarios_validos[nombre]:
         st.session_state.auth = True
         st.session_state.nombre = nombre
         st.session_state.legajo = legajo
+        st.success(f"Bienvenido {nombre}. Cargando parámetros de perforación...")
         st.rerun()
-
-    st.stop()
-usuarios_validos = {
-    "admin": "1234",
-    "alumno1": "1111"
-}
-
-if nombre in usuarios_validos and legajo == usuarios_validos[nombre]:
-    st.session_state.auth = True
+    else:
+        st.error("Credenciales incorrectas. Verifique los datos.")
 # -----------------------------------
 # SIDEBAR
 # -----------------------------------
