@@ -293,7 +293,7 @@ if st.session_state.kick:
 # -----------------------------------
 # AVANCE
 # -----------------------------------
-if st.button("⛏️ PERFORAR 10m"):
+if st.button("⛏️ PERFORAR 10m", key="btn_perforar"):
     st.session_state.depth += 10
 
     nueva_fila = {
@@ -560,4 +560,6 @@ def guardar_sesion(df, nombre, legajo):
 
     archivo = f"{carpeta}/{legajo}_{nombre}.csv"
     df.to_csv(archivo, index=False)
-    
+    key="perforar_main"
+    key="perforar_sidebar"
+    key="perforar_instructor"
