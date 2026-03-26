@@ -4,7 +4,23 @@ import numpy as np
 import plotly.graph_objects as go
 import os
 import random
-
+from motor_calculos_avanzados import *
+from bop_panel import *
+from mud_pumps import *
+from torque_drag_pro import *
+from gestion_perdidas import *
+st.markdown("""
+<style>
+body {
+    background-color: #0b0f1a;
+}
+.stMetric {
+    background-color: #111827;
+    padding: 10px;
+    border-radius: 10px;
+}
+</style>
+""", unsafe_allow_html=True)
 # -----------------------------------
 # CONFIG
 # -----------------------------------
@@ -58,6 +74,40 @@ if not st.session_state.auth:
 # -----------------------------------
 # SIDEBAR
 # -----------------------------------
+st.markdown("### 🎮 CONTROL CABINA")
+
+col_j1, col_j2 = st.columns(2)
+
+with col_j1:
+    if st.button("⬆️ SUBIR WOB", key="wob_up"):
+        st.session_state.wob += 2
+    if st.button("⬇️ BAJAR WOB", key="wob_down"):
+        st.session_state.wob -= 2
+
+with col_j2:
+    if st.button("⏩ +RPM", key="rpm_up"):
+        st.session_state.rpm += 10
+    if st.button("⏪ -RPM", key="rpm_down"):
+        st.session_state.rpm -= 10
+st.markdown("## 🖥️ CABINA DEL PERFORADOR MENFA")
+
+# GRID tipo cabina
+row1 = st.columns(3)
+row2 = st.columns(3)
+
+# ------------------------
+# FILA 1 (instrumentos)
+# ------------------------
+row1[0].plotly_chart(gauge(st.session_state.depth, "DEPTH", 4000))
+row1[1].plotly_chart(gauge(st.session_state.torque, "TORQUE", 100))
+row1[2].plotly_chart(gauge(st.session_state.spp, "SPP", 5000))
+
+# ------------------------
+# FILA 2 (lodo + control)
+# ------------------------
+row2[0].metric("MW", st.session_state.mw)
+row2[1].metric("PIT VOL", st.session_state.pit_vol)
+row2[2].metric("ECD", st.session_state.ecd)
 st.sidebar.title(f"👷 {st.session_state.nombre}")
 
 wob = st.sidebar.slider("WOB", 0, 60, 25, key="wob")
@@ -69,7 +119,14 @@ st.sidebar.subheader("🛢️ LODO")
 mw = st.sidebar.slider("MW", 8.0, 15.0, 10.0, key="mw")
 pv = st.sidebar.slider("PV", 5, 50, 20, key="pv")
 yp = st.sidebar.slider("YP", 5, 40, 15, key="yp")
-
+with st.container():
+    st.subheader("🛢️ SISTEMA DE LODO")
+    # llamar tu módulo
+    mud_pumps_panel()  # o la función que tengas
+with st.container():
+    st.subheader("🛡️ PANEL BOP")
+    bop_panel()  # tu módulo
+    
 # CHOKE
 st.sidebar.subheader("🛡️ CHOKE")
 st.session_state.choke = st.sidebar.slider(
@@ -124,6 +181,7 @@ def calcular():
     return torque, spp, rop, ecd, mw_ef
 
 torque, spp, rop, ecd, mw_ef = calcular()
+st.session_state.torque, st.session_state.spp, st.session_state.rop, st.session_state.ecd = calcular()
 
 # -----------------------------------
 # CABINA
@@ -142,7 +200,14 @@ c1, c2, c3 = st.columns(3)
 c1.plotly_chart(gauge(st.session_state.depth, "DEPTH", 4000), use_container_width=True)
 c2.plotly_chart(gauge(torque, "TORQUE", 100), use_container_width=True)
 c3.plotly_chart(gauge(spp, "SPP", 5000), use_container_width=True)
+if st.button("⛏️ PERFORAR", key="main_drill"):
 
+    st.session_state.depth += 10
+
+    # dinámica real
+    actualizar_pits()
+    actualizar_gas()
+    actualizar_well_control()
 # -----------------------------------
 # MÉTRICAS
 # -----------------------------------
