@@ -196,9 +196,7 @@ if random.random() < 0.05:
 
 # desgaste
 st.session_state.bit_health -= (wob * 0.05)
-·-----------------------------------
-· PERFORAR
-·-----------------------------------
+
 
 if st.button("⛏️ PERFORAR 10m"):
 
