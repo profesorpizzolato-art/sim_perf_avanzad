@@ -345,32 +345,22 @@ with col_tec1:
     st.subheader("⚙️ Optimización Mecánica (MSE)")
     diametro_mecha = st.number_input("Diámetro de Mecha (in)", value=8.5)
     
-   # --- CÁLCULO DE EFICIENCIA MECÁNICA (MSE) ---
-# 1. Aseguramos que las variables existan (ajustá los nombres si usás otros)
-rpm_actual = rpm if 'rpm' in locals() else 0
-torque_actual = torque if 'torque' in locals() else 0
-wob_actual = wob if 'wob' in locals() else 0
-diametro_mecha = 8.5 # Pulgadas (valor estándar para fase de 8 1/2)
+# --- 1. INICIALIZACIÓN (Evita el NameError) ---
+mse = 0 
 
-# --- VALIDACIÓN DE AVANCE (Línea 349 corregida) ---
-
-# 1. Aseguramos que rop sea un número individual y no una lista/None
-try:
-    # Si rop es una lista, tomamos el último valor; si es None, usamos 0.0
-    val_rop = float(rop[0]) if isinstance(rop, (list, np.ndarray)) else float(rop or 0)
-except (TypeError, ValueError, IndexError):
-    val_rop = 0.0
-
-# 2. Ahora realizamos la comparación de forma segura
-if val_rop > 0:
-    st.success(f"🚀 Perforando: {val_rop:.2f} m/h")
-    # Aquí calculamos la MSE o actualizamos la profundidad
-    s["depth"] += (val_rop / 60) # Avance por minuto si el loop es rápido
+# --- 2. CÁLCULO DE EFICIENCIA (Solo si hay avance) ---
+# Asegurate de que 'val_rop', 'torque_actual' y 'rpm_actual' estén definidos arriba
+if 'val_rop' in locals() and val_rop > 0:
+    diametro = 8.5  # Pulgadas
+    # Fórmula simplificada de MSE
+    term_rot = (480 * torque_actual * rpm_actual) / (diametro**2 * val_rop)
+    term_axl = (4 * wob) / (np.pi * diametro**2)
+    mse = term_rot + term_axl
 else:
-    st.warning("⚠️ Sin avance: Verifique WOB/RPM o desgaste del trépano.")
+    mse = 0
 
-# 3. Mostramos el resultado en el tablero de la UTN
-st.metric("MSE (psi)", f"{int(mse)}", help="Energía Mecánica Específica")
+# --- 3. VISUALIZACIÓN (Línea 373 corregida) ---
+st.metric("MSE (psi)", f"{int(mse)}", help="Energía Mecánica Específica (Eficiencia)")
 # --- CÁLCULO DE VELOCIDAD CRÍTICA (HIDRÁULICA) ---
 # Asegurate de que no haya espacios extra al inicio de estas líneas
 pv = st.session_state.get('pv', 15) # Viscosidad Plástica
