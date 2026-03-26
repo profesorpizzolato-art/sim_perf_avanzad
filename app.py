@@ -4,6 +4,10 @@ import numpy as np
 import plotly.graph_objects as go
 import random
 import time
+if "history" not in st.session_state:
+    st.session_state.history = pd.DataFrame(columns=[
+        "Depth","WOB","RPM","SPP","ROP"
+    ])
 if "loss" not in st.session_state:
     st.session_state.loss = False
 
@@ -192,7 +196,33 @@ if random.random() < 0.05:
 
 # desgaste
 st.session_state.bit_health -= (wob * 0.05)
+·-----------------------------------
+· PERFORAR
+·-----------------------------------
 
+if st.button("⛏️ PERFORAR 10m"):
+
+    st.session_state.depth += 10
+
+    nueva_fila = {
+        "Depth": st.session_state.depth,
+        "WOB": wob,
+        "RPM": rpm,
+        "SPP": spp,
+        "ROP": rop
+    }
+
+    st.session_state.history = pd.concat(
+        [st.session_state.history, pd.DataFrame([nueva_fila])],
+        ignore_index=True
+    )
+
+    # ✅ GUARDADO CORRECTO
+    guardar_sesion(
+        st.session_state.history,
+        st.session_state.nombre,
+        st.session_state.legajo
+    )
 # -----------------------------------
 # CABINA DEL PERFORADOR
 # -----------------------------------
@@ -489,3 +519,23 @@ with st.expander("🔐 PANEL DOCENTE MENFA"):
             if os.path.exists("SESIONES_MENFA"):
                 shutil.rmtree("SESIONES_MENFA")
                 st.warning("Datos reiniciados")
+if "history" in st.session_state and not st.session_state.history.empty:
+    guardar_sesion(
+        st.session_state.history,
+        st.session_state.nombre,
+        st.session_state.legajo
+    )
+def guardar_sesion(df, nombre, legajo):
+
+    if df is None or df.empty:
+        return
+
+    import os
+    carpeta = "SESIONES_MENFA"
+
+    if not os.path.exists(carpeta):
+        os.makedirs(carpeta)
+
+    archivo = f"{carpeta}/{legajo}_{nombre}.csv"
+    df.to_csv(archivo, index=False)
+    
