@@ -211,7 +211,7 @@ if mw > 13:
 
 if yp / pv < 0.5:
     st.warning("⚠️ Mala limpieza de pozo")
-    if ecd > 14:
+if ecd > 14:
     st.error("🚨 ECD ALTO → riesgo de fractura")
 
 if st.session_state.gas > 5:
