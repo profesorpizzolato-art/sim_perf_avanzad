@@ -345,14 +345,22 @@ torque_actual = torque if 'torque' in locals() else 0
 wob_actual = wob if 'wob' in locals() else 0
 diametro_mecha = 8.5 # Pulgadas (valor estándar para fase de 8 1/2)
 
-# 2. Evitamos el error de división por cero si el trépano no avanza
-if rop > 0:
-    # Fórmula de Pessier y Fear (MSE)
-    term1 = (480 * torque_actual * rpm_actual) / (diametro_mecha**2 * rop)
-    term2 = (4 * wob_actual) / (np.pi * diametro_mecha**2)
-    mse = term1 + term2
+# --- VALIDACIÓN DE AVANCE (Línea 349 corregida) ---
+
+# 1. Aseguramos que rop sea un número individual y no una lista/None
+try:
+    # Si rop es una lista, tomamos el último valor; si es None, usamos 0.0
+    val_rop = float(rop[0]) if isinstance(rop, (list, np.ndarray)) else float(rop or 0)
+except (TypeError, ValueError, IndexError):
+    val_rop = 0.0
+
+# 2. Ahora realizamos la comparación de forma segura
+if val_rop > 0:
+    st.success(f"🚀 Perforando: {val_rop:.2f} m/h")
+    # Aquí calculamos la MSE o actualizamos la profundidad
+    s["depth"] += (val_rop / 60) # Avance por minuto si el loop es rápido
 else:
-    mse = 0.0
+    st.warning("⚠️ Sin avance: Verifique WOB/RPM o desgaste del trépano.")
 
 # 3. Mostramos el resultado en el tablero de la UTN
 st.metric("MSE (psi)", f"{int(mse)}", help="Energía Mecánica Específica")
