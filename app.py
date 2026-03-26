@@ -759,28 +759,21 @@ with col_tor2:
     )
     st.plotly_chart(fig_tor, use_container_width=True)
 
-# --- MÓDULO DE MECÁNICA DE SARTA Y TERMODINÁMICA ---
-st.divider()
-st.header("🏗️ Análisis de Esfuerzos y Termodinámica")
+# --- CÁLCULO DE CARGA EN EL GANCHO (HOOK LOAD) ---
 
-col_mec1, col_mec2 = st.columns(2)
+# 1. Recuperamos el WOB del estado de la sesión o del slider
+# (Usamos .get para que si no existe, devuelva 0 y no explote)
+wob_valor = st.session_state.get('wob', 0.0) 
 
-with col_mec1:
-    st.subheader("⚖️ Hook Load y Pandeo (Buckling)")
-    # Peso de la sarta en el aire (ejemplo: 150 Tons)
-    peso_aire = 150 
-    # Factor de Flotación (Buoyancy Factor)
-    bf = 1 - (densidad_lodo / 65.5) 
-    # Hook Load Teórico (Peso Flotado)
-    hook_load_estatico = peso_aire * bf
-    
-    # Efecto de la Tortuosidad en el Arrastre (Drag)
-    drag_friccion = dls * 1.5 # A más DLS, más fricción
-    hook_load_real = hook_load_estatico - drag_friccion - (wob * 0.8)
+# 2. Variables de fricción (asegurate que estén definidas arriba)
+hook_load_estatico = s.get('peso_sarta', 150.0) # Valor base en klbs
+drag_friccion = s.get('drag', 5.0)
 
-    st.metric("Hook Load (Peso en Gancho)", f"{round(hook_load_real, 1)} Tons", 
-              delta=f"-{round(drag_friccion, 1)} Tons por Fricción")
+# 3. Cálculo corregido (Línea 779)
+hook_load_real = hook_load_estatico - drag_friccion - (wob_valor * 0.8)
 
+# 4. Actualizamos el Gauge
+st.metric("Hook Load (klbs)", f"{hook_load_real:.1f}")
     if dls > 2.5 and wob > 20:
         st.error("⚠️ RIESGO DE PANDEO (BUCKLING): Reduzca WOB o suavice trayectoria.")
 
