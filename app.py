@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
-
+from motor_calculos_avanzados import calcular_presiones_fondo
 # Configuración de la cabina
 st.set_page_config(page_title="Simulador Perf. Avanzada v3.0", layout="wide")
 
