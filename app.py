@@ -86,7 +86,13 @@ if "kick" not in st.session_state:
 
 if "history" not in st.session_state:
     st.session_state.history = pd.DataFrame(columns=["Depth","WOB","RPM","SPP","ROP"])
+# impacto pérdida
+if st.session_state.loss:
+    spp *= 0.5
 
+# desgaste extremo
+if st.session_state.bit_health <= 0:
+    rop = 0
 # -----------------------------------
 # SIDEBAR (MANDOS)
 # -----------------------------------
@@ -183,7 +189,17 @@ c1, c2, c3 = st.columns(3)
 c1.metric("ROP", round(rop,1))
 c2.metric("BIT HEALTH", round(st.session_state.bit_health,1))
 c3.metric("MW", mw)
+# -----------------------------------
+# EVENTOS VISUALES
+# -----------------------------------
+if st.session_state.kick:
+    st.error("🚨 KICK ACTIVO → CERRAR BOP INMEDIATAMENTE")
 
+if st.session_state.loss:
+    st.warning("⚠️ PÉRDIDA DE CIRCULACIÓN → BAJA SPP")
+
+if st.session_state.bit_health <= 0:
+    st.error("🔩 SARTA ROTA → INICIAR PESCA")
 # -----------------------------------
 # ALERTAS
 # -----------------------------------
@@ -353,19 +369,24 @@ if st.session_state.kick:
     if st.button("🔒 CERRAR BOP"):
         st.session_state.kick = False
         st.success("Pozo controlado")
-
+if st.session_state.kick:
+    if st.button("🔒 CERRAR BOP"):
+        st.session_state.kick = False
+        st.success("Pozo controlado correctamente")
 # -----------------------------------
 # EVALUACIÓN
 # -----------------------------------
 st.subheader("🏁 EVALUACIÓN")
 
-score = 100 - (100 - st.session_state.bit_health)
+score = 100
 
-st.metric("PUNTAJE", int(score))
+if st.session_state.kick:
+    score -= 30
 
-if st.button("📥 DESCARGAR REPORTE"):
-    st.download_button(
-        "Descargar CSV",
-        st.session_state.history.to_csv(index=False),
-        file_name="reporte_menfa.csv"
-    )
+if st.session_state.loss:
+    score -= 20
+
+if st.session_state.bit_health <= 0:
+    score -= 25
+
+st.metric("PUNTAJE OPERADOR", score)
