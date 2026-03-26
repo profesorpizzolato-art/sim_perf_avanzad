@@ -4,6 +4,28 @@ import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
 from motor_calculos_avanzados import calcular_presiones_fondo
+# --- MOTOR DE CÁLCULOS INTEGRADO (Reemplaza al archivo externo) ---
+def calcular_presiones_fondo(mw, depth_m, flow_gpm):
+    """
+    Calcula la Presión de Fondo (BHP) y la ECD.
+    Fórmula: P(psi) = 0.052 * Densidad(ppg) * Profundidad(ft)
+    """
+    tvd_ft = depth_m * 3.28084  # Conversión de metros a pies
+    
+    # 1. Presión Hidrostática Estática
+    p_hidro = 0.052 * mw * tvd_ft
+    
+    # 2. Pérdida por Fricción Anular (Simplificada para simulación)
+    # A mayor caudal y profundidad, mayor es la fricción
+    p_friccion = (flow_gpm**1.8 * depth_m) / 450000
+    
+    bhp_total = p_hidro + p_friccion
+    
+    # 3. Cálculo de ECD (Equivalent Circulating Density)
+    # Es la densidad que "siente" el pozo debido a la fricción
+    ecd = mw + (p_friccion / (0.052 * tvd_ft))
+    
+    return bhp_total, ecd
 # Configuración de la cabina
 st.set_page_config(page_title="Simulador Perf. Avanzada v3.0", layout="wide")
 
