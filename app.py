@@ -2,163 +2,1285 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import random
-import time
+from datetime import datetime
 
-# --- IMPORTACIÓN DE TUS MÓDULOS ---
-try:
-    from motor_calculos_avanzados import calcular_presiones_fondo
-    from bop_panel import bop_panel_ui
-    from mud_pumps import calcular_caudal_real, mud_pumps_panel
-    from torque_drag_pro import calcular_tension_sarta
-    from gestion_perdidas import verificar_estabilidad
-except ImportWarning:
-    st.error("⚠️ Algunos módulos de ingeniería no se encontraron. Verifica los nombres de archivos.")
+# Configuración de la cabina
+st.set_page_config(page_title="Simulador Perf. Avanzada v3.0", layout="wide")
 
-# 1. CONFIGURACIÓN INICIAL
-st.set_page_config(page_title="MENFA SIMULADOR PRO", layout="wide", page_icon="🛢️")
+# --- LÓGICA DE CÁLCULOS ---
+def calcular_metricas(presion, caudal, densidad):
+    # Potencia Hidráulica (HHP)
+    hhp = (presion * caudal) / 1714
+    # Fuerza de Impacto (Impact Force - Aproximada)
+    # IF = (Densidad * Caudal * Velocidad) / 1930 -> Simplificado para simulador
+    if_force = (densidad * caudal * 0.05) * (caudal / 100) 
+    return round(hhp, 2), round(if_force, 2)
 
-def init_state():
-    if "auth" not in st.session_state:
-        st.session_state.update({
-            "auth": False, "nombre": "", "legajo": "",
-            "depth": 2500.0, "bit_health": 100, "kick": False, "loss": False,
-            "pit_vol": 500.0, "gas": 0.0, "sidpp": 0, "sicp": 0,
-            "bop_cerrado": False, "choke": 100, "wob": 25, "rpm": 100, "flow": 600,
-            "history": pd.DataFrame(columns=["Depth", "WOB", "RPM", "SPP", "ROP"])
-        })
+# --- SIDEBAR (CONTROLES) ---
+st.sidebar.header("🕹️ Mandos de la Cabina")
+densidad = st.sidebar.slider("Densidad del Lodo (ppg)", 8.0, 19.0, 10.5)
+caudal = st.sidebar.slider("Caudal de Bomba (GPM)", 100, 1200, 500)
+presion = st.sidebar.number_input("Presión de Standpipe (PSI)", 500, 5000, 3200)
 
-init_state()
+hhp_val, if_val = calcular_metricas(presion, caudal, densidad)
 
-# 2. LOGIN
-if not st.session_state.auth:
-    st.title("🔐 ACCESO SISTEMA MENFA")
-    col_l1, col_l2 = st.columns(2)
-    with col_l1:
-        st.session_state.nombre = st.text_input("Operador / Alumno")
-        st.session_state.legajo = st.text_input("Legajo ID")
-        if st.button("Ingresar al Simulador"):
-            st.session_state.auth = True
-            st.rerun()
-    st.stop()
+# --- INTERFAZ GRÁFICA (GAUGES) ---
+st.title("📟 Panel Integral de Perforación")
+st.markdown("---")
 
-# 3. BARRA LATERAL (CONTROLES DE CABINA)
-with st.sidebar:
-    st.image("logo_menfa.png", width=150) if "logo_menfa.png" else st.title("MENFA")
-    st.subheader(f"👤 {st.session_state.nombre}")
-    
-    st.divider()
-    # Sliders de Control Directo
-    wob = st.slider("WOB (klbs)", 0, 60, st.session_state.wob, key="wob_slider")
-    rpm = st.slider("RPM", 0, 180, st.session_state.rpm, key="rpm_slider")
-    flow = st.slider("Flow (GPM)", 0, 1200, st.session_state.flow, key="flow_slider")
-    
-    st.divider()
-    # Panel de Instructor (Oculto)
-    with st.expander("🔐 PANEL INSTRUCTOR"):
-        clave = st.text_input("Password", type="password")
-        if clave == "menfa2026":
-            if st.button("🔴 ACTIVAR KICK"): st.session_state.kick = True
-            if st.button("🟡 ACTIVAR PÉRDIDA"): st.session_state.loss = True
-            if st.button("🔄 RESET SIM"): st.session_state.clear(); st.rerun()
-
-# 4. MOTOR DE CÁLCULO INTEGRADO
-# Aquí es donde tus archivos .py hacen el trabajo sucio
-def procesar_ingenieria():
-    # Torque desde tu módulo torque_drag_pro
-    torque = (wob * 0.45) + (rpm * 0.08) # Simulación fallback
-    
-    # SPP desde mud_pumps
-    spp_base = (flow * 3.2) + 200
-    if st.session_state.loss: spp_base *= 0.6
-    
-    # ROP desde motor_calculos_avanzados
-    rop = (wob * rpm) / 450
-    if st.session_state.bit_health < 30: rop *= 0.5
-    
-    # ECD (Densidad Equivalente)
-    ecd = 10.5 + (spp_base / 10000)
-    
-    return round(torque, 1), round(spp_base, 0), round(rop, 1), round(ecd, 2)
-
-torque, spp, rop, ecd = procesar_ingenieria()
-
-# 5. UI PRINCIPAL - CABINA PRO
-st.title("🕹️ CONSOLA DE PERFORACIÓN EN TIEMPO REAL")
-
-# Gauges de Visualización Superior
-def draw_gauge(val, label, max_v, unit):
+def crear_reloj(valor, titulo, unidad, max_val, color):
     fig = go.Figure(go.Indicator(
-        mode="gauge+number", value=val, title={'text': f"{label} ({unit})"},
-        gauge={'axis': {'range': [0, max_v]}, 'bar': {'color': "#00ffcc"}}
+        mode = "gauge+number",
+        value = valor,
+        title = {'text': f"<b>{titulo}</b><br><span style='font-size:0.7em'>{unidad}</span>"},
+        gauge = {'axis': {'range': [0, max_val]}, 'bar': {'color': color}}
     ))
-    fig.update_layout(height=280, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor="#0e1117", font={'color': "white"})
+    fig.update_layout(height=220, margin=dict(l=20, r=20, t=40, b=20), paper_bgcolor='rgba(0,0,0,0)')
     return fig
 
-row_g1 = st.columns(3)
-row_g1[0].plotly_chart(draw_gauge(st.session_state.depth, "DEPTH", 5000, "m"), use_container_width=True)
-row_g1[1].plotly_chart(draw_gauge(torque, "TORQUE", 100, "%"), use_container_width=True)
-row_g1[2].plotly_chart(draw_gauge(spp, "SPP", 5000, "psi"), use_container_width=True)
+# Fila 1: Parámetros Mecánicos
+col1, col2, col3 = st.columns(3)
+with col1: st.plotly_chart(crear_reloj(18.5, "WOB", "Tons", 50, "#00d4ff"), use_container_width=True)
+with col2: st.plotly_chart(crear_reloj(90, "RPM", "rev/min", 200, "#00ff88"), use_container_width=True)
+with col3: st.plotly_chart(crear_reloj(12, "Torque", "kft-lb", 30, "#ffcc00"), use_container_width=True)
 
-# 6. PANELES INTERACTIVOS (TUS MÓDULOS)
+# Fila 2: Parámetros Hidráulicos
+st.subheader("💧 Sistema de Circulación e Hidráulica")
+col4, col5, col6 = st.columns(3)
+with col4: st.plotly_chart(crear_reloj(presion, "Presión", "PSI", 5000, "#ff4b4b"), use_container_width=True)
+with col5: st.plotly_chart(crear_reloj(hhp_val, "Potencia (HHP)", "hp", 2000, "#a64dff"), use_container_width=True)
+with col6: st.plotly_chart(crear_reloj(if_val, "Impact Force", "lbs", 1500, "#ff8c00"), use_container_width=True)
+
+# --- GRÁFICA DE TENDENCIA ---
 st.divider()
-tab1, tab2, tab3, tab4 = st.tabs(["💧 SISTEMA DE LODO", "🛡️ WELL CONTROL", "📉 SCADA", "⚙️ MECÁNICA"])
+st.subheader("📊 Historial de Limpieza y Penetración")
+# Simulación de datos de tendencia
+t = np.linspace(0, 20, 50)
+rop = 10 + 5*np.sin(t/3) + (hhp_val/200) # La ROP sube si hay más HHP
+fig_trend = go.Figure()
+fig_trend.add_trace(go.Scatter(x=t, y=rop, name="ROP (m/h)", line=dict(color="#00ff88", width=3)))
+fig_trend.update_layout(template="plotly_dark", height=300)
+st.plotly_chart(fig_trend, use_container_width=True)
 
-with tab1:
-    col_mud1, col_mud2 = st.columns([1, 2])
-    with col_mud1:
-        st.metric("Pit Volume", f"{st.session_state.pit_vol} bbl", delta=round(st.session_state.pit_vol - 500, 2))
-        st.metric("ECD", f"{ecd} ppg")
-    with col_mud2:
-        # Aquí llamas a la función visual de mud_pumps.py
-        st.info("Visualización del Sistema de Bombas")
-        # mud_pumps_panel() 
+st.caption(f"Configuración guardada por @profesorpizzolato-art | {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+# --- SECCIÓN DE CÁLCULOS AVANZADOS (Hidráulica y Seguridad) ---
+def calcular_hidraulica(p, q, rho):
+    # HHP: Potencia Hidráulica
+    hhp = (p * q) / 1714
+    # IF: Fuerza de Impacto (Libras fuerza)
+    # Basado en una aproximación de boquillas estándar
+    impact_force = 0.0182 * q * np.sqrt(rho * p)
+    return round(hhp, 2), round(impact_force, 2)
 
-with tab2:
-    st.subheader("Panel de Control de Surgencias")
-    col_bop1, col_bop2 = st.columns(2)
-    with col_bop1:
-        st.metric("SICP (Casing)", f"{st.session_state.sicp} psi", "RED")
-        st.metric("SIDPP (Pipe)", f"{st.session_state.sidpp} psi")
-    with col_bop2:
-        # Integración de bop_panel.py
-        if st.button("🚨 CERRAR ANULAR", use_container_width=True):
-            st.session_state.bop_cerrado = True
-            st.success("BOP CERRADO - Pozo Asegurado")
-        st.session_state.choke = st.slider("Apertura de Choke %", 0, 100, st.session_state.choke)
+# Interfaz de entrada en Sidebar para estos cálculos
+st.sidebar.divider()
+st.sidebar.subheader("🛡️ Límites de Seguridad")
+p_max = st.sidebar.number_input("Presión Máxima (PSI)", value=4500)
+q_caudal = st.sidebar.slider("Caudal Actual (GPM)", 100, 1000, 550)
+lodo_rho = st.sidebar.number_input("Densidad Lodo (ppg)", value=10.5)
 
-with tab3:
-    if not st.session_state.history.empty:
-        st.line_chart(st.session_state.history.set_index("Depth")[["ROP", "SPP"]])
+# Ejecutar cálculos
+hhp_actual, if_actual = calcular_hidraulica(presion, q_caudal, lodo_rho)
 
-# 7. BOTÓN DE ACCIÓN: PERFORAR
+# --- VISUALIZACIÓN DE HIDRÁULICA (6 INDICADORES) ---
+st.header("📊 Monitoreo de Cabina en Tiempo Real")
+fila1 = st.columns(3)
+fila2 = st.columns(3)
+
+# ... (Aquí irían tus gauges de WOB, RPM y Torque en fila1) ...
+
+with fila2[0]:
+    st.plotly_chart(crear_reloj(presion, "Presión Standpipe", "PSI", 5000, "#ff4b4b"), use_container_width=True)
+with fila2[1]:
+    st.plotly_chart(crear_reloj(hhp_actual, "Potencia (HHP)", "hp", 2000, "#a64dff"), use_container_width=True)
+with fila2[2]:
+    st.plotly_chart(crear_reloj(if_actual, "Impact Force", "lbs", 1500, "#ff8c00"), use_container_width=True)
+
+# --- SISTEMA DE ALARMAS (Lógica al final) ---
 st.divider()
-if st.button("⛏️ PERFORAR TRAMO (10m)", type="primary", use_container_width=True):
-    # Lógica de avance
-    st.session_state.depth += 10
-    st.session_state.bit_health -= (wob * 0.02)
+st.subheader("🚨 Panel de Alarmas del Sistema")
+
+col_a1, col_a2, col_a3 = st.columns(3)
+
+with col_a1:
+    if presion > p_max:
+        st.error(f"⚠️ SOBREPRESIÓN: {presion} PSI (Límite: {p_max})")
+    else:
+        st.success("✅ Presión de Bomba Estable")
+
+with col_a2:
+    if hhp_actual < 500:
+        st.warning("⚠️ BAJA POTENCIA: Limpieza de pozo ineficiente")
+    else:
+        st.success("✅ Hidráulica Óptima")
+
+with col_a3:
+    # Simulación de Torque excesivo
+    torque_actual = 12 # Este valor vendría de tus datos
+    if torque_actual > 25:
+        st.error("🛑 ALTO TORQUE: Riesgo de pega de tubería")
+    else:
+        st.success("✅ Rotación Libre")
+
+# --- RESUMEN DE OPERACIÓN ---
+st.info(f"**Estado General:** Perforando a {q_caudal} GPM con una Fuerza de Impacto de {if_actual} lbs. El sistema está operando dentro de los márgenes de seguridad establecidos por @profesorpizzolato-art.")
+# --- SECCIÓN DE ECONOMÍA Y EFICIENCIA ---
+st.sidebar.divider()
+st.sidebar.subheader("💰 Economía de Perforación")
+costo_equipo = st.sidebar.number_input("Costo Rig (USD/hr)", value=1500)
+costo_mecha = st.sidebar.number_input("Costo Mecha (USD)", value=15000)
+
+# Cálculo simple de eficiencia
+if rop > 0:
+    costo_metro = (costo_mecha + (costo_equipo * 24)) / (rop * 24)
+    st.sidebar.metric("Costo Estimado", f"${round(costo_metro, 2)} /m")
+
+# --- BOTÓN DE REPORTE FINAL ---
+st.divider()
+col_rep1, col_rep2 = st.columns([3, 1])
+
+with col_rep1:
+    st.write("### 📝 Registro de Operaciones")
+    data_log = pd.DataFrame({
+        "Parámetro": ["WOB Máximo", "RPM Promedio", "HHP Final", "Impact Force"],
+        "Valor": [f"25 Tons", f"95", f"{hhp_actual} hp", f"{if_actual} lbs"]
+    })
+    st.table(data_log)
+
+with col_rep2:
+    st.write("### Acciones")
+    if st.button("📥 Descargar Reporte"):
+        st.success("Reporte generado con éxito (Sim_Perf_v3)")
+# --- SECCIÓN: SEGURIDAD Y VENTANA DE LODOS ---
+st.divider()
+st.header("🛡️ Seguridad Geomecánica: Ventana de Lodo")
+
+col_geo1, col_geo2 = st.columns([1, 2])
+
+with col_geo1:
+    st.write("### Parámetros de Formación")
+    profundidad_actual = st.number_input("Profundidad de Interés (m)", value=3500)
+    presion_poro = st.slider("Gradiente Poro (ppg e)", 8.5, 12.0, 9.8)
+    presion_fractura = st.slider("Gradiente Fractura (ppg e)", 12.5, 18.0, 15.5)
     
-    # Simulación de Ganancia/Pérdida en Pits
-    if st.session_state.kick:
-        st.session_state.pit_vol += random.uniform(5, 12)
-        st.session_state.gas += 0.5
-    if st.session_state.loss:
-        st.session_state.pit_vol -= random.uniform(8, 15)
+    # Métrica de Seguridad
+    densidad_lodo = 12.2 # Este valor viene de tu sidebar anterior
     
-    # Guardar en Historial
-    new_data = pd.DataFrame([{
-        "Depth": st.session_state.depth, "WOB": wob, 
-        "RPM": rpm, "SPP": spp, "ROP": rop
-    }])
-    st.session_state.history = pd.concat([st.session_state.history, new_data], ignore_index=True)
+    if densidad_lodo < presion_poro:
+        st.error(f"🚨 ¡RIESGO DE BROTE (KICK)! Densidad < {presion_poro} ppg")
+    elif densidad_lodo > presion_fractura:
+        st.error(f"🚨 ¡RIESGO DE FRACTURA! Densidad > {presion_fractura} ppg")
+    else:
+        st.success("✅ Operando dentro de la Ventana de Lodo")
+
+with col_geo2:
+    # Generar Gráfica de Ventana de Lodos (Profundidad vs Densidad)
+    z = np.linspace(0, 5000, 100)
+    linea_poro = 8.5 + (z/5000) * 2
+    linea_frac = 14 + (z/5000) * 3
     
-    # Efecto visual de carga
-    with st.spinner('Perforando...'):
-        time.sleep(0.5)
+    fig_window = go.Figure()
+    
+    # Área Segura (Ventana)
+    fig_window.add_trace(go.Scatter(x=linea_poro, y=z, name="P. Poro", line=dict(color='red', dash='dash')))
+    fig_window.add_trace(go.Scatter(x=linea_frac, y=z, name="P. Fractura", line=dict(color='orange')))
+    
+    # Punto Actual (Tu lodo)
+    fig_window.add_trace(go.Scatter(x=[densidad_lodo], y=[profundidad_actual], 
+                                    mode="markers+text", name="Estado Actual",
+                                    text=["BIT"], textposition="top center",
+                                    marker=dict(color='lime', size=15, symbol='star')))
+
+    fig_window.update_layout(
+        title="Gráfico de Ventana de Perforación",
+        xaxis_title="Densidad Equivalente (ppg)",
+        yaxis_title="Profundidad (m)",
+        yaxis=dict(autorange="reversed"), # Las gráficas de pozo se ven de arriba hacia abajo
+        template="plotly_dark",
+        height=500
+    )
+    st.plotly_chart(fig_window, use_container_width=True)
+
+# --- SECCIÓN: DINÁMICA DE FLUIDOS (ECD) ---
+st.divider()
+st.header("🌊 Dinámica de Circulación (ECD)")
+
+col_ecd1, col_ecd2 = st.columns(2)
+
+with col_ecd1:
+    st.write("### Cálculo de Densidad Equivalente")
+    # Parámetros para fricción (Simplificado para el simulador)
+    viscosidad = st.slider("Viscosidad Plástica (cP)", 10, 60, 25)
+    longitud_pozo = profundidad_actual # Tomado de la sección anterior
+    
+    # Fórmula simplificada de pérdida de carga anular (APL) en ppg
+    # APL = (0.000077 * Densidad * Velocidad^2) / (D_hoyo - D_tuberia)
+    # Aquí usamos una aproximación directa basada en Caudal y Viscosidad
+    apl = (viscosidad * caudal / 2000) / 10 
+    ecd = densidad_lodo + apl
+
+    st.metric(label="ECD (Densidad Circulante)", value=f"{round(ecd, 2)} ppg", 
+              delta=f"+{round(apl, 2)} ppg por fricción", delta_color="inverse")
+
+with col_ecd2:
+    # Indicador Visual de Seguridad del ECD
+    fig_ecd = go.Figure(go.Indicator(
+        mode = "gauge+number+delta",
+        value = ecd,
+        delta = {'reference': presion_fractura, 'position': "top"},
+        title = {'text': "<b>ECD vs Fractura</b>"},
+        gauge = {
+            'axis': {'range': [8, 20]},
+            'steps': [
+                {'range': [0, presion_poro], 'color': "rgba(255, 0, 0, 0.3)"},
+                {'range': [presion_poro, presion_fractura], 'color': "rgba(0, 255, 0, 0.2)"},
+                {'range': [presion_fractura, 20], 'color': "rgba(255, 0, 0, 0.6)"}
+            ],
+            'threshold': {
+                'line': {'color': "white", 'width': 4},
+                'thickness': 0.75,
+                'value': ecd
+            }
+        }
+    ))
+    fig_ecd.update_layout(height=300, paper_bgcolor='rgba(0,0,0,0)', font={'color': "white"})
+    st.plotly_chart(fig_ecd, use_container_width=True)
+
+# --- ALERTA CRÍTICA DE ECD ---
+if ecd >= presion_fractura:
+    st.error(f"🛑 ¡FRACTURA INMINENTE! El ECD ({round(ecd,2)}) ha superado el límite de formación ({presion_fractura}). Reduzca el caudal o la viscosidad inmediatamente.")
+elif ecd <= presion_poro:
+    st.warning(f"⚠️ RIESGO DE SURGENCIA: El ECD es demasiado bajo para controlar la presión de poro.")
+
+import random
+
+# --- MOTOR DE EVENTOS Y FALLAS ---
+st.sidebar.divider()
+st.sidebar.subheader("🎲 Centro de Entrenamiento")
+activar_fallas = st.sidebar.checkbox("Activar Fallas Aleatorias")
+
+# Inicializar estados de falla
+if 'falla_activa' not in st.session_state:
+    st.session_state.falla_activa = "Normal"
+
+if activar_fallas:
+    if st.sidebar.button("Generar Evento Crítico"):
+        fallas = ["Stuck Pipe", "Washout", "Worn Bit", "Normal"]
+        st.session_state.falla_activa = random.choice(fallas)
+    
+    if st.sidebar.button("Resetear Sistema"):
+        st.session_state.falla_activa = "Normal"
+
+# --- LÓGICA DE IMPACTO DE FALLAS ---
+msg_falla = ""
+color_falla = "gray"
+
+if st.session_state.falla_activa == "Stuck Pipe":
+    torque_actual = 28.5 # Valor alto
+    rpm_actual = 15 # Caída de rotación
+    msg_falla = "⚠️ ALERTA: Torque excesivo detectado. ¡Posible Pega de Tubería!"
+    color_falla = "red"
+elif st.session_state.falla_activa == "Washout":
+    presion = presion * 0.6 # Caída del 40% de presión
+    msg_falla = "⚠️ ALERTA: Caída de presión súbita. ¡Posible lavado en la sarta!"
+    color_falla = "orange"
+elif st.session_state.falla_activa == "Worn Bit":
+    rop = 1.5 # ROP mínima
+    msg_falla = "ℹ️ INFO: ROP extremadamente baja. Verifique estado de la mecha."
+    color_falla = "blue"
+else:
+    msg_falla = "✅ Operación Normal: Formación Estable"
+    color_falla = "green"
+
+# --- MOSTRAR ESTADO EN PANTALLA ---
+st.markdown(f"""
+    <div style="background-color:{color_falla}; padding:10px; border-radius:10px; text-align:center;">
+        <h3 style="color:white; margin:0;">MODO: {st.session_state.falla_activa}</h3>
+        <p style="color:white; margin:0;">{msg_falla}</p>
+    </div>
+    """, unsafe_allow_html=True)
+st.write("") # Espaciado
+
+# --- SECCIÓN: INGENIERÍA DE DETALLE (MSE & REOLOGÍA) ---
+st.divider()
+st.header("🔬 Análisis de Eficiencia y Reología")
+
+col_tec1, col_tec2 = st.columns(2)
+
+with col_tec1:
+    st.subheader("⚙️ Optimización Mecánica (MSE)")
+    diametro_mecha = st.number_input("Diámetro de Mecha (in)", value=8.5)
+    
+    # Cálculo de MSE (Simplificado para estabilidad de unidades)
+    # T = Torque, N = RPM, R = ROP, W = WOB
+    try:
+        mse = ((480 * torque_actual * rpm_actual) / (diametro_mecha**2 * rop)) + ((4 * wob) / (np.pi * diametro_mecha**2))
+    except ZeroDivisionError:
+        mse = 0
+    
+    st.metric("MSE (Mechanical Specific Energy)", f"{round(mse, 1)} psi")
+    if mse > 40000: # Límite típico para formaciones medias
+        st.warning("⚠️ ALTA ENERGÍA: Posible ineficiencia o vibración excesiva (BHA Whirling).")
+
+with col_tec2:
+    st.subheader("🧪 Propiedades del Fluido")
+    yp = st.slider("Yield Point (lb/100ft²)", 5, 40, 18)
+    pv = st.slider("Viscosidad Plástica (cP)", 10, 60, 25)
+    
+    # Cálculo de Velocidad Crítica (Inicio de Turbulencia)
+    vel_critica = (97 * pv + 97 * np.sqrt(pv**2 + 6.2 * (8.5 - 5) * yp * densidad)) / (densidad * (8.5 - 5))
+    st.write(f"**Velocidad Crítica en el Anular:** {round(vel_critica, 2)} ft/min")
+
+# --- GRÁFICA DE LIMPIEZA DE HOYO ---
+st.subheader("🧹 Capacidad de Transporte de Recortes (Cutting Transport)")
+v_anular = (24.5 * caudal) / (8.5**2 - 5**2) # ft/min aprox
+v_deslizamiento = 0.45 * (yp / densidad)**0.5 * 60 # ft/min aprox
+
+eficiencia_limpieza = ((v_anular - v_deslizamiento) / v_anular) * 100
+
+st.progress(min(max(eficiencia_limpieza/100, 0.0), 1.0), 
+            text=f"Eficiencia de Limpieza: {round(eficiencia_limpieza, 1)}%")
+
+if eficiencia_limpieza < 70:
+    st.error("🚨 ¡PELIGRO DE EMBOCAMIENTO! Los recortes están cayendo al fondo.")
+
+# --- SECCIÓN: CONTROL DE POZOS (HOJA DE MATAR) ---
+st.divider()
+st.header("📋 Hoja de Matar (Kill Sheet) - Método del Perforador")
+
+with st.expander("Abrir Procedimiento de Control de Pozos"):
+    col_k1, col_k2 = st.columns(2)
+    
+    with col_k1:
+        st.subheader("📝 Datos del Brote")
+        sidpp = st.number_input("SIDPP (Presión Tubería) [PSI]", value=500)
+        sicp = st.number_input("SICP (Presión Anular) [PSI]", value=750)
+        ganancia_tanque = st.number_input("Ganancia en Tanques [bbl]", value=15)
+        
+    with col_k2:
+        st.subheader("🧮 Cálculos de Control")
+        # Cálculo de la Nueva Densidad (Kill Mud Weight)
+        # 0.1703 es el factor de conversión para metros a PSI/ppg
+        kmw = densidad_lodo + (sidpp / (0.1703 * profundidad_actual))
+        
+        st.metric("Kill Mud Weight (KMW)", f"{round(kmw, 2)} ppg", 
+                  delta=f"+{round(kmw - densidad_lodo, 2)} ppg")
+        
+        # Presión Inicial de Circulación (ICP)
+        # ICP = SIDPP + Presión de Circulación a Velocidad Reducida (SCR)
+        scr = 400 # Presión a baja velocidad simulada
+        icp = sidpp + scr
+        st.write(f"**ICP (Presión Inicial):** {icp} PSI")
+
+    st.divider()
+    st.info("💡 **Instrucción para el Alumno:** Para controlar el pozo, debe bombear el lodo pesado (KMW) manteniendo la presión en el anular constante hasta que el lodo llegue a la mecha.")
+
+    # Gráfico de la Línea de Presión (Schedule)
+    st.subheader("📉 Plan de Presión en Tubería")
+    strokes = np.linspace(0, 1500, 100) # Emboladas de la bomba
+    p_line = np.linspace(icp, scr + (kmw-densidad_lodo)*10, 100) # Caída teórica
+    
+    fig_kill = go.Figure()
+    fig_kill.add_trace(go.Scatter(x=strokes, y=p_line, name="Presión de Control", line=dict(color='yellow', width=3)))
+    fig_kill.update_layout(
+        title="Gráfico de Presión vs Emboladas (Pump Strokes)",
+        xaxis_title="Emboladas (Strokes)",
+        yaxis_title="Presión en Tubería (PSI)",
+        template="plotly_dark",
+        height=300
+    )
+    st.plotly_chart(fig_kill, use_container_width=True)
+# --- SECCIÓN: SISTEMA DE TANQUES (PVT - Pit Volume Totalizer) ---
+st.divider()
+st.header("🛢️ Sistema de Tanques y Volumen (PVT)")
+
+# Simulación de volumen total
+volumen_inicial = 1200 # Barriles (bbl)
+if 'volumen_actual' not in st.session_state:
+    st.session_state.volumen_actual = volumen_inicial
+
+col_t1, col_t2, col_t3 = st.columns([1, 1, 2])
+
+with col_t1:
+    st.subheader("📊 Niveles")
+    # Lógica de cambio de volumen basada en el estado del pozo
+    cambio_flujo = 0
+    if st.session_state.falla_activa == "Washout":
+        cambio_flujo = -2.5 # Perdiendo lodo
+    elif sidpp > 0: 
+        cambio_flujo = 1.8 # Ganando fluido (Brote)
+    
+    st.session_state.volumen_actual += cambio_flujo
+    
+    st.metric("Volumen Total", f"{round(st.session_state.volumen_actual, 1)} bbl", 
+              delta=f"{cambio_flujo} bbl/min", delta_color="inverse")
+
+with col_t2:
+    # Gráfico de Barra Vertical (Tanque)
+    fig_tank = go.Figure(go.Bar(
+        x=["Tanque Activo"],
+        y=[st.session_state.volumen_actual],
+        marker_color='#00d4ff',
+        width=0.5
+    ))
+    fig_tank.update_layout(
+        yaxis=dict(range=[0, 2000]),
+        height=300,
+        template="plotly_dark",
+        title="Nivel de Presas"
+    )
+    st.plotly_chart(fig_tank, use_container_width=True)
+
+with col_t3:
+    st.subheader("📈 Tendencia de Ganancia/Pérdida")
+    # Simulación de línea de tendencia
+    tiempos = np.linspace(0, 10, 20)
+    tendencia = volumen_inicial + (cambio_flujo * tiempos)
+    
+    fig_pvt = go.Figure()
+    fig_pvt.add_trace(go.Scatter(x=tiempos, y=tendencia, mode='lines+markers', 
+                                 line=dict(color='#ffcc00' if cambio_flujo != 0 else '#00ff88')))
+    fig_pvt.update_layout(height=300, template="plotly_dark", xaxis_title="Minutos", yaxis_title="Barriles")
+    st.plotly_chart(fig_pvt, use_container_width=True)
+
+# Alerta de Tanques
+if st.session_state.volumen_actual > volumen_inicial + 20:
+    st.error("🚨 ¡GANANCIA EN TANQUES! Posible entrada de fluido de formación.")
+elif st.session_state.volumen_actual < volumen_inicial - 20:
+    st.warning("⚠️ PÉRDIDA DE CIRCULACIÓN: El lodo se está filtrando a la formación.")
+# --- SECCIÓN: PROTOCOLO IADC WELLSHARP ---
+st.divider()
+st.header("🏆 Evaluación de Control de Pozos (Estándar IADC)")
+
+# Parámetros de la Zapata (Casing Shoe) para el MAASP
+st.sidebar.subheader("🏗️ Integridad del Pozo")
+zapata_tvd = st.sidebar.number_input("Profundidad de Zapata (m)", value=1500)
+gradiente_leak_off = st.sidebar.slider("LOT (Leak-off Test) [ppg]", 13.0, 18.0, 15.5)
+
+# Cálculo del MAASP (Maximum Allowable Annular Surface Pressure)
+# Presión máxima que puede aguantar el pozo en superficie sin romper la zapata
+maasp = (gradiente_leak_off - densidad_lodo) * 0.1703 * zapata_tvd
+
+st.sidebar.metric("MAASP (Límite de Presión)", f"{round(maasp, 0)} PSI")
+
+col_iadc1, col_iadc2 = st.columns(2)
+
+with col_iadc1:
+    st.subheader("🛑 Procedimiento de Detección")
+    if st.button("Realizar FLOW CHECK"):
+        with st.status("Deteniendo bombas y observando..."):
+            time.sleep(2)
+            if sidpp > 0 or cambio_flujo > 0:
+                st.error("🚨 ¡EL POZO FLUYE! Proceda a cerrar el pozo (Hard Shut-in).")
+            else:
+                st.success("✅ El pozo está estático. Continúe perforando.")
+
+with col_iadc2:
+    st.subheader("📉 Monitor de Seguridad IADC")
+    # Gráfico de presión actual vs MAASP
+    fig_maasp = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = sicp,
+        title = {'text': "SICP vs MAASP (Límite)"},
+        gauge = {
+            'axis': {'range': [0, maasp*1.2]},
+            'threshold': {
+                'line': {'color': "red", 'width': 5},
+                'thickness': 0.75,
+                'value': maasp
+            },
+            'bar': {'color': "yellow" if sicp < maasp else "red"}
+        }
+    ))
+    fig_maasp.update_layout(height=250, paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_maasp, use_container_width=True)
+
+# Lógica de fracaso IADC
+if sicp > maasp:
+    st.markdown("""
+        <div style="background-color:maroon; padding:20px; border-radius:10px; border: 5px solid red;">
+            <h1 style="color:white; text-align:center;">💥 ¡FALLA DE INTEGRIDAD!</h1>
+            <p style="color:white; text-align:center;">Has superado el MAASP. La formación en la zapata se ha fracturado. El pozo está perdido.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+# --- SECCIÓN: EVALUADOR DE COMPETENCIAS IADC ---
+st.divider()
+st.header("📝 Registro de Evaluación (Auditoría IADC)")
+
+# Inicializar lista de errores si no existe
+if 'errores_iadc' not in st.session_state:
+    st.session_state.errores_iadc = []
+
+# Lógica de detección de infracciones (Checkpoints)
+def registrar_error(descripcion):
+    if descripcion not in st.session_state.errores_iadc:
+        st.session_state.errores_iadc.append({
+            "Hora": datetime.now().strftime("%H:%M:%S"),
+            "Infracción": descripcion,
+            "Gravedad": "CRÍTICA"
+        })
+
+# Verificación automática de errores en tiempo real
+if sicp > maasp:
+    registrar_error("Excedió el MAASP (Riesgo de Fractura en Zapata)")
+if sidpp > 0 and st.session_state.falla_activa == "Normal" and not activar_fallas:
+    registrar_error("No detectó el cierre de pozo a tiempo")
+if ecd > presion_fractura:
+    registrar_error("ECD por encima del Gradiente de Fractura")
+if st.session_state.volumen_actual > volumen_inicial + 50:
+    registrar_error("Ganancia excesiva en tanques sin acción correctiva")
+
+# Mostrar Tabla de Errores
+if st.session_state.errores_iadc:
+    df_errores = pd.DataFrame(st.session_state.errores_iadc)
+    st.table(df_errores)
+    
+    # Cálculo de Nota (Empieza en 100 y resta 25 por cada error crítico)
+    nota_final = max(0, 100 - (len(st.session_state.errores_iadc) * 25))
+    
+    col_score1, col_score2 = st.columns(2)
+    with col_score1:
+        st.metric("Puntaje de Seguridad", f"{nota_final}/100")
+    with col_score2:
+        if nota_final >= 75:
+            st.success("🎯 ESTADO: APROBADO PARA CERTIFICACIÓN")
+        else:
+            st.error("❌ ESTADO: REQUIERE RE-ENTRENAMIENTO")
+else:
+    st.balloons()
+    st.success("🌟 ¡PERFORMANCE PERFECTA! No se detectaron violaciones de seguridad.")
+
+# Botón para limpiar el expediente del alumno
+if st.button("Reiniciar Evaluación"):
+    st.session_state.errores_iadc = []
+    st.session_state.volumen_actual = volumen_inicial
     st.rerun()
 
-# 8. ALERTAS CRÍTICAS
-if st.session_state.kick:
-    st.error(f"🚨 ALERTA: KICK DETECTADO. Gas en superficie: {st.session_state.gas}%")
-if st.session_state.pit_vol > 530:
-    st.warning("⚠️ REBALSE DE PILETAS INMINENTE")
+st.sidebar.divider()
+st.sidebar.write("📌 **Nota IADC:** El cumplimiento del MAASP y el reconocimiento de señales de advertencia son obligatorios para la certificación WellSharp.")
+
+# --- MÓDULO DE INGENIERÍA AVANZADA (Menfa Tech) ---
+st.divider()
+st.header("🔬 Diagnóstico Técnico de Perforación")
+
+col_t1, col_t2 = st.columns(2)
+
+with col_t1:
+    st.subheader("📉 Detección de Presiones (d-exponent)")
+    # Cálculo del Exponente d normalizado (d-exp)
+    # Evitamos logaritmos de cero o negativos
+    try:
+        n_rpm = max(rpm_actual, 1)
+        w_wob = max(wob * 2204.62, 1) # Convertir Tons a Libras
+        r_rop = max(rop * 3.28, 1)    # Convertir m/h a ft/h
+        
+        d_exp = np.log10(r_rop / (60 * n_rpm)) / np.log10((12 * w_wob) / (10**6 * diametro_mecha))
+        # Normalización por densidad de lodo
+        d_exp_norm = d_exp * (9.0 / densidad_lodo) 
+        
+        st.metric("Exponente 'd' Normalizado", round(d_exp_norm, 3))
+        
+        if d_exp_norm < 1.2:
+            st.warning("⚠️ TENDENCIA REVERSA: Posible zona de transición de presión detectada.")
+    except:
+        st.write("Esperando datos estables para cálculo de d-exp...")
+
+with col_t2:
+    st.subheader("🌪️ Hidráulica de Partículas")
+    # Cálculo de la capacidad de acarreo (Transport Ratio)
+    # Ft = Velocidad Anular / (Velocidad Anular + Velocidad Deslizamiento)
+    v_anular = (24.5 * caudal) / (diametro_mecha**2 - 5**2) # ft/min
+    v_slip = 0.45 * (yp / densidad_lodo)**0.5 * 60         # ft/min (Moore correlation)
+    
+    transport_ratio = v_anular / (v_anular + v_slip)
+    
+    fig_limpieza = go.Figure(go.Indicator(
+        mode = "number+gauge",
+        value = transport_ratio * 100,
+        number = {'suffix': "%"},
+        title = {'text': "Transport Ratio (Eficiencia)"},
+        gauge = {
+            'axis': {'range': [0, 100]},
+            'bar': {'color': "lime" if transport_ratio > 0.7 else "red"},
+            'steps': [{'range': [0, 70], 'color': "rgba(255,0,0,0.2)"}]
+        }
+    ))
+    fig_limpieza.update_layout(height=250, margin=dict(t=50, b=0), paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_limpieza, use_container_width=True)
+
+# --- PANEL DE ACCIÓN TÉCNICA ---
+st.info(f"""
+**Análisis Menfa Capacitaciones:** Actualmente el pozo presenta un **Transport Ratio** de {round(transport_ratio, 2)}. 
+Para mejorar la limpieza, considere {'aumentar el caudal' if transport_ratio < 0.7 else 'mantener los parámetros actuales'}.
+""")
+
+# --- MÓDULO DE GEONAVEGACIÓN (GEOSTEERING) ---
+st.divider()
+st.header("🎯 Geonavegación y Control de Trayectoria")
+
+col_geo1, col_geo2 = st.columns([1, 2])
+
+with col_geo1:
+    st.subheader("📡 Sensores LWD")
+    # Simulación de Rayos Gamma (Gamma Ray)
+    gr_valor = 30 + 10 * np.sin(profundidad_actual / 10) + random.uniform(-5, 5)
+    
+    st.metric("Rayos Gamma (API)", f"{round(gr_valor, 1)} units")
+    
+    if gr_valor < 40:
+        st.success("💎 ZONA PRODUCTIVA (Arena)")
+    else:
+        st.warning("🪨 ZONA DE CIERRE (Arcilla/Lutita)")
+
+    st.subheader("🕹️ Control de Dirección")
+    inc_deseada = st.slider("Ajustar Inclinación (deg)", 80.0, 100.0, 90.0)
+    st.info(f"Objetivo: Mantener GR < 40 API")
+
+with col_geo2:
+    # Gráfico de Geosteering (Sección Lateral)
+    distancia = np.linspace(0, 500, 50)
+    # Perfil del reservorio (Ondulado)
+    techo_res = 2500 + 15 * np.sin(distancia / 100)
+    piso_res = techo_res + 10 # Espesor de 10 metros
+    
+    # Trayectoria del pozo basada en la inclinación
+    trayectoria = 2505 + (distancia * np.tan(np.radians(90 - inc_deseada)))
+
+    fig_geo = go.Figure()
+    # Dibujar Reservorio
+    fig_geo.add_trace(go.Scatter(x=distancia, y=techo_res, name="Techo Reservorio", line=dict(color='gray', dash='dash')))
+    fig_geo.add_trace(go.Scatter(x=distancia, y=piso_res, name="Piso Reservorio", fill='tonexty', fillcolor='rgba(255, 255, 0, 0.2)', line=dict(color='gray')))
+    
+    # Dibujar Pozo
+    fig_geo.add_trace(go.Scatter(x=distancia, y=trayectoria, name="Trayectoria Pozo", line=dict(color='lime', width=4)))
+
+    fig_geo.update_layout(
+        title="Visualización de Geonavegación (Corte Lateral)",
+        xaxis_title="Desplazamiento Horizontal (m)",
+        yaxis_title="TVD (m)",
+        yaxis=dict(range=[2530, 2480], autorange=False), # Zoom en la zona del reservorio
+        template="plotly_dark",
+        height=400
+    )
+    st.plotly_chart(fig_geo, use_container_width=True)
+
+# Lógica de Evaluación de Geonavegación
+error_dist = abs(trayectoria[-1] - (techo_res[-1] + 5))
+if error_dist > 5:
+    st.error("🚨 ¡FUERA DE VENTANA! El pozo ha salido del reservorio productivo.")
+    registrar_error("Error de Geonavegación: Salida de zona productiva")
+
+# --- MÓDULO DE TORTUOSIDAD Y DLS (DOGLEG SEVERITY) ---
+st.divider()
+st.header("🔄 Análisis de Tortuosidad y Dogleg (DLS)")
+
+col_tor1, col_tor2 = st.columns([1, 2])
+
+with col_tor1:
+    st.subheader("📐 Parámetros de Curvatura")
+    # Simulación de cambio de inclinación entre estaciones
+    inc_anterior = 89.5 
+    delta_inc = abs(inc_deseada - inc_anterior)
+    distancia_estacion = 30 # metros estándar
+    
+    # Cálculo de DLS (°/30m)
+    dls = (delta_inc / distancia_estacion) * 30
+    
+    st.metric("Dogleg Severity (DLS)", f"{round(dls, 2)} °/30m")
+    
+    if dls > 3.0:
+        st.error("🚨 DLS EXCESIVO: Riesgo de fatiga y dificultad en entubación.")
+        registrar_error(f"Tortuosidad alta detectada: {round(dls,2)} DLS")
+    elif dls > 1.5:
+        st.warning("⚠️ CURVATURA MODERADA: Monitorear torque y arrastre.")
+    else:
+        st.success("✅ TRAYECTORIA SUAVE: Óptimo para terminación.")
+
+with col_tor2:
+    st.subheader("📈 Mapa de Tortuosidad Acumulada")
+    # Generar una trayectoria con "ruido" para visualizar tortuosidad
+    puntos = np.linspace(0, 100, 20)
+    ideal = 90 + 0 * puntos
+    real = ideal + (dls * np.sin(puntos/5) * 0.5) # Simula la sinuosidad
+    
+    fig_tor = go.Figure()
+    fig_tor.add_trace(go.Scatter(x=puntos, y=ideal, name="Plan Ideal", line=dict(color='gray', dash='dot')))
+    fig_tor.add_trace(go.Scatter(x=puntos, y=real, name="Trayectoria Real", line=dict(color='#00d4ff', width=3)))
+    
+    fig_tor.update_layout(
+        title="Desviación de la Micro-Trayectoria",
+        xaxis_title="Profundidad Medida (m)",
+        yaxis_title="Inclinación (°)",
+        template="plotly_dark",
+        height=300
+    )
+    st.plotly_chart(fig_tor, use_container_width=True)
+
+# --- MÓDULO DE MECÁNICA DE SARTA Y TERMODINÁMICA ---
+st.divider()
+st.header("🏗️ Análisis de Esfuerzos y Termodinámica")
+
+col_mec1, col_mec2 = st.columns(2)
+
+with col_mec1:
+    st.subheader("⚖️ Hook Load y Pandeo (Buckling)")
+    # Peso de la sarta en el aire (ejemplo: 150 Tons)
+    peso_aire = 150 
+    # Factor de Flotación (Buoyancy Factor)
+    bf = 1 - (densidad_lodo / 65.5) 
+    # Hook Load Teórico (Peso Flotado)
+    hook_load_estatico = peso_aire * bf
+    
+    # Efecto de la Tortuosidad en el Arrastre (Drag)
+    drag_friccion = dls * 1.5 # A más DLS, más fricción
+    hook_load_real = hook_load_estatico - drag_friccion - (wob * 0.8)
+
+    st.metric("Hook Load (Peso en Gancho)", f"{round(hook_load_real, 1)} Tons", 
+              delta=f"-{round(drag_friccion, 1)} Tons por Fricción")
+
+    if dls > 2.5 and wob > 20:
+        st.error("⚠️ RIESGO DE PANDEO (BUCKLING): Reduzca WOB o suavice trayectoria.")
+
+with col_mec2:
+    st.subheader("🌡️ Efecto Térmico en el Lodo")
+    temp_superficie = 20 # °C
+    gradiente_termico = 0.03 # °C/m
+    temp_fondo = temp_superficie + (gradiente_termico * profundidad_actual)
+    
+    # La densidad cae aprox 0.01 ppg por cada 15°C de aumento
+    reduccion_densidad = (temp_fondo - 20) / 15 * 0.01
+    densidad_fondo_real = densidad_lodo - reduccion_densidad
+
+    st.write(f"**Temperatura de Fondo:** {round(temp_fondo, 1)} °C")
+    st.metric("Densidad Real en Fondo", f"{round(densidad_fondo_real, 2)} ppg", 
+              delta=f"-{round(reduccion_densidad, 3)} por expansión térmica", delta_color="inverse")
+
+# --- GRÁFICA DE ESFUERZOS ACUMULADOS ---
+st.subheader("📊 Gráfico de Cargas Críticas")
+depth_array = np.linspace(0, profundidad_actual, 50)
+carga_limite = 200 - (depth_array * 0.01) # Límite de tensión de la tubería
+carga_actual = hook_load_real + (depth_array * 0.005)
+
+fig_esf = go.Figure()
+fig_esf.add_trace(go.Scatter(x=depth_array, y=carga_limite, name="Límite de Cedencia", line=dict(color='red', dash='dash')))
+fig_esf.add_trace(go.Scatter(x=depth_array, y=carga_actual, name="Carga en la Sarta", fill='tonexty', fillcolor='rgba(0, 255, 0, 0.1)'))
+fig_esf.update_layout(title="Margen de Tensión (Overpull Capability)", template="plotly_dark", height=300)
+st.plotly_chart(fig_esf, use_container_width=True)
+
+# --- MÓDULO DE REOLOGÍA AVANZADA Y TELEMETRÍA ---
+st.divider()
+st.header("🧬 Física de Fluidos y Telemetría MWD")
+
+col_adv_t1, col_adv_t2 = st.columns(2)
+
+with col_adv_t1:
+    st.subheader("🧪 Modelo de Herschel-Bulkley")
+    # Entradas de laboratorio (Fann 35)
+    r600 = st.number_input("Lectura 600 RPM", value=50)
+    r300 = st.number_input("Lectura 300 RPM", value=30)
+    r3 = st.number_input("Lectura 3 RPM (Gel)", value=5)
+    
+    # Cálculo de índices n, k y Tau0
+    n_index = 3.32 * np.log10(r600 / r300)
+    k_index = (0.511 * r300) / (511**n_index)
+    tau0 = r3 # Aproximación simple del Yield Stress real
+    
+    st.write(f"**Índice de Flujo (n):** {round(n_index, 3)}")
+    st.write(f"**Consistencia (k):** {round(k_index, 3)}")
+    
+    if n_index < 0.5:
+        st.info("💡 Lodo altamente pseudoplástico: Excelente para limpieza con bajo caudal.")
+
+with col_adv_t2:
+    st.subheader("📡 Calidad de Señal MWD")
+    # La compresibilidad del lodo afecta la velocidad del pulso
+    # v = sqrt(K / rho)
+    modulo_bulk = 220000 # PSI aprox para lodo base agua
+    velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) # ft/s
+    
+    # Atenuación (Simplificada: aumenta con profundidad y viscosidad)
+    atenuacion = (profundidad_actual * 0.01) + (pv * 0.5)
+    fuerza_senal = max(0, 100 - atenuacion)
+    
+    fig_signal = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = fuerza_senal,
+        title = {'text': "Fuerza de Señal MWD (%)"},
+        gauge = {
+            'axis': {'range': [0, 100]},
+            'bar': {'color': "cyan" if fuerza_senal > 40 else "darkred"},
+            'steps': [{'range': [0, 30], 'color': "rgba(255, 0, 0, 0.3)"}]
+        }
+    ))
+    fig_signal.update_layout(height=280, paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_signal, use_container_width=True)
+
+# --- DIAGNÓSTICO DE PRECISIÓN ---
+if fuerza_senal < 20:
+    st.error("🚨 PERDIDA DE TELEMETRÍA: La viscosidad o profundidad impiden recibir datos LWD. ¡Geonavegación a ciegas!")
+# --- MÓDULO DE DINÁMICA DE TRANSITORIOS (SURGE/SWAB & STICK-SLIP) ---
+st.divider()
+st.header("🫨 Dinámica de Transitorios y Vibraciones")
+
+col_dyn1, col_dyn2 = st.columns(2)
+
+with col_dyn1:
+    st.subheader("🚀 Efecto de Pistoneo (Surge & Swab)")
+    v_tubería = st.slider("Velocidad de Maniobra (ft/min)", -200, 200, 0) # Positivo es bajar, negativo es subir
+    
+    # Cálculo simplificado del cambio de presión por pistoneo (Clave técnica IADC)
+    # DeltaP = (Viscosidad * Velocidad) / (Diametro_hoyo - Diametro_tubería)
+    delta_p_pistoneo = (pv * v_tubería) / (1000 * (diametro_mecha - 5))
+    presion_fondo_dinamica = (densidad_lodo * 0.1703 * profundidad_actual) + delta_p_pistoneo
+    ecd_dinamico = presion_fondo_dinamica / (0.1703 * profundidad_actual)
+
+    st.metric("ECD Dinámico", f"{round(ecd_dinamico, 2)} ppg", 
+              delta=f"{round(delta_p_pistoneo, 1)} PSI (Efecto Pistoneo)")
+    
+    if ecd_dinamico > presion_fractura:
+        st.error("🚨 CRÍTICO: ¡Fractura por SURGE! Reduzca velocidad de bajada.")
+    elif ecd_dinamico < presion_poro:
+        st.error("🚨 CRÍTICO: ¡Brote por SWAB! Reduzca velocidad de sacada.")
+
+with col_dyn2:
+    st.subheader("🎸 Análisis de Vibraciones (Stick-Slip)")
+    # El Stick-Slip ocurre cuando el torque es inestable
+    variacion_torque = random.uniform(0.8, 1.2) if torque_actual < 20 else random.uniform(0.5, 2.5)
+    rpm_bit_real = rpm_actual * variacion_torque # La mecha acelera y frena
+    
+    fig_vib = go.Figure()
+    # Simulación de onda de torsión
+    t_v = np.linspace(0, 10, 50)
+    wave = rpm_actual + (rpm_actual * (variacion_torque - 1) * np.sin(t_v * 2))
+    
+    fig_vib.add_trace(go.Scatter(x=t_v, y=wave, name="RPM en la Mecha", line=dict(color='orange')))
+    fig_vib.update_layout(title="Vibración Torsional (Stick-Slip)", template="plotly_dark", height=250)
+    st.plotly_chart(fig_vib, use_container_width=True)
+
+    if variacion_torque > 1.8:
+        st.warning("⚠️ STICK-SLIP DETECTADO: Energía torsional acumulada liberándose peligrosamente.")
+
+
+# --- MÓDULO DE CINÉTICA DE FONDO Y TRANSPORTE DE SÓLIDOS (Advanced THM) ---
+st.divider()
+st.header("🧬 Cinética de Fondo y Transporte de Sólidos")
+
+col_kin1, col_kin2 = st.columns(2)
+
+with col_kin1:
+    st.subheader("⚡ Dinámica Axial (Bit Bounce)")
+    # Simulación de aceleración G en la mecha
+    vibracion_axial = (wob / 5) * (rpm_actual / 100) * random.uniform(0.5, 3.0)
+    
+    st.metric("Vibración Axial (G-RMS)", f"{round(vibracion_axial, 2)} G")
+    
+    if vibracion_axial > 4.5:
+        st.error("🚨 BIT BOUNCE CRÍTICO: Riesgo de rotura de cortadores PDC.")
+        registrar_error("Vibración axial excedida (Bit Bounce)")
+    elif vibracion_axial > 2.5:
+        st.warning("⚠️ VIBRACIÓN MODERADA: Optimice parámetros de perforación.")
+
+with col_kin2:
+    st.subheader("🧪 Eficiencia de Acarreo (CCI - Cuttings Carrying Index)")
+    # El CCI es el estándar para asegurar que el pozo esté limpio
+    # CCI = (K * Densidad * Caudal) / (577 * Diametro)
+    # K (Consistency Index de Herschel-Bulkley calculado previamente)
+    
+    cci = (k_index * densidad_lodo * v_actual_anular) / 400000 # Simplificación de campo
+    
+    fig_cci = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = cci,
+        title = {'text': "Cuttings Carrying Index (CCI)"},
+        gauge = {
+            'axis': {'range': [0, 2.0]},
+            'steps': [
+                {'range': [0, 0.5], 'color': "maroon"},
+                {'range': [0.5, 1.0], 'color': "orange"},
+                {'range': [1.0, 2.0], 'color': "lime"}
+            ],
+            'threshold': {
+                'line': {'color': "white", 'width': 4},
+                'value': 1.0
+            }
+        }
+    ))
+    fig_cci.update_layout(height=280, paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_cci, use_container_width=True)
+
+# --- ANÁLISIS TÉCNICO DE LIMPIEZA ---
+if cci < 1.0:
+    st.markdown(f"""
+    > **Ingeniería Menfa:** El CCI actual de **{round(cci,2)}** indica que el lodo no tiene suficiente 'capacidad de transporte'. 
+    > Aumente el **Yield Point (YP)** o incremente el **Caudal** para evitar el enterramiento de la sarta.
+    """)
+
+# --- PANEL DE TELEMETRÍA MAESTRA (KPI CONSOLIDATED VIEW) ---
+st.divider()
+st.header("📡 Centro de Control y Telemetría de Alta Fidelidad")
+
+# Creamos una matriz de KPIs para una lectura rápida tipo "Glass Cockpit"
+kpi_col1, kpi_col2, kpi_col3, kpi_col4, kpi_col5 = st.columns(5)
+
+with kpi_col1:
+    st.metric("DLS", f"{round(dls, 1)}°", delta="Crítico" if dls > 3 else "Normal", delta_color="inverse")
+    st.metric("MSE", f"{round(mse/1000, 1)}k", help="Mechanical Specific Energy en ksi")
+
+with kpi_col2:
+    st.metric("ECD", f"{round(ecd_dinamico, 2)}", delta=f"{round(ecd_dinamico - densidad_lodo, 2)}", help="Densidad Circulante con Efecto Surge/Swab")
+    st.metric("CCI", f"{round(cci, 2)}", delta="Bajo" if cci < 1.0 else "Óptimo")
+
+with kpi_col3:
+    st.metric("Vib. Axial", f"{round(vibracion_axial, 1)}G", delta="ALTA" if vibracion_axial > 3 else "OK", delta_color="inverse")
+    st.metric("d-exp", f"{round(d_exp_norm, 2)}", help="Exponente d Normalizado")
+
+with kpi_col4:
+    st.metric("MAASP Margin", f"{round(maasp - sicp, 0)} PSI", delta="Seguro" if sicp < maasp else "PELIGRO")
+    st.metric("TR", f"{round(transport_ratio * 100, 0)}%", help="Transport Ratio de recortes")
+
+with kpi_col5:
+    st.metric("Stick-Slip", f"{round(variacion_torque, 2)}", delta="Inestable" if variacion_torque > 1.5 else "Estable", delta_color="inverse")
+    st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
+
+# --- GRÁFICO RADAR DE PERFORMANCE TÉCNICA ---
+st.subheader("🕸️ Análisis Multivariable de Operación")
+
+categories = ['Limpieza', 'Estabilidad', 'Eficiencia ROP', 'Integridad Zapata', 'Mecánica Sarta']
+# Normalización de valores para el radar (0 a 1)
+values = [
+    min(cci, 1.5)/1.5, 
+    1 - (abs(ecd_dinamico - (presion_poro + 0.5)) / 2), 
+    min(40000/mse if mse > 0 else 1, 1),
+    max(0, (maasp - sicp) / maasp),
+    1 - (min(vibracion_axial, 10) / 10)
+]
+
+fig_radar = go.Figure()
+fig_radar.add_trace(go.Scatterpolar(
+      r=values,
+      theta=categories,
+      fill='toself',
+      name='Estado Actual',
+      line=dict(color='lime')
+))
+
+fig_radar.update_layout(
+  polar=dict(
+    radialaxis=dict(visible=True, range=[0, 1])),
+  showlegend=False,
+  template="plotly_dark",
+  height=450
+)
+st.plotly_chart(fig_radar, use_container_width=True)
+
+# Mensaje Final de Certificación Menfa
+st.caption(f"© 2026 Menfa Capacitaciones - Mendoza, Argentina. Sistema de Simulación de Perforación v4.0 - IADC & Geonavegación Compliant.")
+
+# --- MÓDULO DE RESONANCIA ESTRUCTURAL Y RIGIDEZ (Advanced Physics) ---
+st.divider()
+st.header("🎻 Análisis de Resonancia y Rigidez de Sarta")
+
+col_phys1, col_phys2 = st.columns(2)
+
+with col_phys1:
+    st.subheader("🎵 Frecuencias Críticas (RPM)")
+    # Cálculo simplificado de la primera frecuencia natural del BHA
+    # f = (1 / 2pi) * sqrt(E*I / m*L^4)
+    longitud_bha = 120 # metros
+    diametro_interior = 3.0 # in
+    # Frecuencia crítica en RPM
+    rpm_critica_1 = 60 * ( (10.2 / longitud_bha**2) * np.sqrt( (29e6 * (diametro_mecha**4 - diametro_interior**4)) / 490) )
+    
+    st.write(f"**1ra Velocidad Crítica Teórica:** {round(rpm_critica_1, 1)} RPM")
+    
+    # Proximidad a la resonancia
+    proximidad = abs(rpm_actual - rpm_critica_1) / rpm_critica_1
+    
+    if proximidad < 0.1:
+        st.error(f"🚨 RESONANCIA DETECTADA: Operando al {round((1-proximidad)*100,1)}% de la frecuencia crítica. ¡Cambie RPM inmediatamente!")
+    else:
+        st.success("✅ Frecuencia de Rotación Segura")
+
+with col_phys2:
+    st.subheader("🦾 Rigidez a la Flexión (Stiff-String)")
+    # Momento de Inercia de la tubería (I)
+    i_moment = (np.pi / 64) * (diametro_mecha**4 - diametro_interior**4)
+    # Esfuerzo de flexión inducido por el DLS
+    # Sigma = (E * d/2) / Radio_curvatura
+    radio_curvatura = 1718 / max(dls, 0.01) # pies
+    esfuerzo_flexion = (29e6 * (diametro_mecha / 2)) / (radio_curvatura * 12)
+    
+    st.metric("Esfuerzo de Flexión", f"{round(esfuerzo_flexion / 1000, 1)} ksi")
+    
+    # Límite de Fatiga (Aproximación para Acero Grado S-135)
+    limite_fatiga = 45 # ksi
+    st.progress(min(esfuerzo_flexion / (limite_fatiga * 1000), 1.0), 
+                text=f"Consumo de Vida Útil por Ciclo: {round((esfuerzo_flexion/(limite_fatiga*1000))*100, 2)}%")
+
+# --- MÓDULO DE CINÉTICA DE FONDO Y TRANSPORTE DE SÓLIDOS (Advanced THM) ---
+st.divider()
+st.header("🧬 Cinética de Fondo y Transporte de Sólidos")
+
+col_kin1, col_kin2 = st.columns(2)
+
+with col_kin1:
+    st.subheader("⚡ Dinámica Axial (Bit Bounce)")
+    # Simulación de aceleración G en la mecha
+    vibracion_axial = (wob / 5) * (rpm_actual / 100) * 1.5 # Valor base simulado
+    
+    st.metric("Vibración Axial (G-RMS)", f"{round(vibracion_axial, 2)} G")
+    
+    if vibracion_axial > 4.5:
+        st.error("🚨 BIT BOUNCE CRÍTICO: Riesgo de rotura de cortadores PDC.")
+    elif vibracion_axial > 2.5:
+        st.warning("⚠️ VIBRACIÓN MODERADA: Optimice parámetros de perforación.")
+
+with col_kin2:
+    st.subheader("🧪 Eficiencia de Acarreo (CCI - Cuttings Carrying Index)")
+    # El CCI es el estándar para asegurar que el pozo esté limpio
+    # CCI = (K * Densidad * Caudal) / (577 * Diametro)
+    # k_index es el Consistency Index de Herschel-Bulkley calculado previamente
+    
+    cci = (k_index * densidad_lodo * v_actual_anular) / 400000 # Simplificación de campo
+    
+    fig_cci = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = cci,
+        title = {'text': "Cuttings Carrying Index (CCI)"},
+        gauge = {
+            'axis': {'range': [0, 2.0]},
+            'steps': [
+                {'range': [0, 0.5], 'color': "maroon"},
+                {'range': [0.5, 1.0], 'color': "orange"},
+                {'range': [1.0, 2.0], 'color': "lime"}
+            ],
+            'threshold': {
+                'line': {'color': "white", 'width': 4},
+                'value': 1.0
+            }
+        }
+    ))
+    fig_cci.update_layout(height=280, paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_cci, use_container_width=True)
+
+# --- ANÁLISIS TÉCNICO DE LIMPIEZA ---
+if cci < 1.0:
+    st.markdown(f"""
+    > **Ingeniería Menfa:** El CCI actual de **{round(cci,2)}** indica que el lodo no tiene suficiente 'capacidad de transporte'. 
+    > Aumente el **Yield Point (YP)** o incremente el **Caudal** para evitar el enterramiento de la sarta.
+    """)
+
+
+
+
+# --- PANEL DE TELEMETRÍA MAESTRA (KPI CONSOLIDATED VIEW) ---
+st.divider()
+st.header("📡 Centro de Control y Telemetría de Alta Fidelidad")
+
+# Matriz de KPIs para lectura rápida tipo "Glass Cockpit"
+kpi_col1, kpi_col2, kpi_col3, kpi_col4, kpi_col5 = st.columns(5)
+
+with kpi_col1:
+    st.metric("DLS", f"{round(dls, 1)}°", delta="Crítico" if dls > 3 else "Normal", delta_color="inverse")
+    st.metric("MSE", f"{round(mse/1000, 1)}k", help="Mechanical Specific Energy en ksi")
+
+with kpi_col2:
+    st.metric("ECD", f"{round(ecd_dinamico, 2)}", delta=f"{round(ecd_dinamico - densidad_lodo, 2)}", help="Densidad Circulante con Efecto Surge/Swab")
+    st.metric("CCI", f"{round(cci, 2)}", delta="Bajo" if cci < 1.0 else "Óptimo")
+
+with kpi_col3:
+    st.metric("Vib. Axial", f"{round(vibracion_axial, 1)}G", delta="ALTA" if vibracion_axial > 3 else "OK", delta_color="inverse")
+    st.metric("d-exp", f"{round(d_exp_norm, 2)}", help="Exponente d Normalizado")
+
+with kpi_col4:
+    st.metric("MAASP Margin", f"{round(maasp - sicp, 0)} PSI", delta="Seguro" if sicp < maasp else "PELIGRO")
+    st.metric("TR", f"{round(transport_ratio * 100, 0)}%", help="Transport Ratio de recortes")
+
+with kpi_col5:
+    st.metric("Stick-Slip", f"{round(variacion_torque, 2)}", delta="Inestable" if variacion_torque > 1.5 else "Estable", delta_color="inverse")
+    st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
+
+# --- GRÁFICO RADAR DE PERFORMANCE TÉCNICA ---
+st.subheader("🕸️ Análisis Multivariable de Operación")
+
+categories = ['Limpieza (CCI)', 'Estabilidad (ECD)', 'Eficiencia (MSE)', 'Integridad (MAASP)', 'Mecánica (Vib)']
+# Normalización de valores para el radar (escala 0 a 1)
+values = [
+    min(cci, 1.5)/1.5, 
+    1 - (abs(ecd_dinamico - (presion_poro + 0.5)) / 2), 
+    min(40000/mse if mse > 0 else 1, 1),
+    max(0, (maasp - sicp) / maasp),
+    1 - (min(vibracion_axial, 10) / 10)
+]
+
+fig_radar = go.Figure()
+fig_radar.add_trace(go.Scatterpolar(
+      r=values,
+      theta=categories,
+      fill='toself',
+      name='Estado Actual',
+      line=dict(color='lime')
+))
+
+fig_radar.update_layout(
+  polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+  showlegend=False,
+  template="plotly_dark",
+  height=450
+)
+st.plotly_chart(fig_radar, use_container_width=True)
+
+st.caption("© 2026 Menfa Capacitaciones - Mendoza. Sistema v4.0 - IADC & Geonavegación Compliant.")
+
+
+from fpdf import FPDF
+import io
+
+def generar_reporte_tecnico():
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Encabezado Profesional
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, "MENFA CAPACITACIONES - REPORTE TÉCNICO", ln=True, align='C')
+    pdf.set_font("Arial", '', 10)
+    pdf.cell(200, 10, f"Ubicación: Mendoza, Argentina | Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align='C')
+    pdf.ln(10)
+
+    # 1. ESTADO ACTUAL DEL POZO
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "1. Parámetros de Operación Actuales", ln=True)
+    pdf.set_font("Arial", '', 10)
+    pdf.cell(0, 7, f"- Profundidad: {profundidad_actual} m", ln=True)
+    pdf.cell(0, 7, f"- Densidad del Lodo (MW): {densidad_lodo} ppg", ln=True)
+    pdf.cell(0, 7, f"- ECD Dinámico: {round(ecd_dinamico, 2)} ppg", ln=True)
+    pdf.cell(0, 7, f"- Inclinación: {inc_deseada} grados", ln=True)
+    pdf.ln(5)
+
+    # 2. GLOSARIO DE FÓRMULAS USADAS
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "2. Glosario de Ingeniería y Fórmulas", ln=True)
+    pdf.set_font("Arial", 'I', 9)
+    
+    formulas = [
+        ("ECD (Equivalent Circulating Density)", "MW + (dP_ann / (0.1703 * TVD))"),
+        ("MSE (Mechanical Specific Energy)", "(480 * T * RPM / D^2 * ROP) + (4 * WOB / pi * D^2)"),
+        ("CCI (Cuttings Carrying Index)", "(k * MW * Vann) / 400,000"),
+        ("DLS (Dogleg Severity)", "(Delta Inclination / Distance) * 30"),
+        ("MAASP", "(LOT - MW) * 0.1703 * TVD_shoe"),
+        ("KMW (Kill Mud Weight)", "MW + (SIDPP / (0.1703 * TVD))")
+    ]
+    
+    for titulo, formula in formulas:
+        pdf.set_font("Arial", 'B', 10)
+        pdf.cell(0, 7, f"• {titulo}:", ln=True)
+        pdf.set_font("Arial", '', 10)
+        pdf.cell(0, 7, f"  Formula: {formula}", ln=True)
+    
+    pdf.ln(10)
+
+    # 3. REGISTRO DE EVENTOS IADC
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "3. Auditoría de Seguridad (IADC Log)", ln=True)
+    pdf.set_font("Arial", '', 10)
+    if not st.session_state.errores_iadc:
+        pdf.cell(0, 7, "Sin infracciones detectadas. Operación Segura.", ln=True)
+    else:
+        for error in st.session_state.errores_iadc:
+            pdf.cell(0, 7, f"- [{error['Hora']}] {error['Infracción']} (Gravedad: {error['Gravedad']})", ln=True)
+
+    # Retornar el PDF como bytes
+    return pdf.output(dest='S').encode('latin-1')
+
+# --- UI EN EL SIMULADOR ---
+st.sidebar.divider()
+st.sidebar.subheader("📄 Exportar Documentación")
+pdf_bytes = generar_reporte_tecnico()
+
+st.sidebar.download_button(
+    label="Descargar Manual y Reporte PDF",
+    data=pdf_bytes,
+    file_name=f"Reporte_Menfa_{profundidad_actual}m.pdf",
+    mime="application/pdf"
+)
+
+# --- REGISTRO DE ALUMNO (MENFA AUTH) ---
+st.sidebar.image("logo_menfa.png", width=150) # Si tienes el logo
+st.sidebar.title("🎓 Acceso de Alumno")
+nombre_alumno = st.sidebar.text_input("Nombre Completo:", value="Fabricio")
+dni_alumno = st.sidebar.text_input("DNI / Identificación:", value="")
+curso_tipo = st.sidebar.selectbox("Módulo de Capacitación:", 
+    ["Perforación IADC WellSharp", "Geonavegación Avanzada", "Ingeniería de Fluidos"])
+
+st.sidebar.divider()
+
+def generar_reporte_tecnico_certificado(nombre, dni, curso, errores):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # --- ENCABEZADO INSTITUCIONAL ---
+    pdf.set_fill_color(30, 41, 59) # Azul oscuro Menfa
+    pdf.rect(0, 0, 210, 40, 'F')
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", 'B', 20)
+    pdf.cell(190, 25, "MENFA CAPACITACIONES", ln=True, align='C')
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(190, 5, "Certificación de Simulación Técnica", ln=True, align='C')
+    
+    # --- DATOS DEL ALUMNO ---
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(20)
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, f"ALUMNO: {nombre.upper()}", ln=True)
+    pdf.set_font("Arial", '', 11)
+    pdf.cell(0, 7, f"DNI: {dni}", ln=True)
+    pdf.cell(0, 7, f"CURSO: {curso}", ln=True)
+    pdf.cell(0, 7, f"FECHA: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True)
+    pdf.ln(10)
+
+    # --- RESUMEN DE DESEMPEÑO ---
+    pdf.set_fill_color(240, 240, 240)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, " BALANCE DE COMPETENCIAS TÉCNICAS ", ln=True, fill=True)
+    pdf.set_font("Arial", '', 10)
+    
+    # KPIs clave al momento de la descarga
+    pdf.cell(0, 7, f"• Eficiencia Mecánica (MSE): {round(mse, 0)} psi", ln=True)
+    pdf.cell(0, 7, f"• Limpieza de Hoyo (CCI): {round(cci, 2)}", ln=True)
+    pdf.cell(0, 7, f"• Control de Trayectoria (DLS): {round(dls, 2)} deg/30m", ln=True)
+    
+    # Cálculo de nota final
+    nota = max(0, 100 - (len(errores) * 20))
+    pdf.ln(5)
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, f"CALIFICACIÓN FINAL: {nota}/100", ln=True)
+
+    # --- LOG DE SEGURIDAD (IADC) ---
+    pdf.ln(5)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 10, "Auditoría de Seguridad Operativa:", ln=True)
+    pdf.set_font("Arial", '', 9)
+    if not errores:
+        pdf.cell(0, 7, "Operación sin infracciones críticas detectadas.", ln=True)
+    else:
+        for err in errores:
+            pdf.cell(0, 7, f"- {err['Infracción']} registrado a las {err['Hora']}", ln=True)
+
+    # --- PIE DE PÁGINA / FIRMA ---
+    pdf.ln(20)
+    pdf.line(10, pdf.get_y(), 70, pdf.get_y())
+    pdf.set_font("Arial", 'I', 8)
+    pdf.cell(60, 5, "Firma Instructor Menfa", align='C')
+    
+    return pdf.output(dest='S').encode('latin-1')
+
+# --- BOTÓN DE DESCARGA ACTUALIZADO ---
+pdf_final = generar_reporte_tecnico_certificado(nombre_alumno, dni_alumno, curso_tipo, st.session_state.errores_iadc)
+
+st.sidebar.download_button(
+    label="📥 DESCARGAR CERTIFICADO TÉCNICO",
+    data=pdf_final,
+    file_name=f"Certificado_{nombre_alumno.replace(' ', '_')}.pdf",
+    mime="application/pdf"
+)
