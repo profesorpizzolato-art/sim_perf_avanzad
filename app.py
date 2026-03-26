@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
-from motor_calculos_avanzados import calcular_presiones_fondo
+
 # --- MOTOR DE CÁLCULOS INTEGRADO (Reemplaza al archivo externo) ---
 def calcular_presiones_fondo(mw, depth_m, flow_gpm):
     """
