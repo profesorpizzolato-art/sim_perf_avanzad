@@ -338,22 +338,24 @@ with col_tec1:
     st.subheader("⚙️ Optimización Mecánica (MSE)")
     diametro_mecha = st.number_input("Diámetro de Mecha (in)", value=8.5)
     
-    # Cálculo de MSE (Simplificado para estabilidad de unidades)
-    # T = Torque, N = RPM, R = ROP, W = WOB
-    try:
-        mse = ((480 * torque_actual * rpm_actual) / (diametro_mecha**2 * rop)) + ((4 * wob) / (np.pi * diametro_mecha**2))
-    except ZeroDivisionError:
-        mse = 0
-    
-    st.metric("MSE (Mechanical Specific Energy)", f"{round(mse, 1)} psi")
-    if mse > 40000: # Límite típico para formaciones medias
-        st.warning("⚠️ ALTA ENERGÍA: Posible ineficiencia o vibración excesiva (BHA Whirling).")
+   # --- CÁLCULO DE EFICIENCIA MECÁNICA (MSE) ---
+# 1. Aseguramos que las variables existan (ajustá los nombres si usás otros)
+rpm_actual = rpm if 'rpm' in locals() else 0
+torque_actual = torque if 'torque' in locals() else 0
+wob_actual = wob if 'wob' in locals() else 0
+diametro_mecha = 8.5 # Pulgadas (valor estándar para fase de 8 1/2)
 
-with col_tec2:
-    st.subheader("🧪 Propiedades del Fluido")
-    yp = st.slider("Yield Point (lb/100ft²)", 5, 40, 18)
-    pv = st.slider("Viscosidad Plástica (cP)", 10, 60, 25)
-    
+# 2. Evitamos el error de división por cero si el trépano no avanza
+if rop > 0:
+    # Fórmula de Pessier y Fear (MSE)
+    term1 = (480 * torque_actual * rpm_actual) / (diametro_mecha**2 * rop)
+    term2 = (4 * wob_actual) / (np.pi * diametro_mecha**2)
+    mse = term1 + term2
+else:
+    mse = 0.0
+
+# 3. Mostramos el resultado en el tablero de la UTN
+st.metric("MSE (psi)", f"{int(mse)}", help="Energía Mecánica Específica")
     # Cálculo de Velocidad Crítica (Inicio de Turbulencia)
     vel_critica = (97 * pv + 97 * np.sqrt(pv**2 + 6.2 * (8.5 - 5) * yp * densidad)) / (densidad * (8.5 - 5))
     st.write(f"**Velocidad Crítica en el Anular:** {round(vel_critica, 2)} ft/min")
