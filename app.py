@@ -4,6 +4,13 @@ import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
 
+# --- 1. ACCESO RÁPIDO AL ESTADO DE LA SESIÓN ---
+# Esto le dice a Python que 's' es lo mismo que 'st.session_state'
+s = st.session_state
+
+# --- 2. INICIALIZACIÓN DE VARIABLES (Si no existen) ---
+if "depth" not in s:
+    s["depth"] = 2500.0  # Profundidad inicial de ejemplo
 # --- MOTOR DE CÁLCULOS INTEGRADO (Reemplaza al archivo externo) ---
 def calcular_presiones_fondo(mw, depth_m, flow_gpm):
     """
