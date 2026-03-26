@@ -102,7 +102,7 @@ def guardar_sesion(df, nombre, legajo):
 
     archivo = f"{carpeta}/{legajo}_{nombre}.csv"
     df.to_csv(archivo, index=False)
-   guardar_sesion(st.session_state.history, st.session_state.nombre, st.session_state.legajo)
+guardar_sesion(st.session_state.history, st.session_state.nombre, st.session_state.legajo)
 
 # -----------------------------------
 # VARIABLES
