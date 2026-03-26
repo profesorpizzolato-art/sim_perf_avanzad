@@ -25,7 +25,11 @@ if "formacion" not in st.session_state: st.session_state.formacion = "normal"
 
 if "history" not in st.session_state:
     st.session_state.history = pd.DataFrame(columns=["Depth","WOB","RPM","SPP","ROP"])
+if "pit_vol" not in st.session_state:
+    st.session_state.pit_vol = 500  # bbl
 
+if "gas" not in st.session_state:
+    st.session_state.gas = 0
 # -----------------------------------
 # LOGIN
 # -----------------------------------
@@ -69,29 +73,56 @@ with st.sidebar.expander("🔐 INSTRUCTOR"):
             st.session_state.loss = True
         if st.button("FORMACIÓN DURA", key="form_dura"):
             st.session_state.formacion = "dura"
+# -----------------------------------
+# LODOS
+# -----------------------------------
+st.sidebar.subheader("🛢️ LODO")
 
+mw = st.sidebar.slider("Mud Weight (ppg)", 8.0, 15.0, 10.0, key="mw")
+pv = st.sidebar.slider("Plastic Viscosity (cP)", 5, 50, 20, key="pv")
+yp = st.sidebar.slider("Yield Point", 5, 40, 15, key="yp")
+gel = st.sidebar.slider("Gel Strength", 5, 30, 10, key="gel")
 # -----------------------------------
 # MOTOR
 # -----------------------------------
 def calcular():
-    factor = 1
+
+    factor_formacion = 1
     if st.session_state.formacion == "dura":
-        factor = 0.5
+        factor_formacion = 0.5
 
+    # BASE
     torque = wob * 0.4 + rpm * 0.1
-    spp = flow * 3
-    rop = (wob * rpm / 500) * factor
 
+    # EFECTO LODO EN PRESIÓN
+    spp = flow * 3 + (pv * 15) + (yp * 10)
+
+    # EFECTO LODO EN ROP
+    eficiencia_limpieza = (yp / pv)
+
+    rop = (wob * rpm / 500) * factor_formacion * eficiencia_limpieza
+
+    # CONTROL DE KICK POR MW
+    if mw < 9:
+        if random.random() < 0.1:
+            st.session_state.kick = True
+
+    # PÉRDIDAS POR MW ALTO
+    if mw > 13:
+        st.session_state.loss = True
+
+    # EFECTO LOSS
     if st.session_state.loss:
-        spp *= 0.5
+        spp *= 0.6
 
+    # SARTA ROTA
     if st.session_state.bit_health <= 0:
         rop = 0
 
     return torque, spp, rop
-
-torque, spp, rop = calcular()
-
+ecd = mw + (spp / 10000)
+return torque, spp, rop, ecd
+torque, spp, rop, ecd = calcular()
 # -----------------------------------
 # CABINA
 # -----------------------------------
@@ -110,6 +141,52 @@ c1, c2, c3 = st.columns(3)
 c1.plotly_chart(gauge(st.session_state.depth, "DEPTH", 4000, "cyan"), use_container_width=True)
 c2.plotly_chart(gauge(torque, "TORQUE", 100, "yellow"), use_container_width=True)
 c3.plotly_chart(gauge(spp, "SPP", 5000, "green"), use_container_width=True)
+# -----------------------------------
+# MÉTRICAS OPERATIVAS + LODO
+# -----------------------------------
+c4, c5, c6 = st.columns(3)
+
+c4.metric("ROP", round(rop,1))
+c5.metric("MW", mw)
+c6.metric("PV/YP", f"{pv}/{yp}")
+# -----------------------------------
+# DINÁMICA DE PITS
+# -----------------------------------
+
+# flujo base
+entrada = flow / 10
+salida = flow / 10
+
+# KICK → entra fluido
+if st.session_state.kick:
+    entrada += random.uniform(5, 15)
+
+# LOSS → se pierde
+if st.session_state.loss:
+    salida += random.uniform(5, 15)
+
+# actualizar volumen
+st.session_state.pit_vol += (entrada - salida)
+# generación de gas
+if st.session_state.kick:
+    st.session_state.gas += random.uniform(0.1, 1)
+
+# efecto gas
+mw_efectivo = mw - (st.session_state.gas * 0.2)
+# -----------------------------------
+# DETECCIÓN AUTOMÁTICA
+# -----------------------------------
+
+if st.session_state.pit_vol > 520:
+    st.error("🚨 PIT GAIN → POSIBLE KICK")
+
+if st.session_state.pit_vol < 480:
+    st.warning("⚠️ PIT LOSS → POSIBLE PÉRDIDA")
+c7, c8, c9 = st.columns(3)
+
+c7.metric("PIT VOL", round(st.session_state.pit_vol,1))
+c8.metric("ECD", round(ecd,2))
+c9.metric("GAS %", round(st.session_state.gas,2))
 
 # -----------------------------------
 # ALERTAS
@@ -122,13 +199,70 @@ if st.session_state.loss:
 
 if st.session_state.bit_health <= 0:
     st.error("🔩 SARTA ROTA")
+if mw < 9:
+    st.warning("⚠️ MW BAJO → Riesgo de KICK")
 
+if mw > 13:
+    st.warning("⚠️ MW ALTO → Riesgo de pérdidas")
+
+if yp / pv < 0.5:
+    st.warning("⚠️ Mala limpieza de pozo")
+    if ecd > 14:
+    st.error("🚨 ECD ALTO → riesgo de fractura")
+
+if st.session_state.gas > 5:
+    st.error("🚨 GAS ALTO → riesgo de blowout")
+
+if st.session_state.pit_vol > 520:
+    st.error("🚨 GANANCIA DE VOLUMEN")
+
+if st.session_state.pit_vol < 480:
+    st.warning("⚠️ PÉRDIDA DE LODO")
+    
+    # -----------------------------------
+# DIAGNÓSTICO INTELIGENTE
+# -----------------------------------
+st.subheader("🧠 Diagnóstico MENFA")
+
+if st.session_state.kick:
+    st.error("🔴 KICK → Aumentar MW y cerrar BOP")
+
+elif mw < 9:
+    st.warning("🟠 MW bajo → riesgo de ingreso de fluido")
+
+elif mw > 13:
+    st.warning("🟠 MW alto → riesgo de pérdidas")
+
+elif yp / pv < 0.5:
+    st.info("🔵 Limpieza deficiente → ajustar YP/PV")
+
+elif rop < 5:
+    st.info("🔵 Baja ROP → revisar WOB/RPM o formación")
+
+else:
+    st.success("🟢 Operación óptima")
+    st.subheader("🧠 Diagnóstico Hidráulico MENFA")
+
+if st.session_state.pit_vol > 520 and st.session_state.gas > 2:
+    st.error("🔴 KICK CONFIRMADO → cerrar BOP y circular")
+
+elif st.session_state.pit_vol < 480:
+    st.warning("🟠 PÉRDIDAS → reducir MW y caudal")
+
+elif ecd > 14:
+    st.warning("🟠 FRACTURA → bajar presión")
+
+elif st.session_state.gas > 3:
+    st.info("🔵 GAS EN LODO → monitorear separador")
+
+else:
+    st.success("🟢 Sistema hidráulico estable")
 # -----------------------------------
 # BOTÓN PRINCIPAL (ÚNICO)
 # -----------------------------------
-if st.button("⛏️ PERFORAR 10m", key="btn_perforar_main"):
+if st.button("⛏️ PERFORAR 100m", key="btn_perforar_main"):
 
-    st.session_state.depth += 10
+    st.session_state.depth += 100
     st.session_state.bit_health -= wob * 0.05
 
     fila = {
