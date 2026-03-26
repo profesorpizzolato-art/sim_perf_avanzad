@@ -772,12 +772,14 @@ drag_friccion = s.get('drag', 5.0)
 # 3. Cálculo corregido (Línea 779)
 hook_load_real = hook_load_estatico - drag_friccion - (wob_valor * 0.8)
 
-# 4. Actualizamos el Gauge
-st.metric("Hook Load (klbs)", f"{hook_load_real:.1f}")
-    if dls > 2.5 and wob > 20:
-        st.error("⚠️ RIESGO DE PANDEO (BUCKLING): Reduzca WOB o suavice trayectoria.")
+# --- ANÁLISIS DE RIESGO DIRECCIONAL ---
+dls = s.get('dls_actual', 0.0)
+wob = s.get('wob', 0.0)
 
-with col_mec2:
+# Asegurate de que no haya espacios extra al inicio de este 'if'
+if dls > 2.5 and wob > 20:
+    st.error("⚠️ RIESGO DE FATIGA: DLS excesivo con alto WOB.")
+    st.warning("Reduzca el peso sobre el trépano para evitar rotura de sarta.")
     st.subheader("🌡️ Efecto Térmico en el Lodo")
     temp_superficie = 20 # °C
     gradiente_termico = 0.03 # °C/m
