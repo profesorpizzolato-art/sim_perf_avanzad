@@ -127,6 +127,19 @@ def calcular():
 ecd = mw + (spp / 10000)
 return torque, spp, rop, ecd
 torque, spp, rop, ecd = calcular()
+if st.session_state.bop_cerrado:
+
+    # controlar presión con choke
+    spp = spp * (st.session_state.choke / 100)
+
+    # reducir kick gradualmente
+    if st.session_state.choke < 30:
+        st.session_state.kick = False
+        st.session_state.sidpp = 0
+        st.session_state.sicp = 0
+
+# KMW
+kmw = mw + (st.session_state.sidpp / 1000)
 # -----------------------------------
 # CABINA
 # -----------------------------------
@@ -145,6 +158,10 @@ c1, c2, c3 = st.columns(3)
 c1.plotly_chart(gauge(st.session_state.depth, "DEPTH", 4000, "cyan"), use_container_width=True)
 c2.plotly_chart(gauge(torque, "TORQUE", 100, "yellow"), use_container_width=True)
 c3.plotly_chart(gauge(spp, "SPP", 5000, "green"), use_container_width=True)
+st.session_state.choke = st.slider(
+    "Choke (%)", 0, 100, st.session_state.choke, key="choke_slider"
+)
+
 # -----------------------------------
 # MÉTRICAS OPERATIVAS + LODO
 # -----------------------------------
@@ -153,6 +170,8 @@ c4, c5, c6 = st.columns(3)
 c4.metric("ROP", round(rop,1))
 c5.metric("MW", mw)
 c6.metric("PV/YP", f"{pv}/{yp}")
+st.metric("KILL MW", round(kmw,2))
+
 # -----------------------------------
 # DINÁMICA DE PITS
 # -----------------------------------
@@ -212,7 +231,7 @@ if mw > 13:
 if yp / pv < 0.5:
     st.warning("⚠️ Mala limpieza de pozo")
 if ecd > 14:
-    st.error("🚨 ECD ALTO → riesgo de fractura")
+    st.error("🚨 ECD ALTO → riesgo de fractura") 
 
 if st.session_state.gas > 5:
     st.error("🚨 GAS ALTO → riesgo de blowout")
@@ -222,7 +241,20 @@ if st.session_state.pit_vol > 520:
 
 if st.session_state.pit_vol < 480:
     st.warning("⚠️ PÉRDIDA DE LODO")
-    
+# -----------------------------------
+# WELL CONTROL VARIABLES
+# -----------------------------------
+if "sidpp" not in st.session_state:
+    st.session_state.sidpp = 0
+
+if "sicp" not in st.session_state:
+    st.session_state.sicp = 0
+
+if "bop_cerrado" not in st.session_state:
+    st.session_state.bop_cerrado = False
+
+if "choke" not in st.session_state:
+    st.session_state.choke = 50  # %    
     # -----------------------------------
 # DIAGNÓSTICO INTELIGENTE
 # -----------------------------------
@@ -261,6 +293,24 @@ elif st.session_state.gas > 3:
 
 else:
     st.success("🟢 Sistema hidráulico estable")
+
+if st.session_state.kick and not st.session_state.bop_cerrado:
+
+    st.session_state.sidpp = random.randint(300, 800)
+    st.session_state.sicp = random.randint(500, 1200)
+if st.subheader("🧠 Diagnóstico Well Control")
+
+if st.session_state.kick and not st.session_state.bop_cerrado:
+    st.error("🔴 KICK ACTIVO → Cerrar BOP YA")
+
+elif st.session_state.bop_cerrado and st.session_state.choke > 70:
+    st.warning("🟠 CHOKE MUY ABIERTO → Riesgo de descontrol")
+
+elif st.session_state.bop_cerrado and st.session_state.choke < 30:
+    st.success("🟢 Pozo en control")
+
+else:
+    st.info("🔵 Monitoreando condiciones")
 # -----------------------------------
 # BOTÓN PRINCIPAL (ÚNICO)
 # -----------------------------------
@@ -307,14 +357,21 @@ if len(st.session_state.history) > 1:
     st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------------
-# WELL CONTROL
+# WELL CONTROL PRO
 # -----------------------------------
-st.subheader("🛡️ WELL CONTROL")
+st.subheader("🛡️ CONTROL DE POZO PRO")
 
-if st.session_state.kick:
-    if st.button("🔒 CERRAR BOP", key="btn_bop"):
-        st.session_state.kick = False
-        st.success("Pozo controlado")
+c1, c2, c3 = st.columns(3)
+
+c1.metric("SIDPP", st.session_state.sidpp)
+c2.metric("SICP", st.session_state.sicp)
+c3.metric("CHOKE %", st.session_state.choke)
+if st.session_state.kick and not st.session_state.bop_cerrado:
+
+    if st.button("🔒 CERRAR BOP", key="bop_pro"):
+        st.session_state.bop_cerrado = True
+        st.success("Pozo cerrado correctamente")
+
 
 # -----------------------------------
 # RANKING
@@ -339,7 +396,15 @@ def ranking():
 df_rank = ranking()
 if not df_rank.empty:
     st.dataframe(df_rank)
+score = 100
 
+if st.session_state.kick and not st.session_state.bop_cerrado:
+    score -= 40
+
+if st.session_state.bop_cerrado and st.session_state.choke > 80:
+    score -= 20
+
+st.metric("PUNTAJE WELL CONTROL", score)
 # -----------------------------------
 # CERTIFICADO
 # -----------------------------------
