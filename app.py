@@ -152,10 +152,15 @@ st.sidebar.subheader("💰 Economía de Perforación")
 costo_equipo = st.sidebar.number_input("Costo Rig (USD/hr)", value=1500)
 costo_mecha = st.sidebar.number_input("Costo Mecha (USD)", value=15000)
 
-# Cálculo simple de eficiencia
-if rop > 0:
-    costo_metro = (costo_mecha + (costo_equipo * 24)) / (rop * 24)
-    st.sidebar.metric("Costo Estimado", f"${round(costo_metro, 2)} /m")
+# --- VALIDACIÓN DE SEGURIDAD ---
+# Nos aseguramos de que rop sea un número y no una lista
+rop_valor = float(rop[0]) if isinstance(rop, (list, np.ndarray)) else float(rop)
+
+if rop_valor > 0:
+    st.success(f"🚀 Perforando a {rop_valor:.2f} m/h")
+    # Aquí va tu lógica de avance de metros
+else:
+    st.warning("⚠️ Sin avance. Verifique WOB y RPM.")
 
 # --- BOTÓN DE REPORTE FINAL ---
 st.divider()
