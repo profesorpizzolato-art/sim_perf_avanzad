@@ -6,6 +6,11 @@ import random
 import plotly.graph_objects as go
 from datetime import datetime
 from fpdf import FPDF
+# Inicialización de seguridad al inicio del script
+rpm_actual = 0
+wob = 0
+rop_actual = 0
+vibracion_axial = 0
 # --- INICIALIZACIÓN GLOBAL ---
 if 'vibracion_axial' not in st.session_state:
     vibracion_axial = 0.1
@@ -59,6 +64,10 @@ st.sidebar.header("🕹️ Mandos de la Cabina")
 densidad = st.sidebar.slider("Densidad del Lodo (ppg)", 8.0, 19.0, 10.5)
 caudal = st.sidebar.slider("Caudal de Bomba (GPM)", 100, 1200, 500)
 presion = st.sidebar.number_input("Presión de Standpipe (PSI)", 500, 5000, 3200)
+rpm_actual = st.sidebar.slider("Velocidad de Rotación (RPM)", 0, 150, 60)
+wob = st.sidebar.slider("Peso sobre la Mecha (WOB - klbs)", 0, 50, 15)
+rop_actual = st.sidebar.slider("Tasa de Penetración (ROP - m/h)", 0, 40, 10)
+densidad_lodo = st.sidebar.number_input("Densidad del Lodo (ppg)", 8.33, 18.0, 9.5)
 
 hhp_val, if_val = calcular_metricas(presion, caudal, densidad)
 
