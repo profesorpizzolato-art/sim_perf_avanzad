@@ -1242,52 +1242,63 @@ from fpdf import FPDF
 import io
 
 def generar_reporte_tecnico():
+    # 1. Inicialización limpia
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
     
-    # 1. ENCABEZADO (Limpiamos acentos para evitar errores)
+    # Función interna para limpiar texto (quita acentos y símbolos raros)
+    def limpiar(texto):
+        return str(texto).replace("•", "-").replace("ñ", "n").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").replace("¡", "").replace("!", "")
+
+    # 2. Encabezado
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "MENFA CAPACITACIONES - REPORTE TECNICO", ln=True, align='C')
+    pdf.cell(200, 10, limpiar("MENFA CAPACITACIONES - REPORTE DE SIMULACION"), ln=True, align='C')
+    pdf.ln(10)
+
+    # 3. Sección de Fórmulas (Aquí fallaba la línea 1276)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, limpiar("Glosario Tecnico y Formulas"), ln=True)
     pdf.set_font("Arial", '', 10)
-    pdf.cell(200, 10, f"Ubicacion: Mendoza, Argentina", ln=True, align='C')
-    pdf.ln(10)
-
-    # 2. LISTA DE FORMULAS (Cambiamos el punto • por un guion -)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "Glosario de Ingenieria y Formulas", ln=True)
-    
-    # Definimos las fórmulas con texto plano (sin acentos raros ni símbolos)
-    formulas = [
-        ("ECD (Densidad Circulante)", "MW + (dP_ann / (0.1703 * TVD))"),
-        ("MSE (Energia Especifica)", "(480 * T * RPM / D^2 * ROP) + (4 * WOB / pi * D^2)"),
-        ("CCI (Indice de Limpieza)", "(k * MW * Vann) / 400,000"),
-        ("DLS (Severidad de Dogleg)", "(Delta Inc / Distancia) * 30"),
-        ("MAASP (Presion Maxima)", "(LOT - MW) * 0.1703 * TVD_zapata")
-    ]
-
-    # 2. GLOSARIO DE FÓRMULAS USADAS
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "2. Glosario de Ingeniería y Fórmulas", ln=True)
-    pdf.set_font("Arial", 'I', 9)
     
     formulas = [
-        ("ECD (Equivalent Circulating Density)", "MW + (dP_ann / (0.1703 * TVD))"),
-        ("MSE (Mechanical Specific Energy)", "(480 * T * RPM / D^2 * ROP) + (4 * WOB / pi * D^2)"),
-        ("CCI (Cuttings Carrying Index)", "(k * MW * Vann) / 400,000"),
-        ("DLS (Dogleg Severity)", "(Delta Inclination / Distance) * 30"),
-        ("MAASP", "(LOT - MW) * 0.1703 * TVD_shoe"),
-        ("KMW (Kill Mud Weight)", "MW + (SIDPP / (0.1703 * TVD))")
+        ("ECD", "MW + (dP_ann / (0.1703 * TVD))"),
+        ("MSE", "(480 * T * RPM / D^2 * ROP) + (4 * WOB / pi * D^2)"),
+        ("CCI", "(k * MW * Vann) / 400,000")
     ]
-    
-  # Este es el bloque que fallaba en la línea 1276
-    for titulo, formula in formulas:
+
+  for titulo, formula in formulas:
         pdf.set_font("Arial", 'B', 10)
-        # USAMOS UN GUION (-) EN LUGAR DEL PUNTO (•)
-        pdf.cell(0, 7, f"- {titulo}:", ln=True) 
+        
+        # Saneamiento extremo: convertimos a latin-1 y lo que no sepa leer, lo ignora
+        titulo_seguro = titulo.encode('latin-1', 'ignore').decode('latin-1').replace("•", "-")
+        pdf.cell(0, 7, f"- {titulo_seguro}:", ln=True) 
+        
         pdf.set_font("Arial", '', 10)
-        pdf.cell(0, 7, f"  Formula: {formula}", ln=True)
+        formula_segura = formula.encode('latin-1', 'ignore').decode('latin-1')
+        pdf.cell(0, 7, f"  Formula: {formula_segura}", ln=True)
+    if not st.session_state.errores_iadc:
+        pdf.cell(0, 7, "Operacion sin incidentes registrados.", ln=True)
+    else:
+        for error in st.session_state.errores_iadc:
+            # Limpiamos el mensaje de error que viene del simulador
+            msg_error = limpiar(error['Infracción'])
+            pdf.cell(0, 7, f"- {msg_error}", ln=True)
+
+    # 5. Salida segura
+    return pdf.output(dest='S').encode('latin-1', 'replace')
     
-    pdf.ln(10)
+  for titulo, formula in formulas:
+        pdf.set_font("Arial", 'B', 10)
+        
+        # Aquí es donde estaba el error (Línea 1276)
+        # Usamos un guion (-) en lugar del punto (•)
+        pdf.cell(0, 7, f"- {titulo}:", ln=True) 
+        
+        pdf.set_font("Arial", '', 10)
+        # Limpiamos la fórmula por si tiene caracteres raros
+        formula_limpia = formula.replace("²", "2").replace("π", "pi")
+        pdf.cell(0, 7, f"  Formula: {formula_limpia}", ln=True)
 
     # 3. REGISTRO DE EVENTOS IADC
     pdf.set_font("Arial", 'B', 12)
@@ -1413,3 +1424,19 @@ st.sidebar.download_button(
     file_name=f"Certificado_{nombre_alumno.replace(' ', '_')}.pdf",
     mime="application/pdf"
 )
+# --- FINAL DEL ARCHIVO ---
+st.sidebar.divider()
+st.sidebar.subheader("📄 Exportar Documentacion")
+
+# Solo generamos los bytes si el usuario hace clic o si los datos existen
+try:
+    pdf_bytes = generar_reporte_tecnico() # Esta es tu línea 1298 corregida
+
+    st.sidebar.download_button(
+        label="Descargar Reporte PDF",
+        data=pdf_bytes,
+        file_name="Reporte_Menfa.pdf",
+        mime="application/pdf"
+    )
+except Exception as e:
+    st.sidebar.error("Error al generar PDF. Verifique los datos.")
