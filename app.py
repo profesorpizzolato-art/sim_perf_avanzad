@@ -5,7 +5,7 @@ import time
 import random
 import plotly.graph_objects as go
 from datetime import datetime
-from fpdf2 import FPDF
+from fpdf import FPDF  # <--- NOTA: Aunque la librería se instala como fpdf2, el import suele ser 'from fpdf import FPDF'
 # Inicialización de seguridad al inicio del script
 # Inicialización de seguridad (Línea 10 aprox.)
 profundidad_actual = 0 
