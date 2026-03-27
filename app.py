@@ -1264,19 +1264,16 @@ curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegaci
 
 # 2. BOTÓN DE PREPARACIÓN (Esto evita que la app "explote" sola)
 if st.sidebar.button("🛠️ Generar Certificado Técnico"):
-    try:
-        # Dentro de tu función de generar_certificado...
-if st.session_state.tiempo_reaccion:
-    t = st.session_state.tiempo_reaccion
-    if t <= 45:
-        calificacion_seguridad = "EXCELENTE (Nivel Senior)"
-        color_eval = (0, 128, 0) # Verde
-    elif t <= 90:
-        calificacion_seguridad = "ACEPTABLE (Nivel Junior)"
-        color_eval = (255, 165, 0) # Naranja
-    else:
-        calificacion_seguridad = "CRÍTICO - REQUIERE RE-ENTRENAMIENTO"
-        color_eval = (200, 0, 0) # Rojo
+try:
+        # Estas líneas DEBEN tener 8 espacios (o 2 tabs) desde el borde izquierdo
+        if st.session_state.tiempo_reaccion:
+            pdf.ln(5)
+            pdf.set_font("Arial", 'B', 12)
+            pdf.set_text_color(200, 0, 0)
+            pdf.cell(0, 10, "PRUEBA DE STRESS OPERATIVO: COMPLETADA", ln=True)
+            # ... y así con el resto del bloque
+    except Exception as e:
+          st.sidebar.error(f"Error: {e}")
 
     pdf.set_text_color(*color_eval)
     pdf.cell(0, 10, f"Evaluacion de Respuesta: {calificacion_seguridad} ({t} seg)", ln=True)
