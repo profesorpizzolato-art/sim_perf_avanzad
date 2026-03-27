@@ -5,7 +5,7 @@ import time
 import random
 import plotly.graph_objects as go
 from datetime import datetime
-from fpdf import FPDF
+from fpdf2 import FPDF
 # Inicialización de seguridad al inicio del script
 # Inicialización de seguridad (Línea 10 aprox.)
 profundidad_actual = 0 
@@ -278,7 +278,7 @@ with col_ecd1:
     # Parámetros para fricción (Simplificado para el simulador)
     viscosidad = st.slider("Viscosidad Plástica (cP)", 10, 60, 25)
     longitud_pozo = profundidad_actual # Tomado de la sección anterior
-    
+   
     # Fórmula simplificada de pérdida de carga anular (APL) en ppg
     # APL = (0.000077 * Densidad * Velocidad^2) / (D_hoyo - D_tuberia)
     # Aquí usamos una aproximación directa basada en Caudal y Viscosidad
@@ -1245,22 +1245,25 @@ def generar_reporte_tecnico():
     pdf = FPDF()
     pdf.add_page()
     
-    # Encabezado Profesional
+    # 1. ENCABEZADO (Limpiamos acentos para evitar errores)
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "MENFA CAPACITACIONES - REPORTE TÉCNICO", ln=True, align='C')
+    pdf.cell(200, 10, "MENFA CAPACITACIONES - REPORTE TECNICO", ln=True, align='C')
     pdf.set_font("Arial", '', 10)
-    pdf.cell(200, 10, f"Ubicación: Mendoza, Argentina | Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align='C')
+    pdf.cell(200, 10, f"Ubicacion: Mendoza, Argentina", ln=True, align='C')
     pdf.ln(10)
 
-    # 1. ESTADO ACTUAL DEL POZO
+    # 2. LISTA DE FORMULAS (Cambiamos el punto • por un guion -)
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "1. Parámetros de Operación Actuales", ln=True)
-    pdf.set_font("Arial", '', 10)
-    pdf.cell(0, 7, f"- Profundidad: {profundidad_actual} m", ln=True)
-    pdf.cell(0, 7, f"- Densidad del Lodo (MW): {densidad_lodo} ppg", ln=True)
-    pdf.cell(0, 7, f"- ECD Dinámico: {round(ecd_dinamico, 2)} ppg", ln=True)
-    pdf.cell(0, 7, f"- Inclinación: {inc_deseada} grados", ln=True)
-    pdf.ln(5)
+    pdf.cell(0, 10, "Glosario de Ingenieria y Formulas", ln=True)
+    
+    # Definimos las fórmulas con texto plano (sin acentos raros ni símbolos)
+    formulas = [
+        ("ECD (Densidad Circulante)", "MW + (dP_ann / (0.1703 * TVD))"),
+        ("MSE (Energia Especifica)", "(480 * T * RPM / D^2 * ROP) + (4 * WOB / pi * D^2)"),
+        ("CCI (Indice de Limpieza)", "(k * MW * Vann) / 400,000"),
+        ("DLS (Severidad de Dogleg)", "(Delta Inc / Distancia) * 30"),
+        ("MAASP (Presion Maxima)", "(LOT - MW) * 0.1703 * TVD_zapata")
+    ]
 
     # 2. GLOSARIO DE FÓRMULAS USADAS
     pdf.set_font("Arial", 'B', 12)
@@ -1276,9 +1279,11 @@ def generar_reporte_tecnico():
         ("KMW (Kill Mud Weight)", "MW + (SIDPP / (0.1703 * TVD))")
     ]
     
+  # Este es el bloque que fallaba en la línea 1276
     for titulo, formula in formulas:
         pdf.set_font("Arial", 'B', 10)
-        pdf.cell(0, 7, f"• {titulo}:", ln=True)
+        # USAMOS UN GUION (-) EN LUGAR DEL PUNTO (•)
+        pdf.cell(0, 7, f"- {titulo}:", ln=True) 
         pdf.set_font("Arial", '', 10)
         pdf.cell(0, 7, f"  Formula: {formula}", ln=True)
     
@@ -1370,7 +1375,27 @@ def generar_reporte_tecnico_certificado(nombre, dni, curso, errores):
     else:
         for err in errores:
             pdf.cell(0, 7, f"- {err['Infracción']} registrado a las {err['Hora']}", ln=True)
+# ... (vienes de la parte de las fórmulas y KPIs) ...
 
+    # --- AQUÍ PEGAS EL BLOQUE NUEVO ---
+    # 3. REGISTRO DE EVENTOS (Limpieza de caracteres)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "Auditoria de Seguridad (IADC Log)", ln=True)
+    pdf.set_font("Arial", '', 10)
+    
+    if not st.session_state.errores_iadc:
+        pdf.cell(0, 7, "Sin infracciones detectadas. Operacion Segura.", ln=True)
+    else:
+        for error in st.session_state.errores_iadc:
+            # Limpieza de caracteres que rompen el PDF
+            msg = f"- {error['Infracción']}".replace("¡", "").replace("!", "").replace("ó", "o").replace("í", "i")
+            pdf.cell(0, 7, msg, ln=True)
+
+    # El RETURN es la última línea de la función. 
+    # Asegúrate de que esté alineado (identado) con el 'pdf = FPDF()' del inicio.
+    return pdf.output(dest='S').encode('latin-1', 'replace') 
+
+# --- FIN DE LA FUNCIÓN ---
     # --- PIE DE PÁGINA / FIRMA ---
     pdf.ln(20)
     pdf.line(10, pdf.get_y(), 70, pdf.get_y())
