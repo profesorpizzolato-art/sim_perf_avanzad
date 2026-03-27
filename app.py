@@ -7,6 +7,9 @@ import plotly.graph_objects as go
 from datetime import datetime
 from fpdf import FPDF
 # Inicialización de seguridad al inicio del script
+# Inicialización de seguridad (Línea 10 aprox.)
+profundidad_actual = 0 
+temp_fondo = 20 # Temperatura de superficie por defecto
 rpm_actual = 0
 wob = 0
 rop_actual = 0
@@ -25,6 +28,12 @@ s = st.session_state
 # --- 2. INICIALIZACIÓN DE VARIABLES (Si no existen) ---
 if "depth" not in s:
     s["depth"] = 2500.0  # Profundidad inicial de ejemplo
+    # --- EN LA BARRA LATERAL (Sidebar) ---
+profundidad_actual = st.sidebar.slider("Profundidad Actual (m)", 0, 5000, 1000)
+
+# --- AHORA SÍ, REALIZÁS EL CÁLCULO ---
+# Pegá esto justo después del slider:
+temp_fondo = 20 + (0.03 * profundidad_actual)
 # --- MOTOR DE CÁLCULOS INTEGRADO (Reemplaza al archivo externo) ---
 def calcular_presiones_fondo(mw, depth_m, flow_gpm):
     """
