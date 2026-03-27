@@ -2,4 +2,4 @@ streamlit
 pandas
 numpy
 plotly
-FPDF2
+fpdf2
