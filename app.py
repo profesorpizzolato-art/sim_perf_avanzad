@@ -945,7 +945,16 @@ if cci < 1.0:
 # --- PANEL DE TELEMETRÍA MAESTRA (KPI CONSOLIDATED VIEW) ---
 st.divider()
 st.header("📡 Centro de Control y Telemetría de Alta Fidelidad")
+# --- CÁLCULO DE VIBRACIONES (Pegar antes de la línea 960) ---
+# Simulamos la vibración axial (Bit Bounce) basada en WOB y RPM
+# Si no hay rotación o peso, la vibración es mínima (0.1)
+if rpm_actual > 0 and wob > 0:
+    vibracion_axial = (wob / 5) * (rpm_actual / 100) * random.uniform(0.8, 1.2)
+else:
+    vibracion_axial = 0.1
 
+# Ahora la línea 960 podrá leer la variable sin errores
+st.metric("Vib. Axial", f"{round(vibracion_axial, 1)}G", delta="ALTA" if vibracion_axial > 3 else "OK", delta_color="inverse")
 # Creamos una matriz de KPIs para una lectura rápida tipo "Glass Cockpit"
 kpi_col1, kpi_col2, kpi_col3, kpi_col4, kpi_col5 = st.columns(5)
 
