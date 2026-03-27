@@ -6,6 +6,15 @@ import random
 import plotly.graph_objects as go
 from datetime import datetime
 from fpdf import FPDF  # <--- NOTA: Aunque la librería se instala como fpdf2, el import suele ser 'from fpdf import FPDF'
+import numpy as np # Necesitamos Numpy para la vibración
+
+# --- INICIALIZACIÓN DE ESTADOS DE SEGURIDAD ---
+if 'evento_activo' not in st.session_state:
+    st.session_state.evento_activo = None
+if 'presion_vibracion' not in st.session_state:
+    st.session_state.presion_vibracion = 0.0
+if 'vibracion_reloj' not in st.session_state:
+    st.session_state.vibracion_reloj = time.time()
 # Inicialización de seguridad al inicio del script
 # Inicialización de seguridad (Línea 10 aprox.)
 profundidad_actual = 0 
@@ -1256,7 +1265,22 @@ curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegaci
 # 2. BOTÓN DE PREPARACIÓN (Esto evita que la app "explote" sola)
 if st.sidebar.button("🛠️ Generar Certificado Técnico"):
     try:
-        # Aquí llamamos a la función técnica con paracaídas de seguridad
+        # Dentro de tu función de generar_certificado...
+if st.session_state.tiempo_reaccion:
+    t = st.session_state.tiempo_reaccion
+    if t <= 45:
+        calificacion_seguridad = "EXCELENTE (Nivel Senior)"
+        color_eval = (0, 128, 0) # Verde
+    elif t <= 90:
+        calificacion_seguridad = "ACEPTABLE (Nivel Junior)"
+        color_eval = (255, 165, 0) # Naranja
+    else:
+        calificacion_seguridad = "CRÍTICO - REQUIERE RE-ENTRENAMIENTO"
+        color_eval = (200, 0, 0) # Rojo
+
+    pdf.set_text_color(*color_eval)
+    pdf.cell(0, 10, f"Evaluacion de Respuesta: {calificacion_seguridad} ({t} seg)", ln=True)
+    # Aquí llamamos a la función técnica con paracaídas de seguridad
         # Si una variable no existe (como mse o cci), le asignamos 0.0 para que no falle
         datos_errores = st.session_state.get('errores_iadc', [])
         
@@ -1281,3 +1305,181 @@ if st.sidebar.button("🛠️ Generar Certificado Técnico"):
         # Si algo falla (ej: falta una variable), te lo dice acá sin romper el simulador
         st.sidebar.error(f"Falta información de simulación: {e}")
         st.sidebar.info("Asegúrese de haber iniciado la perforación para capturar datos técnicos.")
+        
+# --- PANEL DE CONTROL DE POZO (BOP) ---
+st.sidebar.markdown("### 🕹️ Panel de Emergencia")
+if st.sidebar.button("🔒 CERRAR BOP (Shut-in)"):
+    if st.session_state.cronometro_activo:
+        st.session_state.tiempo_reaccion = round(time.time() - st.session_state.tiempo_inicio_evento, 2)
+        st.session_state.cronometro_activo = False
+        st.session_state.evento_activo = None
+        st.sidebar.success(f"Pozo Cerrado en {st.session_state.tiempo_reaccion} segundos")
+        
+# --- PANEL DE INSTRUCTOR (Solo visible para vos) ---
+with st.expander("🛠️ CONSOLA DE INSTRUCTOR", expanded=False):
+    if st.button("🚨 ACTIVAR SURGENCIA (KICK)"):
+        st.session_state.cronometro_activo = True
+        st.session_state.tiempo_inicio_evento = time.time()
+        st.session_state.evento_activo = "KICK"
+        st.warning("⚠️ Evento de Control de Pozo Iniciado")
+with st.expander("🛠️ CONSOLA DE INSTRUCTOR (Evaluación)", expanded=False):
+    st.markdown("### Generar Eventos en Tiempo Real")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🚨 Simular Amago de Surgencia (Kick)"):
+            st.session_state.evento_activo = "KICK"
+            st.session_state.presion_anular += 200 # Aumento súbito
+            
+        if st.button("📉 Simular Pérdida de Circulación"):
+            st.session_state.evento_activo = "LOST_CIRC"
+            st.session_state.retorno_lodo -= 30 # Baja el nivel en cajones
+            
+    with col2:
+        if st.button("⚙️ Falla en Bomba 1"):
+            st.session_state.falla_bomba = True
+            st.session_state.presion_bombeo = 0
+            
+    if st.button("✅ Limpiar Eventos"):
+        st.session_state.evento_activo = None
+        st.session_state.falla_bomba = False
+
+import plotly.graph_objects as go
+
+def graficar_geologia_y_pozo(profundidad_actual):
+    fig = go.Figure()
+
+    # 1. Definimos las Formaciones (Colores de fondo)
+    # Ejemplo: Formación Agrio (Arcillas), Formación Mulichinco (Arenas)
+    formaciones = [
+        dict(nombre="Post-Cuyana", top=0, base=1000, color="lightyellow"),
+        dict(nombre="Fm. Huitrín", top=1000, base=1800, color="lightgrey"),
+        dict(nombre="Fm. Agrio (Target)", top=1800, base=2500, color="lightgreen"),
+    ]
+
+    for f in formaciones:
+        fig.add_hrect(y0=f['top'], y1=f['base'], fillcolor=f['color'], opacity=0.3, 
+                      annotation_text=f['nombre'], annotation_position="top left")
+
+    # 2. Trayectoria del Pozo (Línea vertical que crece)
+    fig.add_trace(go.Scatter(
+        x=[0, 0], 
+        y=[0, profundidad_actual],
+        mode='lines+markers',
+        line=dict(color='black', width=4),
+        name="Pozo Actual"
+    ))
+
+    fig.update_yaxis(autorange="reversed", title="Profundidad (m)")
+    fig.update_layout(title="Perfil Geológico vs. Trayectoria", height=600)
+    
+    return fig
+
+# En el cuerpo principal de tu app:
+st.plotly_chart(graficar_geologia_y_pozo(profundidad_actual), use_container_width=True)
+
+# --- CONFIGURACIÓN GEOLÓGICA ---
+formaciones = [
+    {"nombre": "Post-Cuyana (Arenas)", "top": 0, "base": 800, "color": "#f4d03f", "fp": 1.2},
+    {"nombre": "Fm. Agrio (Lutitas)", "top": 800, "base": 1500, "color": "#aab7b8", "fp": 0.8},
+    {"nombre": "Fm. Huitrín (Evaporitas)", "top": 1500, "base": 2200, "color": "#85c1e9", "fp": 0.9},
+    {"nombre": "Vaca Muerta (Calizas/Lutitas)", "top": 2200, "base": 3000, "color": "#2e4053", "fp": 0.5}
+]
+
+def obtener_formacion_actual(prof):
+    for f in formaciones:
+        if f["top"] <= prof < f["base"]:
+            return f
+    return formaciones[-1] # Por si se pasa del fondo definido
+
+# --- CÁLCULO DE PERFORACIÓN ---
+f_actual = obtener_formacion_actual(profundidad_actual)
+factor_dureza = f_actual["fp"]
+
+# Fórmula base de ROP (ajustada por formación)
+rop_base = (wob * rpm) / (diametro_mecha ** 2) 
+rop_final = rop_base * factor_dureza
+
+# Si el Instructor activa un evento (ej: Mecha gastada), bajamos la ROP un 40%
+if st.session_state.get('mecha_gastada', False):
+    rop_final *= 0.6
+
+# --- UI: INDICADOR DE POSICIÓN GEOLÓGICA ---
+with st.container():
+    col_geo, col_data = st.columns([1, 3])
+    
+    with col_geo:
+        st.markdown(f"**Formación Actual:**")
+        st.success(f_actual['nombre'])
+        # Un cuadrito de color que represente la roca
+        st.markdown(
+            f'<div style="background-color:{f_actual["color"]}; width:100%; height:50px; border-radius:5px; border:1px solid black;"></div>', 
+            unsafe_allow_html=True
+        )
+    
+    with col_data:
+        st.metric("ROP Real", f"{round(rop_final, 1)} m/h", 
+                  delta=f"{f_actual['nombre']}", delta_color="normal")
+
+import time
+
+# Inicializar estados de evaluación si no existen
+if 'cronometro_activo' not in st.session_state:
+    st.session_state.cronometro_activo = False
+if 'tiempo_inicio_evento' not in st.session_state:
+    st.session_state.tiempo_inicio_evento = 0
+if 'tiempo_reaccion' not in st.session_state:
+    st.session_state.tiempo_reaccion = None
+
+# Lógica del Cronómetro
+if st.session_state.cronometro_activo:
+    st.session_state.tiempo_transcurrido = time.time() - st.session_state.tiempo_inicio_evento
+
+# =========================================================
+# ⚙️ MOTOR DE REACCIÓN DINÁMICA (KICK/SURGENCIA)
+# =========================================================
+
+# 1. Definimos las variables base de simulación (si no las tienes)
+# Estas son las que el alumno controla (o deberían controlarse)
+delta_presion_bombeo = 0.0
+delta_nivel_cajones = 0.0
+
+# 2. Reacción AGRESIVA si hay un KICK activo
+if st.session_state.get('evento_activo') == "KICK":
+    # --- SUBIDA AGRESIVA DE PRESIONES ---
+    # La presión anular (SPP) sube 150 psi/refresco y la anular (CP) 100 psi/refresco
+    st.session_state.presion_bombeo += 150 
+    st.session_state.presion_anular += 100
+    st.session_state.nivel_cajones += 30 # Ganancia rápida de nivel
+    st.session_state.retorno_lodo = 110 # El retorno se dispara al 110%
+
+    # --- MOTOR DE VIBRACIÓN (PÁNICO VISUAL) ---
+    # Hacemos que la aguja vibre rápidamente para simular gas/caos
+    if time.time() - st.session_state.vibracion_reloj > 0.05: # 20 veces por segundo
+        # Agregamos ruido aleatorio (vibración)
+        st.session_state.presion_vibracion = np.random.normal(0, 50.0) # Media 0, Desv. Estándar 50 psi
+        st.session_state.vibracion_reloj = time.time()
+
+# 3. Aplicamos la vibración a las variables de visualización
+# Solo para los manómetros/gráficos, no para los cálculos
+presion_bombeo_gauge = st.session_state.presion_bombeo + st.session_state.presion_vibracion
+presion_anular_gauge = st.session_state.presion_anular + st.session_state.presion_vibracion
+nivel_cajones_gauge = st.session_state.nivel_cajones + (st.session_state.presion_vibracion / 10.0) # Menos vibración en cajones
+
+# Ejemplo de manómetro de Plotly con vibración
+fig_bombeo = go.Figure(go.Indicator(
+    mode = "gauge+number",
+    # !!! IMPORTANTE: Usamos la variable CON VIBRACIÓN !!!
+    value = presion_bombeo_gauge, 
+    domain = {'x': [0, 1], 'y': [0, 1]},
+    title = {'text': "Presion Bombeo (SPP) psi"},
+    gauge = {
+        'axis': {'range': [None, 5000]},
+        'steps' : [
+            {'range': [0, 2500], 'color': "lightgray"},
+            {'range': [2500, 4000], 'color': "gray"}],
+        'threshold' : {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 4500}
+    }
+))
+# ... (dibujar gráfico) ...
+
