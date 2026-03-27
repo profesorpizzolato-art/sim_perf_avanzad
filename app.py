@@ -49,6 +49,11 @@ def calcular_presiones_fondo(mw, depth_m, flow_gpm):
     return bhp_total, ecd
 # Configuración de la cabina
 st.set_page_config(page_title="Simulador Perf. Avanzada v3.0", layout="wide")
+# Definir todo lo que falta antes de mostrarlo
+vibracion_axial = (wob / 5) * (rpm_actual / 100) if rpm_actual > 0 else 0.1
+d_exp_norm = (np.log10(rop_actual/(60*rpm_actual)) / np.log10(12*wob/(10**6*5.875))) * (9/densidad_lodo) if rpm_actual > 0 else 0
+temp_fondo = 20 + (0.03 * profundidad_actual)
+# ... cualquier otro cálculo (CCI, ECD) ...
 
 # --- LÓGICA DE CÁLCULOS ---
 def calcular_metricas(presion, caudal, densidad):
@@ -1017,7 +1022,17 @@ with kpi_col4:
 with kpi_col5:
     st.metric("Stick-Slip", f"{round(variacion_torque, 2)}", delta="Inestable" if variacion_torque > 1.5 else "Estable", delta_color="inverse")
     st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
+# --- CÁLCULO DE TEMPERATURA DE FONDO (Gradiente Geotérmico) ---
+# Supuestos para Mendoza/Cuenca Cuyana: 
+# Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
+temp_superficie = 20 
+gradiente_geotermico = 0.03 # °C/metro
 
+# Cálculo dinámico
+temp_fondo = temp_superficie + (gradiente_geotermico * profundidad_actual)
+
+# Ahora la línea 1019 funcionará correctamente
+st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
 # --- GRÁFICO RADAR DE PERFORMANCE TÉCNICA ---
 st.subheader("🕸️ Análisis Multivariable de Operación")
 
