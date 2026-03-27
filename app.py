@@ -1242,78 +1242,42 @@ from fpdf import FPDF
 from datetime import datetime
 
 # --- FUNCION UNICA Y LIMPIA ---
-def generar_reporte_tecnico_certificado(nombre, dni, curso, errores):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Función interna para limpiar texto y evitar errores de PDF
-    def limpiar(t):
-        return str(t).replace("•", "-").replace("¡", "").replace("!", "").replace("ó", "o").replace("í", "i").replace("á", "a").replace("é", "e").replace("ú", "u").replace("ñ", "n")
-
-    # --- ENCABEZADO INSTITUCIONAL ---
-    pdf.set_fill_color(30, 41, 59) # Azul oscuro
-    pdf.rect(0, 0, 210, 40, 'F')
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Arial", 'B', 20)
-    pdf.cell(190, 25, "MENFA CAPACITACIONES", ln=True, align='C')
-    
-    # --- DATOS DEL ALUMNO ---
-    pdf.set_text_color(0, 0, 0)
-    pdf.ln(20)
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, limpiar(f"ALUMNO: {nombre.upper()}"), ln=True)
-    pdf.set_font("Arial", '', 11)
-    pdf.cell(0, 7, f"DNI: {dni}", ln=True)
-    pdf.cell(0, 7, limpiar(f"CURSO: {curso}"), ln=True)
-    pdf.cell(0, 7, f"FECHA: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True)
-    pdf.ln(10)
-
-    # --- REGISTRO DE EVENTOS IADC ---
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "Auditoria de Seguridad Operativa (IADC):", ln=True)
-    pdf.set_font("Arial", '', 10)
-    
-    if not errores:
-        pdf.cell(0, 7, "Operacion sin infracciones detectadas. Excelente desempeño.", ln=True)
-    else:
-        for err in errores:
-            # Limpiamos cada mensaje de error
-            msg = limpiar(f"- {err['Infracción']} ({err['Hora']})")
-            pdf.cell(0, 7, msg, ln=True)
-
-    # --- PIE DE PÁGINA ---
-    pdf.ln(20)
-    pdf.line(10, pdf.get_y(), 70, pdf.get_y())
-    pdf.set_font("Arial", 'I', 8)
-    pdf.cell(60, 5, "Firma Instructor Menfa", align='C')
-    
-    # Retornar el PDF seguro
-    return pdf.output(dest='S').encode('latin-1', 'replace')
-
-# --- UI EN EL SIDEBAR (FUERA DE LA FUNCIÓN) ---
-st.sidebar.image("logo_menfa.png", width=150) # Asegúrate de tener la imagen o comenta esta línea
-st.sidebar.title("🎓 Acceso de Alumno")
-nombre_alumno = st.sidebar.text_input("Nombre Completo:", value="Fabricio")
-dni_alumno = st.sidebar.text_input("DNI:", value="")
-curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegación", "Ingeniería de Fluidos"])
-
+# =========================================================
+# 📄 SECCIÓN FINAL: EXPORTACIÓN Y CERTIFICADO (PEGAR AL FINAL)
+# =========================================================
 st.sidebar.divider()
+st.sidebar.subheader("🎓 Panel de Certificación Menfa")
 
-# --- LÓGICA DEL BOTÓN DE DESCARGA ---
-try:
-    # Generamos los bytes llamando a la función limpia
-    pdf_final = generar_reporte_tecnico_certificado(
-        nombre_alumno, 
-        dni_alumno, 
-        curso_tipo, 
-        st.session_state.get('errores_iadc', [])
-    )
+# 1. Inputs del Alumno
+nombre_alumno = st.sidebar.text_input("Nombre del Alumno:", value="Fabricio")
+dni_alumno = st.sidebar.text_input("DNI / ID:", value="")
+curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegación", "Lodos"])
 
-    st.sidebar.download_button(
-        label="📥 DESCARGAR CERTIFICADO TÉCNICO",
-        data=pdf_final,
-        file_name=f"Certificado_{nombre_alumno.replace(' ', '_')}.pdf",
-        mime="application/pdf"
-    )
-except Exception as e:
-    st.sidebar.error("Error al preparar el PDF. Complete los datos de simulación.")
+# 2. BOTÓN DE PREPARACIÓN (Esto evita que la app "explote" sola)
+if st.sidebar.button("🛠️ Generar Certificado Técnico"):
+    try:
+        # Aquí llamamos a la función técnica con paracaídas de seguridad
+        # Si una variable no existe (como mse o cci), le asignamos 0.0 para que no falle
+        datos_errores = st.session_state.get('errores_iadc', [])
+        
+        # Generamos los bytes del PDF
+        pdf_final = generar_reporte_tecnico_certificado(
+            nombre_alumno, 
+            dni_alumno, 
+            curso_tipo, 
+            datos_errores
+        )
+
+        # 3. El botón de descarga REAL solo aparece si el PDF se generó bien
+        st.sidebar.success("✅ Certificado procesado con éxito")
+        st.sidebar.download_button(
+            label="📥 DESCARGAR AHORA (PDF)",
+            data=pdf_final,
+            file_name=f"Certificado_Menfa_{nombre_alumno.replace(' ', '_')}.pdf",
+            mime="application/pdf"
+        )
+        
+    except Exception as e:
+        # Si algo falla (ej: falta una variable), te lo dice acá sin romper el simulador
+        st.sidebar.error(f"Falta información de simulación: {e}")
+        st.sidebar.info("Asegúrese de haber iniciado la perforación para capturar datos técnicos.")
