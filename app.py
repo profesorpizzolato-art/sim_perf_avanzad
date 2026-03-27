@@ -1237,216 +1237,83 @@ st.plotly_chart(fig_radar, use_container_width=True)
 
 st.caption("© 2026 Menfa Capacitaciones - Mendoza. Sistema v4.0 - IADC & Geonavegación Compliant.")
 
-
+import streamlit as st
 from fpdf import FPDF
-import io
+from datetime import datetime
 
-def generar_reporte_tecnico():
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    
-    # 1. Título
-    pdf.cell(200, 10, "MENFA CAPACITACIONES - REPORTE", ln=True, align='C')
-    pdf.ln(10)
-
-    # 2. Lista de Fórmulas (Línea 1270 corregida)
-    # Asegurate de que 'formulas' esté alineado con el resto
-    formulas = [
-        ("ECD", "MW + (dP_ann / (0.1703 * TVD))"),
-        ("MSE", "(480 * T * RPM / D^2 * ROP) + (4 * WOB / pi * D^2)")
-    ]
-
-    # ESTA ES LA LÍNEA 1270: Debe tener 4 espacios de sangría
-    for titulo, formula in formulas:
-        pdf.set_font("Arial", 'B', 10)
-        # Estas líneas de abajo deben tener 8 espacios de sangría
-        pdf.cell(0, 7, f"- {titulo}:", ln=True) 
-        pdf.set_font("Arial", '', 10)
-        pdf.cell(0, 7, f"  Formula: {formula}", ln=True)
-
-    # 3. Salida final
-    pdf.ln(10)
-    return pdf.output(dest='S').encode('latin-1', 'replace')
-    pdf.cell(0, 10, limpiar("Glosario Tecnico y Formulas"), ln=True)
-    pdf.set_font("Arial", '', 10)
-    
-    formulas = [
-        ("ECD", "MW + (dP_ann / (0.1703 * TVD))"),
-        ("MSE", "(480 * T * RPM / D^2 * ROP) + (4 * WOB / pi * D^2)"),
-        ("CCI", "(k * MW * Vann) / 400,000")
-    ]
-
-  for titulo, formula in formulas:
-        pdf.set_font("Arial", 'B', 10)
-        
-        # Saneamiento extremo: convertimos a latin-1 y lo que no sepa leer, lo ignora
-        titulo_seguro = titulo.encode('latin-1', 'ignore').decode('latin-1').replace("•", "-")
-        pdf.cell(0, 7, f"- {titulo_seguro}:", ln=True) 
-        
-        pdf.set_font("Arial", '', 10)
-        formula_segura = formula.encode('latin-1', 'ignore').decode('latin-1')
-        pdf.cell(0, 7, f"  Formula: {formula_segura}", ln=True)
-    if not st.session_state.errores_iadc:
-        pdf.cell(0, 7, "Operacion sin incidentes registrados.", ln=True)
-    else:
-        for error in st.session_state.errores_iadc:
-            # Limpiamos el mensaje de error que viene del simulador
-            msg_error = limpiar(error['Infracción'])
-            pdf.cell(0, 7, f"- {msg_error}", ln=True)
-
-    # 5. Salida segura
-    return pdf.output(dest='S').encode('latin-1', 'replace')
-    
-  for titulo, formula in formulas:
-        pdf.set_font("Arial", 'B', 10)
-        
-        # Aquí es donde estaba el error (Línea 1276)
-        # Usamos un guion (-) en lugar del punto (•)
-        pdf.cell(0, 7, f"- {titulo}:", ln=True) 
-        
-        pdf.set_font("Arial", '', 10)
-        # Limpiamos la fórmula por si tiene caracteres raros
-        formula_limpia = formula.replace("²", "2").replace("π", "pi")
-        pdf.cell(0, 7, f"  Formula: {formula_limpia}", ln=True)
-
-    # 3. REGISTRO DE EVENTOS IADC
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "3. Auditoría de Seguridad (IADC Log)", ln=True)
-    pdf.set_font("Arial", '', 10)
-    if not st.session_state.errores_iadc:
-        pdf.cell(0, 7, "Sin infracciones detectadas. Operación Segura.", ln=True)
-    else:
-        for error in st.session_state.errores_iadc:
-            pdf.cell(0, 7, f"- [{error['Hora']}] {error['Infracción']} (Gravedad: {error['Gravedad']})", ln=True)
-
-    # Retornar el PDF como bytes
-    return pdf.output(dest='S').encode('latin-1')
-
-# --- UI EN EL SIMULADOR ---
-st.sidebar.divider()
-st.sidebar.subheader("📄 Exportar Documentación")
-pdf_bytes = generar_reporte_tecnico()
-
-st.sidebar.download_button(
-    label="Descargar Manual y Reporte PDF",
-    data=pdf_bytes,
-    file_name=f"Reporte_Menfa_{profundidad_actual}m.pdf",
-    mime="application/pdf"
-)
-
-# --- REGISTRO DE ALUMNO (MENFA AUTH) ---
-st.sidebar.image("logo_menfa.png", width=150) # Si tienes el logo
-st.sidebar.title("🎓 Acceso de Alumno")
-nombre_alumno = st.sidebar.text_input("Nombre Completo:", value="Fabricio")
-dni_alumno = st.sidebar.text_input("DNI / Identificación:", value="")
-curso_tipo = st.sidebar.selectbox("Módulo de Capacitación:", 
-    ["Perforación IADC WellSharp", "Geonavegación Avanzada", "Ingeniería de Fluidos"])
-
-st.sidebar.divider()
-
+# --- FUNCION UNICA Y LIMPIA ---
 def generar_reporte_tecnico_certificado(nombre, dni, curso, errores):
     pdf = FPDF()
     pdf.add_page()
     
+    # Función interna para limpiar texto y evitar errores de PDF
+    def limpiar(t):
+        return str(t).replace("•", "-").replace("¡", "").replace("!", "").replace("ó", "o").replace("í", "i").replace("á", "a").replace("é", "e").replace("ú", "u").replace("ñ", "n")
+
     # --- ENCABEZADO INSTITUCIONAL ---
-    pdf.set_fill_color(30, 41, 59) # Azul oscuro Menfa
+    pdf.set_fill_color(30, 41, 59) # Azul oscuro
     pdf.rect(0, 0, 210, 40, 'F')
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", 'B', 20)
     pdf.cell(190, 25, "MENFA CAPACITACIONES", ln=True, align='C')
-    pdf.set_font("Arial", '', 12)
-    pdf.cell(190, 5, "Certificación de Simulación Técnica", ln=True, align='C')
     
     # --- DATOS DEL ALUMNO ---
     pdf.set_text_color(0, 0, 0)
     pdf.ln(20)
     pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, f"ALUMNO: {nombre.upper()}", ln=True)
+    pdf.cell(0, 10, limpiar(f"ALUMNO: {nombre.upper()}"), ln=True)
     pdf.set_font("Arial", '', 11)
     pdf.cell(0, 7, f"DNI: {dni}", ln=True)
-    pdf.cell(0, 7, f"CURSO: {curso}", ln=True)
+    pdf.cell(0, 7, limpiar(f"CURSO: {curso}"), ln=True)
     pdf.cell(0, 7, f"FECHA: {datetime.now().strftime('%d/%m/%Y %H:%M')}", ln=True)
     pdf.ln(10)
 
-    # --- RESUMEN DE DESEMPEÑO ---
-    pdf.set_fill_color(240, 240, 240)
+    # --- REGISTRO DE EVENTOS IADC ---
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, " BALANCE DE COMPETENCIAS TÉCNICAS ", ln=True, fill=True)
+    pdf.cell(0, 10, "Auditoria de Seguridad Operativa (IADC):", ln=True)
     pdf.set_font("Arial", '', 10)
     
-    # KPIs clave al momento de la descarga
-    pdf.cell(0, 7, f"• Eficiencia Mecánica (MSE): {round(mse, 0)} psi", ln=True)
-    pdf.cell(0, 7, f"• Limpieza de Hoyo (CCI): {round(cci, 2)}", ln=True)
-    pdf.cell(0, 7, f"• Control de Trayectoria (DLS): {round(dls, 2)} deg/30m", ln=True)
-    
-    # Cálculo de nota final
-    nota = max(0, 100 - (len(errores) * 20))
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, f"CALIFICACIÓN FINAL: {nota}/100", ln=True)
-
-    # --- LOG DE SEGURIDAD (IADC) ---
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 11)
-    pdf.cell(0, 10, "Auditoría de Seguridad Operativa:", ln=True)
-    pdf.set_font("Arial", '', 9)
     if not errores:
-        pdf.cell(0, 7, "Operación sin infracciones críticas detectadas.", ln=True)
+        pdf.cell(0, 7, "Operacion sin infracciones detectadas. Excelente desempeño.", ln=True)
     else:
         for err in errores:
-            pdf.cell(0, 7, f"- {err['Infracción']} registrado a las {err['Hora']}", ln=True)
-# ... (vienes de la parte de las fórmulas y KPIs) ...
-
-    # --- AQUÍ PEGAS EL BLOQUE NUEVO ---
-    # 3. REGISTRO DE EVENTOS (Limpieza de caracteres)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "Auditoria de Seguridad (IADC Log)", ln=True)
-    pdf.set_font("Arial", '', 10)
-    
-    if not st.session_state.errores_iadc:
-        pdf.cell(0, 7, "Sin infracciones detectadas. Operacion Segura.", ln=True)
-    else:
-        for error in st.session_state.errores_iadc:
-            # Limpieza de caracteres que rompen el PDF
-            msg = f"- {error['Infracción']}".replace("¡", "").replace("!", "").replace("ó", "o").replace("í", "i")
+            # Limpiamos cada mensaje de error
+            msg = limpiar(f"- {err['Infracción']} ({err['Hora']})")
             pdf.cell(0, 7, msg, ln=True)
 
-    # El RETURN es la última línea de la función. 
-    # Asegúrate de que esté alineado (identado) con el 'pdf = FPDF()' del inicio.
-    return pdf.output(dest='S').encode('latin-1', 'replace') 
-
-# --- FIN DE LA FUNCIÓN ---
-    # --- PIE DE PÁGINA / FIRMA ---
+    # --- PIE DE PÁGINA ---
     pdf.ln(20)
     pdf.line(10, pdf.get_y(), 70, pdf.get_y())
     pdf.set_font("Arial", 'I', 8)
     pdf.cell(60, 5, "Firma Instructor Menfa", align='C')
     
-    return pdf.output(dest='S').encode('latin-1')
+    # Retornar el PDF seguro
+    return pdf.output(dest='S').encode('latin-1', 'replace')
 
-# --- BOTÓN DE DESCARGA ACTUALIZADO ---
-pdf_final = generar_reporte_tecnico_certificado(nombre_alumno, dni_alumno, curso_tipo, st.session_state.errores_iadc)
+# --- UI EN EL SIDEBAR (FUERA DE LA FUNCIÓN) ---
+st.sidebar.image("logo_menfa.png", width=150) # Asegúrate de tener la imagen o comenta esta línea
+st.sidebar.title("🎓 Acceso de Alumno")
+nombre_alumno = st.sidebar.text_input("Nombre Completo:", value="Fabricio")
+dni_alumno = st.sidebar.text_input("DNI:", value="")
+curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegación", "Ingeniería de Fluidos"])
 
-st.sidebar.download_button(
-    label="📥 DESCARGAR CERTIFICADO TÉCNICO",
-    data=pdf_final,
-    file_name=f"Certificado_{nombre_alumno.replace(' ', '_')}.pdf",
-    mime="application/pdf"
-)
-# --- FINAL DEL ARCHIVO ---
 st.sidebar.divider()
-st.sidebar.subheader("📄 Exportar Documentacion")
 
-# Solo generamos los bytes si el usuario hace clic o si los datos existen
+# --- LÓGICA DEL BOTÓN DE DESCARGA ---
 try:
-    pdf_bytes = generar_reporte_tecnico() # Esta es tu línea 1298 corregida
+    # Generamos los bytes llamando a la función limpia
+    pdf_final = generar_reporte_tecnico_certificado(
+        nombre_alumno, 
+        dni_alumno, 
+        curso_tipo, 
+        st.session_state.get('errores_iadc', [])
+    )
 
     st.sidebar.download_button(
-        label="Descargar Reporte PDF",
-        data=pdf_bytes,
-        file_name="Reporte_Menfa.pdf",
+        label="📥 DESCARGAR CERTIFICADO TÉCNICO",
+        data=pdf_final,
+        file_name=f"Certificado_{nombre_alumno.replace(' ', '_')}.pdf",
         mime="application/pdf"
     )
 except Exception as e:
-    st.sidebar.error("Error al generar PDF. Verifique los datos.")
+    st.sidebar.error("Error al preparar el PDF. Complete los datos de simulación.")
