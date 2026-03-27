@@ -1262,18 +1262,25 @@ nombre_alumno = st.sidebar.text_input("Nombre del Alumno:", value="Fabricio")
 dni_alumno = st.sidebar.text_input("DNI / ID:", value="")
 curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegación", "Lodos"])
 
-# 2. BOTÓN DE PREPARACIÓN (Esto evita que la app "explote" sola)
-if st.sidebar.button("🛠️ Generar Certificado Técnico"):
-try:
-        # Estas líneas DEBEN tener 8 espacios (o 2 tabs) desde el borde izquierdo
-        if st.session_state.tiempo_reaccion:
-            pdf.ln(5)
-            pdf.set_font("Arial", 'B', 12)
-            pdf.set_text_color(200, 0, 0)
-            pdf.cell(0, 10, "PRUEBA DE STRESS OPERATIVO: COMPLETADA", ln=True)
-            # ... y así con el resto del bloque
+# --- LÍNEA 1266 APROX ---
+if st.sidebar.button("🛠️ Generar Reporte Técnico"):
+    try:
+        # Todo esto tiene 8 espacios de sangría (2 niveles)
+        pdf_bytes = generar_reporte_tecnico() 
+        
+        st.sidebar.success("✅ Reporte preparado con éxito")
+        st.sidebar.download_button(
+            label="Descargar Reporte PDF",
+            data=pdf_bytes,
+            file_name=f"Reporte_Menfa_{int(profundidad_actual)}m.pdf",
+            mime="application/pdf"
+        )
     except Exception as e:
-          st.sidebar.error(f"Error: {e}")
+        # El except también debe estar alineado con el try
+        st.sidebar.error(f"Error al generar PDF: {e}")
+        st.sidebar.info("Asegúrese de haber iniciado la simulación.")
+
+# --- SIGUE EL RESTO DEL CÓDIGO ---
 
     pdf.set_text_color(*color_eval)
     pdf.cell(0, 10, f"Evaluacion de Respuesta: {calificacion_seguridad} ({t} seg)", ln=True)
