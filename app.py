@@ -1242,22 +1242,32 @@ from fpdf import FPDF
 import io
 
 def generar_reporte_tecnico():
-    # 1. Inicialización limpia
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # Función interna para limpiar texto (quita acentos y símbolos raros)
-    def limpiar(texto):
-        return str(texto).replace("•", "-").replace("ñ", "n").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").replace("¡", "").replace("!", "")
-
-    # 2. Encabezado
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, limpiar("MENFA CAPACITACIONES - REPORTE DE SIMULACION"), ln=True, align='C')
+    
+    # 1. Título
+    pdf.cell(200, 10, "MENFA CAPACITACIONES - REPORTE", ln=True, align='C')
     pdf.ln(10)
 
-    # 3. Sección de Fórmulas (Aquí fallaba la línea 1276)
-    pdf.set_font("Arial", 'B', 12)
+    # 2. Lista de Fórmulas (Línea 1270 corregida)
+    # Asegurate de que 'formulas' esté alineado con el resto
+    formulas = [
+        ("ECD", "MW + (dP_ann / (0.1703 * TVD))"),
+        ("MSE", "(480 * T * RPM / D^2 * ROP) + (4 * WOB / pi * D^2)")
+    ]
+
+    # ESTA ES LA LÍNEA 1270: Debe tener 4 espacios de sangría
+    for titulo, formula in formulas:
+        pdf.set_font("Arial", 'B', 10)
+        # Estas líneas de abajo deben tener 8 espacios de sangría
+        pdf.cell(0, 7, f"- {titulo}:", ln=True) 
+        pdf.set_font("Arial", '', 10)
+        pdf.cell(0, 7, f"  Formula: {formula}", ln=True)
+
+    # 3. Salida final
+    pdf.ln(10)
+    return pdf.output(dest='S').encode('latin-1', 'replace')
     pdf.cell(0, 10, limpiar("Glosario Tecnico y Formulas"), ln=True)
     pdf.set_font("Arial", '', 10)
     
