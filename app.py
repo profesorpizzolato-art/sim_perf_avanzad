@@ -1036,7 +1036,12 @@ with kpi_col5:
 # Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
 temp_superficie = 20 
 gradiente_geotermico = 0.03 # °C/metro
-
+# 2. La lógica de alerta (PEGAR AQUÍ)
+if temp_fondo > 120:
+    st.sidebar.error(f"🌡️ ALTA TEMPERATURA: {round(temp_fondo, 1)}°C")
+    st.sidebar.caption("⚠️ Riesgo de falla en sellos de motor de fondo y telemetría MWD.")
+elif temp_fondo > 100:
+    st.sidebar.warning(f"💡 Temperatura elevada: {round(temp_fondo, 1)}°C")
 # Cálculo dinámico
 temp_fondo = temp_superficie + (gradiente_geotermico * profundidad_actual)
 
