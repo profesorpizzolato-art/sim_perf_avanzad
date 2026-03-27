@@ -2,9 +2,17 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import time
+import random
 import plotly.graph_objects as go
 from datetime import datetime
-
+from fpdf import FPDF
+# --- INICIALIZACIÓN GLOBAL ---
+if 'vibracion_axial' not in st.session_state:
+    vibracion_axial = 0.1
+if 'd_exp_norm' not in st.session_state:
+    d_exp_norm = 0.0
+if 'errores_iadc' not in st.session_state:
+    st.session_state.errores_iadc = []
 # --- 1. ACCESO RÁPIDO AL ESTADO DE LA SESIÓN ---
 # Esto le dice a Python que 's' es lo mismo que 'st.session_state'
 s = st.session_state
@@ -883,6 +891,25 @@ with col_dyn1:
 
 with col_dyn2:
     st.subheader("🎸 Análisis de Vibraciones (Stick-Slip)")
+    # ==========================================
+# BLOQUE DE CÁLCULOS TÉCNICOS (EL MOTOR)
+# ==========================================
+
+# 1. Cálculo de Vibraciones (Bit Bounce)
+if rpm_actual > 0 and wob > 0:
+    vibracion_axial = (wob / 5) * (rpm_actual / 100) * random.uniform(0.8, 1.2)
+else:
+    vibracion_axial = 0.1
+
+# 2. Cálculo del Exponente d (Predicción de Presión)
+if rpm_actual > 0 and wob > 0 and rop_actual > 0:
+    d_exp = np.log10(rop_actual / (60 * rpm_actual)) / np.log10(12 * wob / (10**6 * diametro_mecha))
+    d_exp_norm = d_exp * (9.0 / densidad_lodo)
+else:
+    d_exp_norm = 0.0
+
+# 3. Otros KPIs que podrías necesitar (MAASP, CCI, etc.)
+# ... (asegurate que todos se calculen aquí) ...
 # --- SIMULACIÓN DE DINÁMICA DE ROTACIÓN ---
 
 # 1. Recuperamos las RPM del slider (asegurate que el key coincida)
@@ -932,7 +959,11 @@ if v_actual_anular > 0:
     cci = (k_index * densidad_lodo * v_actual_anular) / 400000
 else:
     cci = 0
-
+# ==========================================
+# PANEL DE TELEMETRÍA (VISUALIZACIÓN)
+# ==========================================
+st.metric("Vib. Axial", f"{round(vibracion_axial, 1)}G", delta="ALTA" if vibracion_axial > 3 else "OK")
+st.metric("d-exp", f"{round(d_exp_norm, 2)}", help="Exponente d Normalizado")
 # 4. Visualización para la UTN
 st.metric("Índice de Limpieza (CCI)", f"{cci:.2f}", help="Cuttings Carrying Index")
 # --- ANÁLISIS TÉCNICO DE LIMPIEZA ---
