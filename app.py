@@ -8,11 +8,8 @@ from datetime import datetime
 from fpdf import FPDF  # <--- NOTA: Aunque la librería se instala como fpdf2, el import suele ser 'from fpdf import FPDF'
 import numpy as np # Necesitamos Numpy para la vibración
 import streamlit as st
-import time
 from fpdf import FPDF
 import os
-import streamlit as st
-import time
 from streamlit_autorefresh import st_autorefresh
 # 1. LA PIZARRA (Base de datos compartida en el servidor)
 @st.cache_resource
