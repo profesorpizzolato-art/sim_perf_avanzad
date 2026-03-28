@@ -1378,55 +1378,31 @@ def graficar_geologia_y_pozo(profundidad):
     )
     
     return fig
+# --- Aseguramos la existencia de la variable ---
+profundidad_actual = st.session_state.get('profundidad', 0)
+
+# 1. Definimos la lista (asegurando el nombre que usa la función)
+formaciones = [
+    {"nombre": "Grupo Neuquén", "top": 0, "base": 1200, "fp": 1.2, "color": "#f1c40f"},
+    {"nombre": "Fm. Quintuco", "top": 1200, "base": 2100, "fp": 0.9, "color": "#bdc3c7"},
+    {"nombre": "Fm. Vaca Muerta ⭐", "top": 2100, "base": 2500, "fp": 0.5, "color": "#2c3e50"},
+    {"nombre": "Fm. Lajas", "top": 2500, "base": 3500, "fp": 0.8, "color": "#d35400"}
+]
+
 def obtener_formacion_actual(prof):
     for f in formaciones:
         if f["top"] <= prof < f["base"]:
             return f
-    return formaciones[-1] # Por si se pasa del fondo definido
+    return formaciones[-1]
 
-# --- CÁLCULO DE PERFORACIÓN ---
+# 2. Ejecutamos el cálculo
 f_actual = obtener_formacion_actual(profundidad_actual)
 factor_dureza = f_actual["fp"]
 
-# Fórmula base de ROP (ajustada por formación)
-rop_base = (wob * rpm) / (diametro_mecha ** 2) 
+# Cálculo de ROP con protección de división por cero
+diam_m = st.session_state.get('diametro_mecha', 8.5)
+rop_base = (wob * rpm) / (diam_m ** 2) if diam_m > 0 else 0
 rop_final = rop_base * factor_dureza
-
-# Si el Instructor activa un evento (ej: Mecha gastada), bajamos la ROP un 40%
-if st.session_state.get('mecha_gastada', False):
-    rop_final *= 0.6
-
-# --- UI: INDICADOR DE POSICIÓN GEOLÓGICA ---
-with st.container():
-    col_geo, col_data = st.columns([1, 3])
-    
-    with col_geo:
-        st.markdown(f"**Formación Actual:**")
-        st.success(f_actual['nombre'])
-        # Un cuadrito de color que represente la roca
-        st.markdown(
-            f'<div style="background-color:{f_actual["color"]}; width:100%; height:50px; border-radius:5px; border:1px solid black;"></div>', 
-            unsafe_allow_html=True
-        )
-    
-    with col_data:
-        st.metric("ROP Real", f"{round(rop_final, 1)} m/h", 
-                  delta=f"{f_actual['nombre']}", delta_color="normal")
-
-import time
-
-# Inicializar estados de evaluación si no existen
-if 'cronometro_activo' not in st.session_state:
-    st.session_state.cronometro_activo = False
-if 'tiempo_inicio_evento' not in st.session_state:
-    st.session_state.tiempo_inicio_evento = 0
-if 'tiempo_reaccion' not in st.session_state:
-    st.session_state.tiempo_reaccion = None
-
-# Lógica del Cronómetro
-if st.session_state.cronometro_activo:
-    st.session_state.tiempo_transcurrido = time.time() - st.session_state.tiempo_inicio_evento
-
 # =========================================================
 # ⚙️ MOTOR DE REACCIÓN DINÁMICA (KICK/SURGENCIA)
 # =========================================================
