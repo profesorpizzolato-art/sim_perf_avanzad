@@ -1493,3 +1493,31 @@ fig_bombeo = go.Figure(go.Indicator(
 ))
 fig_bombeo.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20))
 st.plotly_chart(fig_bombeo, use_container_width=True)
+
+import base64
+
+# Función para cargar audio y convertirlo a base64 (para que no falle el navegador)
+def reproducir_audio(url_o_ruta):
+    audio_html = f"""
+        <audio autoplay>
+            <source src="{url_o_ruta}" type="audio/mp3">
+        </audio>
+    """
+    st.components.v1.html(audio_html, height=0)
+
+# 🚨 1. LÓGICA DE ALARMA DE KICK (Sirena Continua)
+if st.session_state.get('evento_activo') == "KICK":
+    # Link a una sirena industrial (puedes cambiarlo por tu archivo local)
+    sirena_url = "https://www.soundjay.com/mechanical/sounds/siren-1.mp3"
+    reproducir_audio(sirena_url)
+    st.error("⚠️ ¡SURGENCIA DETECTADA! PROCEDA A CIERRE DE POZO")
+
+# 🔒 2. LÓGICA DE CIERRE DE BOP (Efecto de sonido único)
+# Esto lo pones dentro del bloque donde detectas el botón de CERRAR BOP
+if st.sidebar.button("🔒 CERRAR BOP (Shut-in)"):
+    # Sonido de aire comprimido/válvula cerrando
+    audio_valvula = "https://www.soundjay.com/mechanical/sounds/air-release-1.mp3"
+    reproducir_audio(audio_valvula)
+    
+    # ... (toda tu lógica de frenar el cronómetro que ya armamos)
+    
