@@ -1264,21 +1264,24 @@ curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegaci
 
 # --- LÍNEA 1266 APROX ---
 if st.sidebar.button("🛠️ Generar Reporte Técnico"):
-    try:
-        # Todo esto tiene 8 espacios de sangría (2 niveles)
-        pdf_bytes = generar_reporte_tecnico() 
-        
-        st.sidebar.success("✅ Reporte preparado con éxito")
-        st.sidebar.download_button(
-            label="Descargar Reporte PDF",
-            data=pdf_bytes,
-            file_name=f"Reporte_Menfa_{int(profundidad_actual)}m.pdf",
-            mime="application/pdf"
-        )
-    except Exception as e:
-        # El except también debe estar alineado con el try
-        st.sidebar.error(f"Error al generar PDF: {e}")
-        st.sidebar.info("Asegúrese de haber iniciado la simulación.")
+ try:
+            # Nivel 1 (8 espacios desde el borde)
+            pdf_bytes = generar_reporte_tecnico()
+            datos_errores = st.session_state.get('errores_iadc', [])
+            
+            if datos_errores:
+                st.sidebar.info(f"Registrados {len(datos_errores)} eventos de control.")
+            
+            st.sidebar.success("✅ Reporte listo")
+            st.sidebar.download_button(
+                label="Descargar Reporte PDF",
+                data=pdf_bytes,
+                file_name="Reporte_Menfa_Simulador.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            # Nivel 1 (8 espacios, alineado con el try)
+            st.sidebar.error(f"Error: {e}")
 
 # --- SIGUE EL RESTO DEL CÓDIGO ---
 
