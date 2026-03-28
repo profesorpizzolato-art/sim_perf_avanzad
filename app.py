@@ -1281,18 +1281,11 @@ if st.sidebar.button("🛠️ Generar Reporte Técnico"):
             )
  except Exception as e:
             # Nivel 1 (8 espacios, alineado con el try)
-            st.sidebar.error(f"Error: {e}")
-
-# --- SIGUE EL RESTO DEL CÓDIGO ---
-
-    pdf.set_text_color(*color_eval)
-    pdf.cell(0, 10, f"Evaluacion de Respuesta: {calificacion_seguridad} ({t} seg)", ln=True)
-    # Aquí llamamos a la función técnica con paracaídas de seguridad
-        # Si una variable no existe (como mse o cci), le asignamos 0.0 para que no falle
-        datos_errores = st.session_state.get('errores_iadc', [])
-        
-        # Generamos los bytes del PDF
-        pdf_final = generar_reporte_tecnico_certificado(
+            st.sidebar.error(f"Error: {e}"
+            pdf.set_text_color(*color_eval)
+            pdf.cell(0, 10, f"Evaluacion de Respuesta: {calificacion_seguridad} ({t} seg)", ln=True)
+            datos_errores = st.session_state.get('errores_iadc', [])
+            pdf_final = generar_reporte_tecnico_certificado(
             nombre_alumno, 
             dni_alumno, 
             curso_tipo, 
