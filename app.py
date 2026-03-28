@@ -1279,7 +1279,7 @@ if st.sidebar.button("🛠️ Generar Reporte Técnico"):
                 file_name="Reporte_Menfa_Simulador.pdf",
                 mime="application/pdf"
             )
-        except Exception as e:
+ except Exception as e:
             # Nivel 1 (8 espacios, alineado con el try)
             st.sidebar.error(f"Error: {e}")
 
