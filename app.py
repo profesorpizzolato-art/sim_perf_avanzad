@@ -46,40 +46,89 @@ if not st.session_state.autenticado:
 # --- LÍNEA 64 CORREGIDA ---
 # Ahora llamamos a la variable desde la 'mochila' (session_state)
 st.sidebar.success(f"Sesión iniciada: {st.session_state.usuario_logueado}")
-# 1. CREAR LA "PIZARRA COMPARTIDA" (Solo se ejecuta una vez en el servidor)
+import streamlit as st
+import time
+from streamlit_autorefresh import st_autorefresh # Recordá agregar esto a requirements.txt
+
+# 1. CONFIGURACIÓN Y MEMORIA COMPARTIDA (LA PIZARRA)
 @st.cache_resource
-def obtener_tablero_control():
-    # Valores iniciales que todos verán al entrar
+def obtener_pizarra_menfa():
+    # Esta memoria es global: lo que cambia acá, cambia para todos los usuarios
     return {
-        "kick_activo": False, 
-        "mensaje_instructor": "Simulación en curso...",
-        "formacion": "Cacheuta"
+        "estado_kick": False,
+        "formacion_maestra": "Cacheuta",
+        "presion_fondo": 2500,
+        "mensaje_alerta": ""
     }
 
-# Conectamos la app de cada uno a esa pizarra única
-pizarra = obtener_tablero_control()
+pizarra = obtener_pizarra_menfa()
 
-# 2. PANEL DEL INSTRUCTOR (Solo Fabricio ve esto)
-if st.session_state.get('usuario_logueado') == "fabricio":
-    st.sidebar.markdown("---")
-    st.sidebar.header("🎮 MANDO MAESTRO")
+# 2. SISTEMA DE LOGIN DOBLE
+if "rol" not in st.session_state:
+    st.session_state.rol = None # Puede ser 'instructor' o 'alumno'
+
+if st.session_state.rol is None:
+    st.image("assets/logo.png", width=250)
+    st.title("MENFA 3.0 - Acceso al Sistema")
     
-    # Botón para activar el problema a todos
-    if st.sidebar.button("🚨 DISPARAR KICK (Surgencia)", use_container_width=True):
-        pizarra["kick_activo"] = True
-        st.sidebar.warning("¡Evento enviado a todos los alumnos!")
-        
-    if st.sidebar.button("✅ RESETEAR POZO", use_container_width=True):
-        pizarra["kick_activo"] = False
-        st.sidebar.success("Pozo estabilizado para todos.")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        with st.container(border=True):
+            st.subheader("👨‍🏫 Instructor")
+            clave_ins = st.text_input("Clave Maestra", type="password", key="ins_pass")
+            if st.button("Ingresar como Instructor"):
+                if clave_ins == "menfa2026": # Tu clave secreta
+                    st.session_state.rol = "instructor"
+                    st.session_state.usuario = "Fabricio"
+                    st.rerun()
+                else:
+                    st.error("Clave incorrecta")
 
-# 3. LÓGICA DEL ALUMNO (Reacciona a la pizarra)
-if pizarra["kick_activo"]:
-    st.error("⚠️ ¡ALERTA DE SEGURIDAD! Presión de fondo excedida.")
-    # Acá activamos tu sirena y el movimiento de agujas
-    st.session_state.alarma_sirena = True 
+    with col2:
+        with st.container(border=True):
+            st.subheader("🎓 Alumno")
+            nombre_al = st.text_input("Nombre Completo", key="alu_name")
+            if st.button("Ingresar a Clase"):
+                if nombre_al:
+                    st.session_state.rol = "alumno"
+                    st.session_state.usuario = nombre_al
+                    st.rerun()
+                else:
+                    st.warning("Por favor, poné tu nombre")
+    st.stop()
+
+# 3. EL "LATIDO" (Sincronización automática cada 2 segundos)
+st_autorefresh(interval=2000, key="refresh_global")
+
+# 4. INTERFAZ SEGÚN EL ROL
+if st.session_state.rol == "instructor":
+    st.sidebar.header(f"Panel Maestro: {st.session_state.usuario}")
+    st.sidebar.info("Tus acciones afectarán a todos los alumnos conectados.")
+    
+    # CONTROLES DEL INSTRUCTOR
+    st.subheader("🎮 Consola de Control de Aula")
+    if st.button("🚨 DISPARAR KICK A TODOS", type="primary"):
+        pizarra["estado_kick"] = True
+        pizarra["mensaje_alerta"] = "¡EMERGENCIA! El instructor ha detectado una surgencia."
+        
+    if st.button("✅ REINICIAR SIMULACIÓN"):
+        pizarra["estado_kick"] = False
+        pizarra["mensaje_alerta"] = ""
+
 else:
-    st.session_state.alarma_sirena = False
+    # VISTA DEL ALUMNO
+    st.sidebar.success(f"Alumno: {st.session_state.usuario}")
+    st.title("Simulador de Perforación")
+    
+    # El alumno REACCIONA a lo que hay en la pizarra
+    if pizarra["estado_kick"]:
+        st.error(f"⚠️ {pizarra['mensaje_alerta']}")
+        # Aquí disparás el sonido de la sirena y el movimiento de las agujas
+        st.session_state.kick_activo = True
+    else:
+        st.info("Operación normal. Esperando instrucciones del pozo...")
+        st.session_state.kick_activo = False
     
 if 'vibracion_reloj' not in st.session_state:
     st.session_state.vibracion_reloj = time.time()
