@@ -7,7 +7,55 @@ import plotly.graph_objects as go
 from datetime import datetime
 from fpdf import FPDF  # <--- NOTA: Aunque la librería se instala como fpdf2, el import suele ser 'from fpdf import FPDF'
 import numpy as np # Necesitamos Numpy para la vibración
+import os
 
+# --- CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="MENFA 3.0 - Login", page_icon="🏗️", layout="centered")
+
+# --- LÓGICA DE SESIÓN ---
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+
+# --- PANTALLA DE LOGIN / CARÁTULA ---
+if not st.session_state.autenticado:
+    # Contenedor para centrar todo
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        # 1. El Logo de Menfa
+        try:
+            st.image("logo_menfa", use_container_width=True)
+        except:
+            st.title("🏗️ MENFA")
+            st.caption("Error: Sube 'logo.png' a la carpeta 'assets' en GitHub")
+
+        st.markdown("<h1 style='text-align: center;'>Bienvenido a Menfa 3.0</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center;'>Plataforma de Simulación de Perforación y Control de Pozos</p>", unsafe_allow_html=True)
+        
+        # 2. Formulario de Ingreso
+        with st.container(border=True):
+            usuario = st.text_input("Instructor / Operador")
+            clave = st.text_input("Contraseña de Acceso", type="password")
+            btn_entrar = st.button("INGRESAR AL SISTEMA", use_container_width=True)
+
+            if btn_entrar:
+                # Definí acá tu clave (puse menfa2026 por el año del proyecto)
+                if usuario.lower() == "fabricio" and clave == "menfa2026":
+                    st.session_state.autenticado = True
+                    st.success("Acceso concedido. Cargando simulador...")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("Credenciales no válidas. Reintente.")
+        
+        st.info("Mendoza, Argentina - Ciclo Lectivo 2026")
+
+    # Detener la ejecución del resto del código si no está logueado
+    st.stop()
+
+# --- SI LLEGA ACÁ, EL LOGIN FUE EXITOSO ---
+# Acá abajo seguís con el resto de tu código (Sidebar, Gráficos, etc.)
+st.sidebar.success(f"Sesión iniciada: {usuario}")
 if 'vibracion_reloj' not in st.session_state:
     st.session_state.vibracion_reloj = time.time()
 if 'presion_vibracion' not in st.session_state:
