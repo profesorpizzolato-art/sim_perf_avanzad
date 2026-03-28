@@ -34,7 +34,7 @@ if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         try:
-            st.image("logo_menfa", use_container_width=True)
+            st.image("logo_menfa.png", use_container_width=True)
         except:
             st.title("🏗️ MENFA 3.0")
         
