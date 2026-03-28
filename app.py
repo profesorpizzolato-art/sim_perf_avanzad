@@ -46,7 +46,41 @@ if not st.session_state.autenticado:
 # --- LÍNEA 64 CORREGIDA ---
 # Ahora llamamos a la variable desde la 'mochila' (session_state)
 st.sidebar.success(f"Sesión iniciada: {st.session_state.usuario_logueado}")
+# 1. CREAR LA "PIZARRA COMPARTIDA" (Solo se ejecuta una vez en el servidor)
+@st.cache_resource
+def obtener_tablero_control():
+    # Valores iniciales que todos verán al entrar
+    return {
+        "kick_activo": False, 
+        "mensaje_instructor": "Simulación en curso...",
+        "formacion": "Cacheuta"
+    }
 
+# Conectamos la app de cada uno a esa pizarra única
+pizarra = obtener_tablero_control()
+
+# 2. PANEL DEL INSTRUCTOR (Solo Fabricio ve esto)
+if st.session_state.get('usuario_logueado') == "fabricio":
+    st.sidebar.markdown("---")
+    st.sidebar.header("🎮 MANDO MAESTRO")
+    
+    # Botón para activar el problema a todos
+    if st.sidebar.button("🚨 DISPARAR KICK (Surgencia)", use_container_width=True):
+        pizarra["kick_activo"] = True
+        st.sidebar.warning("¡Evento enviado a todos los alumnos!")
+        
+    if st.sidebar.button("✅ RESETEAR POZO", use_container_width=True):
+        pizarra["kick_activo"] = False
+        st.sidebar.success("Pozo estabilizado para todos.")
+
+# 3. LÓGICA DEL ALUMNO (Reacciona a la pizarra)
+if pizarra["kick_activo"]:
+    st.error("⚠️ ¡ALERTA DE SEGURIDAD! Presión de fondo excedida.")
+    # Acá activamos tu sirena y el movimiento de agujas
+    st.session_state.alarma_sirena = True 
+else:
+    st.session_state.alarma_sirena = False
+    
 if 'vibracion_reloj' not in st.session_state:
     st.session_state.vibracion_reloj = time.time()
 if 'presion_vibracion' not in st.session_state:
