@@ -48,6 +48,21 @@ profundidad_actual = st.sidebar.slider("Profundidad Actual (m)", 0, 5000, 1000)
 # --- AHORA SÍ, REALIZÁS EL CÁLCULO ---
 # Pegá esto justo después del slider:
 temp_fondo = 20 + (0.03 * profundidad_actual)
+# --- INICIALIZACIÓN DE VARIABLES DE LODO Y PARÁMETROS ---
+variables_iniciales = {
+    'retorno_lodo': 100.0,      # El retorno normal es 100%
+    'nivel_cajones': 500.0,     # Nivel inicial en bbl o m3
+    'presion_bombeo': 0.0,
+    'presion_anular': 0.0,
+    'profundidad_actual': 0.0,
+    'evento_activo': None,
+    'vibracion_reloj': time.time(),
+    'presion_vibracion': 0.0
+}
+
+for clave, valor in variables_iniciales.items():
+    if clave not in st.session_state:
+        st.session_state[clave] = valor
 # --- MOTOR DE CÁLCULOS INTEGRADO (Reemplaza al archivo externo) ---
 def calcular_presiones_fondo(mw, depth_m, flow_gpm):
     """
