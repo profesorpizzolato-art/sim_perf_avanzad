@@ -1622,7 +1622,7 @@ def generar_manual_tecnico_descargable():
         pdf.multi_cell(0, 6, desc.encode('latin-1', 'ignore').decode('latin-1'))
         pdf.ln(2)
 
-    # --- PÁGINA 3: EJERCICIOS ---
+ # --- PÁGINA 3: EJERCICIOS ---
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 15, "3. Plan de Entrenamiento (Ejercicios)", ln=True)
@@ -1635,23 +1635,27 @@ def generar_manual_tecnico_descargable():
     
     pdf.set_font("Arial", '', 11)
     for ej in ejercicios:
-        pdf.multi_cell(0, 10, f"* {ej}".encode('latin-1', 'ignore').decode('latin-1'))
+        # Aquí sí usamos encode/decode para el TEXTO antes de escribirlo
+        texto_limpio = f"* {ej}".encode('latin-1', 'ignore').decode('latin-1')
+        pdf.multi_cell(0, 10, texto_limpio)
         pdf.ln(2)
 
-    return pdf.output(dest='S').encode('latin-1', 'replace')
+    # ESTA ES LA LÍNEA QUE CAMBIA:
+    # fpdf2 ya entrega bytes, no hace falta volver a encodear la salida completa
+    return pdf.output() 
 
-# 2. Lógica del Botón corregida
+# --- LÓGICA DEL BOTÓN ---
 try:
-    # Generamos los bytes fuera del botón para que estén listos
+    # Llamamos a la función
     libro_bytes = generar_manual_tecnico_descargable()
     
     st.sidebar.download_button(
         label="📖 Descargar Manual Técnico (Libro)",
-        data=libro_bytes,
+        data=libro_bytes, # Ahora libro_bytes ya es un bytearray correcto
         file_name="Manual_Tecnico_Menfa_3.pdf",
         mime="application/pdf",
         key="btn_descarga_manual_menfa"
     )
-    st.sidebar.info("Manual de operaciones listo para descargar.")
+    st.sidebar.success("Manual compilado con éxito.")
 except Exception as e:
     st.sidebar.error(f"Error al compilar el libro: {e}")
