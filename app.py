@@ -1292,22 +1292,21 @@ if st.sidebar.button("🛠️ Generar Reporte Técnico"):
             datos_errores
         )
 
-        # 3. El botón de descarga REAL solo aparece si el PDF se generó bien
-        st.sidebar.success("✅ Certificado procesado con éxito")
-        st.sidebar.download_button(
+           st.sidebar.success("✅ Certificado procesado con éxito")
+           st.sidebar.download_button(
             label="📥 DESCARGAR AHORA (PDF)",
             data=pdf_final,
             file_name=f"Certificado_Menfa_{nombre_alumno.replace(' ', '_')}.pdf",
             mime="application/pdf"
         )
         
-    except Exception as e:
+ except Exception as e:
         # Si algo falla (ej: falta una variable), te lo dice acá sin romper el simulador
         st.sidebar.error(f"Falta información de simulación: {e}")
         st.sidebar.info("Asegúrese de haber iniciado la perforación para capturar datos técnicos.")
         
 # --- PANEL DE CONTROL DE POZO (BOP) ---
-st.sidebar.markdown("### 🕹️ Panel de Emergencia")
+        st.sidebar.markdown("### 🕹️ Panel de Emergencia")
 if st.sidebar.button("🔒 CERRAR BOP (Shut-in)"):
     if st.session_state.cronometro_activo:
         st.session_state.tiempo_reaccion = round(time.time() - st.session_state.tiempo_inicio_evento, 2)
