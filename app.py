@@ -1565,9 +1565,9 @@ def generar_reporte_menfa_v3(nombre_alumno, tiempo, formacion):
 st.sidebar.divider()
 st.sidebar.subheader("📚 Biblioteca Técnica")
 
-# 1. Definimos la función PRIMERO para que el botón pueda usarla
+# 1. Definimos la función con limpieza de caracteres para fpdf2
 def generar_manual_tecnico_descargable():
-    # Nota: Asegúrate de que FPDF esté importado al inicio del archivo
+    from fpdf import FPDF
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     
@@ -1578,84 +1578,81 @@ def generar_manual_tecnico_descargable():
     pdf.set_text_color(255, 255, 255)
     
     pdf.ln(80)
-    pdf.set_font("Arial", 'B', 35)
+    pdf.set_font("Helvetica", 'B', 35) # Cambiado a Helvetica para mayor compatibilidad
     pdf.cell(0, 20, "MENFA 3.0", ln=True, align='C')
-    pdf.set_font("Arial", 'B', 18)
+    pdf.set_font("Helvetica", 'B', 18)
     pdf.cell(0, 10, "MANUAL DE OPERACIONES Y GUIA TECNICA", ln=True, align='C')
     
     pdf.ln(100)
-    pdf.set_font("Arial", 'I', 12)
+    pdf.set_font("Helvetica", 'I', 12)
     pdf.cell(0, 10, "Instructor: Fabricio | Cuenca Neuquina & Cuyana", ln=True, align='C')
     pdf.cell(0, 10, "Mendoza, Argentina - 2026", ln=True, align='C')
 
     # --- PÁGINA 1: INTRODUCCIÓN ---
     pdf.add_page()
     pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Arial", 'B', 16)
+    pdf.set_font("Helvetica", 'B', 16)
     pdf.cell(0, 15, "1. Introduccion al Simulador", ln=True)
-    pdf.set_font("Arial", '', 11)
-    intro = (
-        "El Simulador Menfa 3.0 es una herramienta de precision diseñada para el entrenamiento "
-        "de personal en operaciones de perforacion. Este software integra modelos matematicos "
-        "de hidraulica, mecanica de rocas y control de pozos, adaptados a las formaciones "
-        "geologicas de la region (Vaca Muerta, Cacheuta, Potrerillos)."
-    )
+    pdf.set_font("Helvetica", '', 11)
+    
+    intro = ("El Simulador Menfa 3.0 es una herramienta de precision diseñada para el entrenamiento "
+             "de personal en operaciones de perforacion. Integra modelos de hidraulica y control de pozos.")
     pdf.multi_cell(0, 7, intro.encode('latin-1', 'ignore').decode('latin-1'))
 
     # --- PÁGINA 2: GLOSARIO ---
     pdf.ln(10)
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 15, "2. Glosario de Formulas y Parametros", ln=True)
+    pdf.set_font("Helvetica", 'B', 16)
+    pdf.cell(0, 15, "2. Glosario de Formulas", ln=True)
     
     formulas = [
-        ("ROP (Rate of Penetration)", "Velocidad de avance de la mecha. Se mide en m/h."),
-        ("WOB (Weight on Bit)", "Peso aplicado sobre el trepano para el corte de roca."),
-        ("MSE (Mechanical Specific Energy)", "Energia requerida para destruir un volumen de roca."),
-        ("CCI (Cuttings Carrying Index)", "Capacidad del lodo para transportar recortes."),
-        ("ECD (Equivalent Circulating Density)", "Presion real ejercida sobre las paredes del pozo.")
+        ("ROP (Rate of Penetration)", "Velocidad de avance de la mecha (m/h)."),
+        ("WOB (Weight on Bit)", "Peso aplicado sobre el trepano."),
+        ("MSE (Mechanical Specific Energy)", "Energia requerida para destruir roca."),
+        ("ECD (Equivalent Circulating Density)", "Presion real en circulacion.")
     ]
 
     for tit, desc in formulas:
-        pdf.set_font("Arial", 'B', 11)
+        pdf.set_font("Helvetica", 'B', 11)
         pdf.cell(0, 8, f"- {tit}:", ln=True)
-        pdf.set_font("Arial", '', 10)
+        pdf.set_font("Helvetica", '', 10)
         pdf.multi_cell(0, 6, desc.encode('latin-1', 'ignore').decode('latin-1'))
         pdf.ln(2)
 
- # --- PÁGINA 3: EJERCICIOS ---
+    # --- PÁGINA 3: EJERCICIOS ---
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 15, "3. Plan de Entrenamiento (Ejercicios)", ln=True)
+    pdf.set_font("Helvetica", 'B', 16)
+    pdf.cell(0, 15, "3. Plan de Entrenamiento", ln=True)
     
     ejercicios = [
-        "Ejercicio 1: Optimizacion de MSE. Ajustar WOB/RPM para minimizar la energia perdida.",
-        "Ejercicio 2: Navegacion Geologica. Detectar la entrada a Vaca Muerta por cambio de ROP.",
-        "Ejercicio 3: Control de Pozo. Realizar un Shut-in (Cierre) ante un Kick en menos de 45 segundos."
+        "Ejercicio 1: Optimizacion de MSE. Ajustar WOB/RPM.",
+        "Ejercicio 2: Navegacion Geologica. Detectar cambios de ROP.",
+        "Ejercicio 3: Control de Pozo. Realizar un Shut-in eficaz."
     ]
     
-    pdf.set_font("Arial", '', 11)
+    pdf.set_font("Helvetica", '', 11)
     for ej in ejercicios:
-        # Aquí sí usamos encode/decode para el TEXTO antes de escribirlo
         texto_limpio = f"* {ej}".encode('latin-1', 'ignore').decode('latin-1')
         pdf.multi_cell(0, 10, texto_limpio)
         pdf.ln(2)
 
-    # ESTA ES LA LÍNEA QUE CAMBIA:
-    # fpdf2 ya entrega bytes, no hace falta volver a encodear la salida completa
-    return pdf.output() 
+    return pdf.output() # fpdf2 entrega bytes/bytearray aquí
 
-# --- LÓGICA DEL BOTÓN ---
+# 2. LÓGICA DE COMPILACIÓN Y BOTÓN
 try:
-    # Llamamos a la función
-    libro_bytes = generar_manual_tecnico_descargable()
+    # Generamos el contenido
+    resultado_binario = generar_manual_tecnico_descargable()
+    
+    # CONVERSIÓN CRÍTICA: Forzamos a bytes para que Streamlit no de error de formato
+    libro_bytes = bytes(resultado_binario)
     
     st.sidebar.download_button(
         label="📖 Descargar Manual Técnico (Libro)",
-        data=libro_bytes, # Ahora libro_bytes ya es un bytearray correcto
+        data=libro_bytes,
         file_name="Manual_Tecnico_Menfa_3.pdf",
         mime="application/pdf",
-        key="btn_descarga_manual_menfa"
+        key="btn_descarga_manual_menfa_vFinal"
     )
-    st.sidebar.success("Manual compilado con éxito.")
+    st.sidebar.success("✅ Manual disponible")
+
 except Exception as e:
-    st.sidebar.error(f"Error al compilar el libro: {e}")
+    st.sidebar.error(f"❌ Error al compilar el libro: {e}")
