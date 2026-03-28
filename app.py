@@ -102,7 +102,7 @@ if pizarra["alarma_activa"]:
         pizarra["incremento_kick"] = 0    # Resetea la presión
         st.success("¡Operación exitosa! Pozo bajo control.")
         st.rerun() # Refresca para que deje de sonar la alarma
-   else:
+    else:
     st.success(f"✅ Estado: {pizarra['mensaje_inst']}")
 # VISUALIZACIÓN DE SIMULACIÓN (Común para ambos)
 st.title("Simulador de Perforación en Tiempo Real")
