@@ -11,6 +11,41 @@ import streamlit as st
 from fpdf import FPDF
 import os
 from streamlit_autorefresh import st_autorefresh
+import streamlit as st
+import base64
+import os
+from streamlit_autorefresh import st_autorefresh
+
+# --- 1. DEFINICIÓN DE FUNCIONES (DEBE IR ARRIBA DE TODO) ---
+def reproducir_alarma_local():
+    archivo_audio = "assets/alarma.mp3"
+    if os.path.exists(archivo_audio):
+        with open(archivo_audio, "rb") as f:
+            data = f.read()
+            base64_audio = base64.b64encode(data).decode()
+            html_audio = f"""
+                <audio autoplay loop>
+                    <source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3">
+                </audio>
+            """
+            st.components.v1.html(html_audio, height=0)
+    else:
+        # Esto te avisará si el archivo no está en GitHub
+        st.sidebar.error("⚠️ No se encontró 'assets/alarma.mp3'")
+
+# --- 2. EL RESTO DE TU LÓGICA (PIZARRA, LOGIN, ETC.) ---
+@st.cache_resource
+def obtener_pizarra():
+    return {
+        "alarma_activa": False,
+        "presion_base": 2500,
+        "incremento_kick": 0,
+        "mensaje_inst": "Operación Normal"
+    }
+
+pizarra = obtener_pizarra()
+
+# ... (Aquí sigue tu código de Login y la línea 96 que ahora sí va a funcionar)
 # 1. LA PIZARRA (Base de datos compartida en el servidor)
 @st.cache_resource
 def obtener_pizarra():
