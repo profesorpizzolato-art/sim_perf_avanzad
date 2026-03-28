@@ -68,7 +68,7 @@ if "rol" not in st.session_state:
     st.session_state.rol = None # Puede ser 'instructor' o 'alumno'
 
 if st.session_state.rol is None:
-    st.image("assets/logo.png", width=250)
+    st.image("logo_menfa.png", width=250)
     st.title("MENFA 3.0 - Acceso al Sistema")
     
     col1, col2 = st.columns(2)
