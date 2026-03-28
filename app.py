@@ -1262,77 +1262,73 @@ nombre_alumno = st.sidebar.text_input("Nombre del Alumno:", value="Fabricio")
 dni_alumno = st.sidebar.text_input("DNI / ID:", value="")
 curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegación", "Lodos"])
 
-# --- LÍNEA 1266 APROX ---
+# --- SECCIÓN DE REPORTES Y CERTIFICADOS ---
 if st.sidebar.button("🛠️ Generar Reporte Técnico"):
- try:
-            # Nivel 1 (8 espacios desde el borde)
-            pdf_bytes = generar_reporte_tecnico()
-            datos_errores = st.session_state.get('errores_iadc', [])
-            
-            if datos_errores:
-                st.sidebar.info(f"Registrados {len(datos_errores)} eventos de control.")
-            
-            st.sidebar.success("✅ Reporte listo")
-            st.sidebar.download_button(
-                label="Descargar Reporte PDF",
-                data=pdf_bytes,
-                file_name="Reporte_Menfa_Simulador.pdf",
-                mime="application/pdf"
-            )
- except Exception as e:
-            # Nivel 1 (8 espacios, alineado con el try)
-            st.sidebar.error(f"Error: {e}")
-            pdf.set_text_color(*color_eval)
-            pdf.cell(0, 10, f"Evaluacion de Respuesta: {calificacion_seguridad} ({t} seg)", ln=True)
-            datos_errores = st.session_state.get('errores_iadc', [])
-            pdf_final = generar_reporte_tecnico_certificado(
+    try:
+        # 1. Intentamos generar el reporte principal
+        pdf_bytes = generar_reporte_tecnico()
+        datos_errores = st.session_state.get('errores_iadc', [])
+        
+        if datos_errores:
+            st.sidebar.info(f"Registrados {len(datos_errores)} eventos de control.")
+        
+        st.sidebar.success("✅ Reporte listo")
+        st.sidebar.download_button(
+            label="Descargar Reporte PDF",
+            data=pdf_bytes,
+            file_name="Reporte_Menfa_Simulador.pdf",
+            mime="application/pdf"
+        )
+        
+        # 2. Generamos el Certificado de Alumno automáticamente debajo
+        nombre_alumno = st.session_state.get('nombre_alumno', 'Alumno Menfa')
+        dni_alumno = st.session_state.get('dni_alumno', '00.000.000')
+        curso_tipo = "Perforación y Control de Pozos"
+        
+        pdf_final = generar_reporte_tecnico_certificado(
             nombre_alumno, 
             dni_alumno, 
             curso_tipo, 
             datos_errores
         )
-
-           st.sidebar.success("✅ Certificado procesado con éxito")
-           st.sidebar.download_button(
-            label="📥 DESCARGAR AHORA (PDF)",
+        
+        st.sidebar.success("✅ Certificado procesado con éxito")
+        st.sidebar.download_button(
+            label="📥 DESCARGAR CERTIFICADO",
             data=pdf_final,
             file_name=f"Certificado_Menfa_{nombre_alumno.replace(' ', '_')}.pdf",
             mime="application/pdf"
         )
         
- except Exception as e:
-        # Si algo falla (ej: falta una variable), te lo dice acá sin romper el simulador
+    except Exception as e:
         st.sidebar.error(f"Falta información de simulación: {e}")
         st.sidebar.info("Asegúrese de haber iniciado la perforación para capturar datos técnicos.")
-        
+
 # --- PANEL DE CONTROL DE POZO (BOP) ---
-        st.sidebar.markdown("### 🕹️ Panel de Emergencia")
+st.sidebar.markdown("### 🕹️ Panel de Emergencia")
 if st.sidebar.button("🔒 CERRAR BOP (Shut-in)"):
-    if st.session_state.cronometro_activo:
+    if st.session_state.get('cronometro_activo'):
         st.session_state.tiempo_reaccion = round(time.time() - st.session_state.tiempo_inicio_evento, 2)
         st.session_state.cronometro_activo = False
         st.session_state.evento_activo = None
         st.sidebar.success(f"Pozo Cerrado en {st.session_state.tiempo_reaccion} segundos")
-        
-# --- PANEL DE INSTRUCTOR (Solo visible para vos) ---
+
+# --- PANEL DE INSTRUCTOR ---
 with st.expander("🛠️ CONSOLA DE INSTRUCTOR", expanded=False):
-    if st.button("🚨 ACTIVAR SURGENCIA (KICK)"):
-        st.session_state.cronometro_activo = True
-        st.session_state.tiempo_inicio_evento = time.time()
-        st.session_state.evento_activo = "KICK"
-        st.warning("⚠️ Evento de Control de Pozo Iniciado")
-with st.expander("🛠️ CONSOLA DE INSTRUCTOR (Evaluación)", expanded=False):
     st.markdown("### Generar Eventos en Tiempo Real")
     col1, col2 = st.columns(2)
     
     with col1:
         if st.button("🚨 Simular Amago de Surgencia (Kick)"):
+            st.session_state.cronometro_activo = True
+            st.session_state.tiempo_inicio_evento = time.time()
             st.session_state.evento_activo = "KICK"
-            st.session_state.presion_anular += 200 # Aumento súbito
+            st.session_state.presion_anular += 200
+            st.warning("⚠️ Evento de Control de Pozo Iniciado")
             
         if st.button("📉 Simular Pérdida de Circulación"):
             st.session_state.evento_activo = "LOST_CIRC"
-            st.session_state.retorno_lodo -= 30 # Baja el nivel en cajones
+            st.session_state.retorno_lodo -= 30
             
     with col2:
         if st.button("⚙️ Falla en Bomba 1"):
@@ -1342,6 +1338,7 @@ with st.expander("🛠️ CONSOLA DE INSTRUCTOR (Evaluación)", expanded=False):
     if st.button("✅ Limpiar Eventos"):
         st.session_state.evento_activo = None
         st.session_state.falla_bomba = False
+        st.session_state.cronometro_activo = False
 
 import plotly.graph_objects as go
 
