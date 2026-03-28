@@ -1497,30 +1497,36 @@ st.plotly_chart(fig_bombeo, use_container_width=True)
 import base64
 
 # Función para cargar audio y convertirlo a base64 (para que no falle el navegador)
-def reproducir_audio(url_o_ruta):
-    audio_html = f"""
-        <audio autoplay>
-            <source src="{url_o_ruta}" type="audio/mp3">
-        </audio>
-    """
-    st.components.v1.html(audio_html, height=0)
+import base64
+import os
 
-# --- LÓGICA UNIFICADA DE CIERRE ---
-if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="boton_bop_emergencia"):
-    # 1. Sonido de la válvula (Feedback auditivo)
-    reproducir_audio("https://www.soundjay.com/mechanical/sounds/air-release-1.mp3")
+def reproducir_audio_local(nombre_archivo, loop=False):
+    # 1. Construimos la ruta a tu carpeta assets
+    ruta_audio = os.path.join("assets", nombre_archivo)
     
-    # 2. Frenar el tiempo y el evento
-    if st.session_state.get('cronometro_activo'):
-        # Calculamos cuánto tardó el alumno en reaccionar
-        st.session_state.tiempo_reaccion = round(time.time() - st.session_state.get('tiempo_inicio_evento', time.time()), 2)
-        st.session_state.cronometro_activo = False
-        
-        # 3. Limpiar el caos (Presiones y Alarma)
-        st.session_state.evento_activo = None
-        st.session_state.presion_vibracion = 0 # Chau pánico visual
-        
-        st.sidebar.success(f"✅ Pozo Seguro. Tiempo de reacción: {st.session_state.tiempo_reaccion} seg.")
-        st.balloons() # Festejo por salvar la operación
+    if os.path.exists(ruta_audio):
+        with open(ruta_audio, "rb") as f:
+            data = f.read()
+            b64 = base64.b64encode(data).decode()
+            
+            # 2. Creamos el HTML con el audio incrustado
+            loop_attr = "loop" if loop else ""
+            audio_html = f"""
+                <audio autoplay {loop_attr}>
+                    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                </audio>
+            """
+            st.components.v1.html(audio_html, height=0)
     else:
-        st.sidebar.info("El pozo ya está cerrado o no hay eventos activos.")
+        st.error(f"No se encontró el archivo: {ruta_audio}")
+
+# --- CÓMO USARLO EN EL KICK ---
+if st.session_state.get('evento_activo') == "KICK":
+    st.error("🚨 !!! ALERTA: KICK EN PROGRESO !!! 🚨")
+    # Cambiá 'alarma.mp3' por el nombre exacto de tu archivo en assets
+    reproducir_audio_local("alarma.mp3", loop=True)
+
+# --- CÓMO USARLO EN EL BOTÓN DE CIERRE ---
+if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="btn_bop_final"):
+    reproducir_audio_local("cierre.mp3") # Sonido seco de válvula
+    # ... resto de tu lógica ...
