@@ -8,6 +8,11 @@ from datetime import datetime
 from fpdf import FPDF  # <--- NOTA: Aunque la librería se instala como fpdf2, el import suele ser 'from fpdf import FPDF'
 import numpy as np # Necesitamos Numpy para la vibración
 
+if 'vibracion_reloj' not in st.session_state:
+    st.session_state.vibracion_reloj = time.time()
+if 'presion_vibracion' not in st.session_state:
+    st.session_state.presion_vibracion = 0
+    
 # --- INICIALIZACIÓN DE ESTADOS DE SEGURIDAD ---
 if 'evento_activo' not in st.session_state:
     st.session_state.evento_activo = None
@@ -1395,59 +1400,81 @@ def obtener_formacion_actual(prof):
             return f
     return formaciones[-1]
 
-# 2. Ejecutamos el cálculo
-f_actual = obtener_formacion_actual(profundidad_actual)
+# =========================================================
+# 🛠️ MOTOR DE PERFORACIÓN Y REACCIÓN (MENFA 3.0)
+# =========================================================
+
+# 1. Aseguramos que existan las variables de vibración en el session_state
+if 'vibracion_reloj' not in st.session_state:
+    st.session_state.vibracion_reloj = time.time()
+if 'presion_vibracion' not in st.session_state:
+    st.session_state.presion_vibracion = 0.0
+
+def obtener_formacion_actual(prof):
+    # Asegúrate que la lista 'formaciones' esté definida antes de llamar a esta función
+    for f in formaciones:
+        if f["top"] <= prof < f["base"]:
+            return f
+    return formaciones[-1]
+
+# Ejecutamos el cálculo de formación
+f_actual = obtener_formacion_actual(st.session_state.get('profundidad_actual', 0))
 factor_dureza = f_actual["fp"]
 
-# Cálculo de ROP con protección de división por cero
-diam_m = st.session_state.get('diametro_mecha', 8.5)
+# --- CAPTURA ÚNICA DE VARIABLES (Evitamos redundancia) ---
+wob = st.session_state.get('wob_actual', 0) 
+rpm = st.session_state.get('rpm_actual', 0)
+# Buscamos el diámetro; si no existe en la UI, usamos 8.5 por defecto
+diam_m = st.session_state.get('diam_mecha', st.session_state.get('diametro_mecha', 8.5))
+
+# --- CÁLCULO DE ROP ---
 rop_base = (wob * rpm) / (diam_m ** 2) if diam_m > 0 else 0
 rop_final = rop_base * factor_dureza
+
+# Aplicar desgaste de mecha si existe el evento
+if st.session_state.get('mecha_gastada', False):
+    rop_final *= 0.6
+
 # =========================================================
-# ⚙️ MOTOR DE REACCIÓN DINÁMICA (KICK/SURGENCIA)
+# ⚙️ MOTOR DINÁMICO DE KICK (CAOS VISUAL)
 # =========================================================
 
-# 1. Definimos las variables base de simulación (si no las tienes)
-# Estas son las que el alumno controla (o deberían controlarse)
-delta_presion_bombeo = 0.0
-delta_nivel_cajones = 0.0
-
-# 2. Reacción AGRESIVA si hay un KICK activo
+# Reacción AGRESIVA si hay un KICK activo
 if st.session_state.get('evento_activo') == "KICK":
-    # --- SUBIDA AGRESIVA DE PRESIONES ---
-    # La presión anular (SPP) sube 150 psi/refresco y la anular (CP) 100 psi/refresco
-    st.session_state.presion_bombeo += 150 
-    st.session_state.presion_anular += 100
-    st.session_state.nivel_cajones += 30 # Ganancia rápida de nivel
-    st.session_state.retorno_lodo = 110 # El retorno se dispara al 110%
+    # Incrementos por cada refresco de pantalla
+    st.session_state.presion_bombeo += 15.0  # Ajustado para que no explote en 1 segundo
+    st.session_state.presion_anular += 10.0
+    st.session_state.nivel_cajones += 5.0    
+    st.session_state.retorno_lodo = 115.0 
 
-    # --- MOTOR DE VIBRACIÓN (PÁNICO VISUAL) ---
-    # Hacemos que la aguja vibre rápidamente para simular gas/caos
-    if time.time() - st.session_state.vibracion_reloj > 0.05: # 20 veces por segundo
-        # Agregamos ruido aleatorio (vibración)
-        st.session_state.presion_vibracion = np.random.normal(0, 50.0) # Media 0, Desv. Estándar 50 psi
-        st.session_state.vibracion_reloj = time.time()
+    # Motor de Vibración (Pánico Visual)
+    # np.random.normal requiere 'import numpy as np'
+    ahora = time.time()
+    if ahora - st.session_state.vibracion_reloj > 0.05: 
+        st.session_state.presion_vibracion = np.random.normal(0, 40.0) 
+        st.session_state.vibracion_reloj = ahora
+else:
+    # Si no hay kick, la vibración se apaga suavemente
+    st.session_state.presion_vibracion *= 0.5
 
-# 3. Aplicamos la vibración a las variables de visualización
-# Solo para los manómetros/gráficos, no para los cálculos
-presion_bombeo_gauge = st.session_state.presion_bombeo + st.session_state.presion_vibracion
-presion_anular_gauge = st.session_state.presion_anular + st.session_state.presion_vibracion
-nivel_cajones_gauge = st.session_state.nivel_cajones + (st.session_state.presion_vibracion / 10.0) # Menos vibración en cajones
+# Aplicamos la vibración SOLO para las agujas de los manómetros
+presion_bombeo_gauge = max(0, st.session_state.get('presion_bombeo', 0) + st.session_state.presion_vibracion)
+presion_anular_gauge = max(0, st.session_state.get('presion_anular', 0) + st.session_state.presion_vibracion)
+nivel_cajones_gauge = max(0, st.session_state.get('nivel_cajones', 0) + (st.session_state.presion_vibracion / 10.0))
 
-# Ejemplo de manómetro de Plotly con vibración
+# --- DIBUJAR MANÓMETRO SPP ---
 fig_bombeo = go.Figure(go.Indicator(
     mode = "gauge+number",
-    # !!! IMPORTANTE: Usamos la variable CON VIBRACIÓN !!!
-    value = presion_bombeo_gauge, 
-    domain = {'x': [0, 1], 'y': [0, 1]},
-    title = {'text': "Presion Bombeo (SPP) psi"},
+    value = presion_bombeo_gauge,
+    title = {'text': "Presión Bombeo (SPP) psi", 'font': {'size': 18}},
     gauge = {
-        'axis': {'range': [None, 5000]},
+        'axis': {'range': [0, 5000]},
+        'bar': {'color': "darkblue"},
         'steps' : [
-            {'range': [0, 2500], 'color': "lightgray"},
-            {'range': [2500, 4000], 'color': "gray"}],
-        'threshold' : {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 4500}
+            {'range': [0, 3000], 'color': "lightgray"},
+            {'range': [3000, 4500], 'color': "orange"}],
+        'threshold' : {'line': {'color': "red", 'width': 4}, 'thickness': 0.8, 'value': 4500}
     }
 ))
-# ... (dibujar gráfico) ...
-
+fig_bombeo.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20))
+st.plotly_chart(fig_bombeo, use_container_width=True)
