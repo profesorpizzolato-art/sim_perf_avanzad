@@ -1505,19 +1505,16 @@ def reproducir_audio(url_o_ruta):
     """
     st.components.v1.html(audio_html, height=0)
 
-# 🚨 1. LÓGICA DE ALARMA DE KICK (Sirena Continua)
-if st.session_state.get('evento_activo') == "KICK":
-    # Link a una sirena industrial (puedes cambiarlo por tu archivo local)
-    sirena_url = "https://www.soundjay.com/mechanical/sounds/siren-1.mp3"
-    reproducir_audio(sirena_url)
-    st.error("⚠️ ¡SURGENCIA DETECTADA! PROCEDA A CIERRE DE POZO")
+# BOTÓN 1 (En el panel de control, por ejemplo)
+if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="boton_bop_control"):
+    st.session_state.evento_activo = None
+    st.sidebar.success("¡Pozo Cerrado!")
 
-# 🔒 2. LÓGICA DE CIERRE DE BOP (Efecto de sonido único)
-# Esto lo pones dentro del bloque donde detectas el botón de CERRAR BOP
-if st.sidebar.button("🔒 CERRAR BOP (Shut-in)"):
-    # Sonido de aire comprimido/válvula cerrando
-    audio_valvula = "https://www.soundjay.com/mechanical/sounds/air-release-1.mp3"
-    reproducir_audio(audio_valvula)
-    
+# ... más abajo en el código, si tenés otro ...
+
+# BOTÓN 2 (En la sección de emergencia)
+if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="boton_bop_emergencia"):
+    st.session_state.evento_activo = None
+    st.sidebar.warning("¡Cierre de Emergencia Activado!")
     # ... (toda tu lógica de frenar el cronómetro que ya armamos)
     
