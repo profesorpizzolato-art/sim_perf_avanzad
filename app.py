@@ -1533,25 +1533,41 @@ if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="btn_bop_final"):
 
 if st.button("🔔 Probar Audio de Assets"):
     reproducir_audio_local("alarma.mp3")
-
+def generar_reporte_menfa_v3(nombre_alumno, tiempo, formacion):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 25)
+    pdf.cell(0, 20, "MENFA CAPACITACIONES", ln=True, align='C')
+    pdf.set_font("Helvetica", "B", 15)
+    pdf.cell(0, 10, "Simulador de Perforacion y Control de Pozos", ln=True, align='C')
+    pdf.ln(10)
+    pdf.set_font("Helvetica", "", 12)
+    
+    contenido = f"""
+    Este documento certifica el desempeño tecnico en el simulador.
+    
+    DETALLES DE LA OPERACION:
+    --------------------------------------------------
+    Alumno: {nombre_alumno}
+    Formacion Geologica: {formacion}
+    Evento Detectado: KICK (Surgencia de Fluido)
+    Tiempo de Reaccion: {tiempo} segundos
+    --------------------------------------------------
+    """
+    pdf.multi_cell(0, 10, contenido)
+    
+    calificacion = "EXCELENTE" if tiempo < 15 else "SATISFACTORIO" if tiempo < 30 else "RIESGO OPERATIVO"
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(0, 10, f"CALIFICACION FINAL: {calificacion}", ln=True, align='L')
+    
+    return pdf.output()
 # --- SECCIÓN DE BIBLIOTECA ---
 st.sidebar.divider()
 st.sidebar.subheader("📚 Biblioteca Técnica")
 
-if st.sidebar.button("📖 Generar Manual de Usuario (Libro)"):
-    try:
-        libro_bytes = generar_manual_tecnico_completo()
-        st.sidebar.download_button(
-            label="⬇️ Descargar Manual PDF",
-            data=libro_bytes,
-            file_name="Manual_Tecnico_Menfa_3.pdf",
-            mime="application/pdf"
-        )
-        st.sidebar.success("Manual listo para imprimir.")
-    except Exception as e:
-        st.sidebar.error("Error al compilar el libro.")
-
+# 1. Definimos la función PRIMERO para que el botón pueda usarla
 def generar_manual_tecnico_descargable():
+    # Nota: Asegúrate de que FPDF esté importado al inicio del archivo
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     
@@ -1586,7 +1602,7 @@ def generar_manual_tecnico_descargable():
     )
     pdf.multi_cell(0, 7, intro.encode('latin-1', 'ignore').decode('latin-1'))
 
-    # --- PÁGINA 2: FORMULARIO Y GLOSARIO ---
+    # --- PÁGINA 2: GLOSARIO ---
     pdf.ln(10)
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 15, "2. Glosario de Formulas y Parametros", ln=True)
@@ -1594,9 +1610,9 @@ def generar_manual_tecnico_descargable():
     formulas = [
         ("ROP (Rate of Penetration)", "Velocidad de avance de la mecha. Se mide en m/h."),
         ("WOB (Weight on Bit)", "Peso aplicado sobre el trepano para el corte de roca."),
-        ("MSE (Mechanical Specific Energy)", "Energia requerida para destruir un volumen de roca. Clave para la eficiencia."),
-        ("CCI (Cuttings Carrying Index)", "Capacidad del lodo para transportar recortes a superficie."),
-        ("ECD (Equivalent Circulating Density)", "Presion real ejercida sobre las paredes del pozo en circulacion.")
+        ("MSE (Mechanical Specific Energy)", "Energia requerida para destruir un volumen de roca."),
+        ("CCI (Cuttings Carrying Index)", "Capacidad del lodo para transportar recortes."),
+        ("ECD (Equivalent Circulating Density)", "Presion real ejercida sobre las paredes del pozo.")
     ]
 
     for tit, desc in formulas:
@@ -1606,7 +1622,7 @@ def generar_manual_tecnico_descargable():
         pdf.multi_cell(0, 6, desc.encode('latin-1', 'ignore').decode('latin-1'))
         pdf.ln(2)
 
-    # --- PÁGINA 3: EJERCICIOS PRÁCTICOS ---
+    # --- PÁGINA 3: EJERCICIOS ---
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 15, "3. Plan de Entrenamiento (Ejercicios)", ln=True)
@@ -1623,3 +1639,19 @@ def generar_manual_tecnico_descargable():
         pdf.ln(2)
 
     return pdf.output(dest='S').encode('latin-1', 'replace')
+
+# 2. Lógica del Botón corregida
+try:
+    # Generamos los bytes fuera del botón para que estén listos
+    libro_bytes = generar_manual_tecnico_descargable()
+    
+    st.sidebar.download_button(
+        label="📖 Descargar Manual Técnico (Libro)",
+        data=libro_bytes,
+        file_name="Manual_Tecnico_Menfa_3.pdf",
+        mime="application/pdf",
+        key="btn_descarga_manual_menfa"
+    )
+    st.sidebar.info("Manual de operaciones listo para descargar.")
+except Exception as e:
+    st.sidebar.error(f"Error al compilar el libro: {e}")
