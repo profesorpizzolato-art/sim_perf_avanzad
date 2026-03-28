@@ -1342,46 +1342,42 @@ with st.expander("🛠️ CONSOLA DE INSTRUCTOR", expanded=False):
 
 import plotly.graph_objects as go
 
-def graficar_geologia_y_pozo(profundidad_actual):
+def graficar_geologia_y_pozo(profundidad):
+    import plotly.graph_objects as go
+    
+    # 1. Creamos la figura explícitamente
     fig = go.Figure()
 
-    # 1. Definimos las Formaciones (Colores de fondo)
-    # Ejemplo: Formación Agrio (Arcillas), Formación Mulichinco (Arenas)
-    formaciones = [
-        dict(nombre="Post-Cuyana", top=0, base=1000, color="lightyellow"),
-        dict(nombre="Fm. Huitrín", top=1000, base=1800, color="lightgrey"),
-        dict(nombre="Fm. Agrio (Target)", top=1800, base=2500, color="lightgreen"),
-    ]
+    # 2. Dibujamos las capas geológicas (usando tus topes de Mendoza/Neuquén)
+    for capa in topes_reales:
+        fig.add_shape(
+            type="rect", x0=0, x1=1, y0=capa["top"], y1=capa["base"],
+            fillcolor=capa["color"], opacity=0.5, layer="below", line_width=0
+        )
+        # Etiqueta de la formación
+        fig.add_annotation(
+            x=0.5, y=(capa["top"] + capa["base"]) / 2,
+            text=capa["nombre"], showarrow=False, font=dict(color="white")
+        )
 
-    for f in formaciones:
-        fig.add_hrect(y0=f['top'], y1=f['base'], fillcolor=f['color'], opacity=0.3, 
-                      annotation_text=f['nombre'], annotation_position="top left")
-
-    # 2. Trayectoria del Pozo (Línea vertical que crece)
+    # 3. Dibujamos el pozo (una línea que baja con la profundidad actual)
     fig.add_trace(go.Scatter(
-        x=[0, 0], 
-        y=[0, profundidad_actual],
-        mode='lines+markers',
-        line=dict(color='black', width=4),
-        name="Pozo Actual"
+        x=[0.5, 0.5], y=[0, profundidad],
+        mode="lines+markers",
+        line=dict(color="black", width=4),
+        name="Pozo en Perforación"
     ))
 
-    fig.update_yaxis(autorange="reversed", title="Profundidad (m)")
-    fig.update_layout(title="Perfil Geológico vs. Trayectoria", height=600)
+    # 4. Configuramos los ejes (AQUÍ ESTABA EL ERROR)
+    fig.update_layout(
+        title="Perfil Geológico y Estado del Pozo",
+        xaxis=dict(showticklabels=False, range=[0, 1]),
+        yaxis=dict(autorange="reversed", title="Profundidad (m)"), # Invertido para que baje
+        template="plotly_white",
+        height=600
+    )
     
     return fig
-
-# En el cuerpo principal de tu app:
-st.plotly_chart(graficar_geologia_y_pozo(profundidad_actual), use_container_width=True)
-
-# --- CONFIGURACIÓN GEOLÓGICA ---
-formaciones = [
-    {"nombre": "Post-Cuyana (Arenas)", "top": 0, "base": 800, "color": "#f4d03f", "fp": 1.2},
-    {"nombre": "Fm. Agrio (Lutitas)", "top": 800, "base": 1500, "color": "#aab7b8", "fp": 0.8},
-    {"nombre": "Fm. Huitrín (Evaporitas)", "top": 1500, "base": 2200, "color": "#85c1e9", "fp": 0.9},
-    {"nombre": "Vaca Muerta (Calizas/Lutitas)", "top": 2200, "base": 3000, "color": "#2e4053", "fp": 0.5}
-]
-
 def obtener_formacion_actual(prof):
     for f in formaciones:
         if f["top"] <= prof < f["base"]:
