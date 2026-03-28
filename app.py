@@ -11,145 +11,140 @@ import streamlit as st
 import time
 from fpdf import FPDF
 import os
-
-# --- PANTALLA DE LOGIN / CARÁTULA ---
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
-    st.session_state.usuario_logueado = "" # Creamos el espacio en memoria
-
-if not st.session_state.autenticado:
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col2:
-        try:
-            st.image("logo_menfa.png", use_container_width=True)
-        except:
-            st.title("🏗️ MENFA 3.0")
-
-        with st.form("login_form"):
-            # Usamos variables temporales para el input
-            input_user = st.text_input("Instructor / Operador")
-            input_pass = st.text_input("Contraseña de Acceso", type="password")
-            btn_entrar = st.form_submit_button("INGRESAR AL SISTEMA", use_container_width=True)
-
-            if btn_entrar:
-                if input_user.lower() == "fabricio" and input_pass == "menfa2026":
-                    st.session_state.autenticado = True
-                    # GUARDAMOS EL NOMBRE EN LA MEMORIA DE SESIÓN
-                    st.session_state.usuario_logueado = input_user 
-                    st.success("Acceso concedido...")
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error("Credenciales incorrectas")
-    st.stop()
-# --- LÍNEA 64 CORREGIDA ---
-# Ahora llamamos a la variable desde la 'mochila' (session_state)
-st.sidebar.success(f"Sesión iniciada: {st.session_state.usuario_logueado}")
 import streamlit as st
 import time
 from streamlit_autorefresh import st_autorefresh
-
-# 1. LA PIZARRA COMPARTIDA (El cerebro del aula)
+# 1. LA PIZARRA (Base de datos compartida en el servidor)
 @st.cache_resource
-def conectar_pizarra():
+def obtener_pizarra():
     return {
-        "alarma_activa": False, 
-        "presion_base": 2500, 
-        "incremento_presion": 0, # Lo que sube por el Kick
-        "mensaje": "Operación Normal"
+        "alarma_activa": False,
+        "presion_base": 2500,
+        "incremento_kick": 0,
+        "mensaje_inst": "Operación Normal",
+        "formacion": "Cacheuta"
     }
 
-pizarra = conectar_pizarra()
+pizarra = obtener_pizarra()
 
-# 2. EL "LATIDO" (Sincronización cada 2 segundos)
-if st.session_state.get('rol'):
-    st_autorefresh(interval=2000, key="sincro_menfa")
-
-# 3. LÓGICA DE ROLES
-if "rol" not in st.session_state:
+# 2. SISTEMA DE LOGIN CON CONTRASEÑAS DISTINTAS
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
     st.session_state.rol = None
 
-if st.session_state.rol is None:
-    st.title("🏗️ MENFA 3.0 - SIMULADOR")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("ACCESO INSTRUCTOR"):
-            st.session_state.rol = "instructor"
-            st.rerun()
-    with c2:
-        if st.button("ACCESO ALUMNO"):
-            st.session_state.rol = "alumno"
-            st.rerun()
+if not st.session_state.autenticado:
+    st.title("🏗️ MENFA 3.0 - ACCESO AL SISTEMA")
+    
+    tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
+    
+    with tab1:
+        with st.form("login_alumno"):
+            user_al = st.text_input("Nombre del Alumno")
+            pass_al = st.text_input("Contraseña de Clase", type="password")
+            if st.form_submit_button("Ingresar a Simulación"):
+                # Clave simple para los alumnos
+                if pass_al == "alumno2026" and user_al:
+                    st.session_state.autenticado = True
+                    st.session_state.rol = "alumno"
+                    st.session_state.usuario = user_al
+                    st.rerun()
+                else:
+                    st.error("Nombre o contraseña de alumno incorrecta")
+
+    with tab2:
+        with st.form("login_instructor"):
+            pass_ins = st.text_input("Contraseña Maestra", type="password")
+            if st.form_submit_button("Ingresar como Administrador"):
+                # Tu clave secreta de instructor
+                if pass_ins == "menfa_pro_2026":
+                    st.session_state.autenticado = True
+                    st.session_state.rol = "instructor"
+                    st.session_state.usuario = "Fabricio"
+                    st.rerun()
+                else:
+                    st.error("Contraseña maestra incorrecta")
     st.stop()
 
-# --- LÓGICA DE CONTROL ---
+# 3. SINCRONIZACIÓN (1 segundo para máxima velocidad)
+st_autorefresh(interval=1000, key="latido_menfa")
+
+# --- 4. PROCEDIMIENTO COMÚN (Lo que ven ambos después del Login) ---
+
+st.sidebar.title(f"Sesión: {st.session_state.usuario}")
+st.sidebar.write(f"Rol: **{st.session_state.rol.upper()}**")
+
+# PANEL DEL INSTRUCTOR (Solo Fabricio puede modificar datos)
 if st.session_state.rol == "instructor":
-    st.sidebar.header("👨‍🏫 PANEL MAESTRO")
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🎮 PANEL DE MODIFICACIÓN")
     
-    if st.button("🚨 DISPARAR KICK (Surgencia)", type="primary", use_container_width=True):
-        pizarra["alarma_activa"] = True
-        pizarra["mensaje"] = "¡KICK DETECTADO! Cierre el preventor (BOP)."
-        
-    if st.button("✅ RESETEAR POZO", use_container_width=True):
-        pizarra["alarma_activa"] = False
-        pizarra["incremento_presion"] = 0
-        pizarra["mensaje"] = "Operación Normal"
-        st.rerun()
-
-    # Si la alarma está activa, la presión sube en el "servidor"
-    if pizarra["alarma_activa"]:
-        pizarra["incremento_presion"] += 50 # Sube 50 PSI cada 2 segundos
-        st.sidebar.warning(f"Presión actual del Kick: {pizarra['incremento_presion']} PSI")
-
-else:
-    # --- VISTA DEL ALUMNO ---
-    st.title("🎮 Estación de Control de Perforación")
+    # Modificar presión base del alumno en tiempo real
+    pizarra["presion_base"] = st.sidebar.number_input("Presión Base (PSI)", value=pizarra["presion_base"], step=100)
     
-    # Calculamos la presión total que ve el alumno
-    presion_total = pizarra["presion_base"] + pizarra["incremento_presion"]
-    
-    col_a, col_b = st.columns(2)
-    col_a.metric("SIDP (Presión tubería)", f"{presion_total} PSI", delta=f"{pizarra['incremento_presion']} PSI" if pizarra['alarma_activa'] else 0)
-    col_b.metric("SICP (Presión espacio anular)", f"{presion_total + 150} PSI")
-
-    if pizarra["alarma_activa"]:
-        st.error(f"🔥 {pizarra['mensaje']}")
-        st.toast("🚨 ¡ALARMA DE PRESIÓN ALTA!", icon="⚠️")
-        # Aquí puedes poner un botón que el alumno deba tocar para "cerrar" el pozo
-        if st.button("🔴 CERRAR BOP (Shut-in)"):
-            st.success("¡Pozo cerrado! Informe al instructor para estabilizar.")
+    # Liberar o Activar Alertas
+    if not pizarra["alarma_activa"]:
+        if st.sidebar.button("🚨 LANZAR ALERTA", type="primary"):
+            pizarra["alarma_activa"] = True
+            pizarra["mensaje_inst"] = "¡KICK DETECTADO! CIERRE BOP."
     else:
-        st.info("✅ Estado del Pozo: Estable (Circulando)")
-if 'vibracion_reloj' not in st.session_state:
-    st.session_state.vibracion_reloj = time.time()
-if 'presion_vibracion' not in st.session_state:
-    st.session_state.presion_vibracion = 0
-import base64
+        if st.sidebar.button("✅ LIBERAR ALERTA"):
+            pizarra["alarma_activa"] = False
+            pizarra["incremento_kick"] = 0
+            pizarra["mensaje_inst"] = "Operación Normal"
 
-# 1. FUNCIÓN PARA DISPARAR EL AUDIO (Inyecta HTML)
-def disparar_sirena():
-    # Puedes usar un archivo local: "assets/alarma.mp3" 
-    # O un link directo de internet para probar ahora:
-    url_sonido = "https://www.soundjay.com/buttons/beep-01a.mp3" 
-    
-    html_string = f"""
-        <audio autoplay loop>
-            <source src="{url_sonido}" type="audio/mp3">
-        </audio>
-    """
-    st.components.v1.html(html_string, height=0)
+# VISUALIZACIÓN DE SIMULACIÓN (Común para ambos)
+st.title("Simulador de Perforación en Tiempo Real")
 
-# 2. DENTRO DE LA VISTA DEL ALUMNO (Donde ya tenías el error del Kick)
+# Lógica de incremento si hay Kick
 if pizarra["alarma_activa"]:
-    st.error(f"🔥 {pizarra['mensaje']}")
-    
-    # ¡ESTO DISPARA EL SONIDO!
-    disparar_sirena()
-    
-    st.toast("🚨 ¡ALARMA DE PRESIÓN ALTA!", icon="⚠️")
+    pizarra["incremento_kick"] += 10 # La presión sube sola mientras no se libere
+
+presion_total = pizarra["presion_base"] + pizarra["incremento_kick"]
+
+col1, col2 = st.columns(2)
+col1.metric("SIDP (Tubería)", f"{presion_total} PSI", delta=f"+{pizarra['incremento_kick']}" if pizarra["alarma_activa"] else None)
+col2.metric("SICP (Anular)", f"{presion_total + 200} PSI")
+
+if pizarra["alarma_activa"]:
+    st.error(f"⚠️ {pizarra['mensaje_inst']}")
+    # Aquí puedes agregar el código de la sirena que vimos antes
 else:
-    st.info("✅ Estado del Pozo: Estable")
+    st.success("✅ Sistema Estable - Esperando parámetros del Instructor")
+
+
+import base64
+import os
+
+# 1. FUNCIÓN PARA LEER EL ARCHIVO LOCAL Y GENERAR EL AUDIO
+def reproducir_alarma_local():
+    archivo_audio = "assets/alarma.mp3"
+    
+    if os.path.exists(archivo_audio):
+        with open(archivo_audio, "rb") as f:
+            data = f.read()
+            # Convertimos el audio a base64 para que Streamlit lo "inyecte" en el navegador
+            base64_audio = base64.b64encode(data).decode()
+            
+            html_audio = f"""
+                <audio autoplay loop>
+                    <source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3">
+                </audio>
+            """
+            st.components.v1.html(html_audio, height=0)
+    else:
+        # Si el archivo no está, te avisa en la consola de Streamlit para que no explote
+        st.error("Archivo 'assets/alarma.mp3' no encontrado en GitHub.")
+
+# 2. APLICACIÓN EN LA VISTA DEL ALUMNO
+# Buscá la parte donde el alumno reacciona al Kick:
+
+if pizarra["alarma_activa"]:
+    st.error(f"🔥 {pizarra['mensaje_inst']}")
+    
+    # ¡Aquí llamamos a tu archivo de assets!
+    reproducir_alarma_local()
+    
+    st.toast("🚨 ¡Surgencia en progreso!", icon="⚠️")
 
 # --- INICIALIZACIÓN DE ESTADOS DE SEGURIDAD ---
 if 'evento_activo' not in st.session_state:
