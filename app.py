@@ -1505,16 +1505,22 @@ def reproducir_audio(url_o_ruta):
     """
     st.components.v1.html(audio_html, height=0)
 
-# BOTÓN 1 (En el panel de control, por ejemplo)
-if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="boton_bop_control"):
-    st.session_state.evento_activo = None
-    st.sidebar.success("¡Pozo Cerrado!")
-
-# ... más abajo en el código, si tenés otro ...
-
-# BOTÓN 2 (En la sección de emergencia)
+# --- LÓGICA UNIFICADA DE CIERRE ---
 if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="boton_bop_emergencia"):
-    st.session_state.evento_activo = None
-    st.sidebar.warning("¡Cierre de Emergencia Activado!")
-    # ... (toda tu lógica de frenar el cronómetro que ya armamos)
+    # 1. Sonido de la válvula (Feedback auditivo)
+    reproducir_audio("https://www.soundjay.com/mechanical/sounds/air-release-1.mp3")
     
+    # 2. Frenar el tiempo y el evento
+    if st.session_state.get('cronometro_activo'):
+        # Calculamos cuánto tardó el alumno en reaccionar
+        st.session_state.tiempo_reaccion = round(time.time() - st.session_state.get('tiempo_inicio_evento', time.time()), 2)
+        st.session_state.cronometro_activo = False
+        
+        # 3. Limpiar el caos (Presiones y Alarma)
+        st.session_state.evento_activo = None
+        st.session_state.presion_vibracion = 0 # Chau pánico visual
+        
+        st.sidebar.success(f"✅ Pozo Seguro. Tiempo de reacción: {st.session_state.tiempo_reaccion} seg.")
+        st.balloons() # Festejo por salvar la operación
+    else:
+        st.sidebar.info("El pozo ya está cerrado o no hay eventos activos.")
