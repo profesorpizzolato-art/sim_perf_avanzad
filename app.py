@@ -43,7 +43,7 @@ if not st.session_state.autenticado:
             user = st.text_input("Instructor")
             pw = st.text_input("Clave", type="password")
             if st.form_submit_button("ENTRAR"):
-                if user.lower() == "fabricio" and pw == "menfa2026":
+                if user.lower() == "instructor" and pw == "menfa2026":
                     st.session_state.autenticado = True
                     st.rerun()
                 else:
