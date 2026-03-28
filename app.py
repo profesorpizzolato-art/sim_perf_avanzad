@@ -1534,6 +1534,23 @@ if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="btn_bop_final"):
 if st.button("🔔 Probar Audio de Assets"):
     reproducir_audio_local("alarma.mp3")
 
+# --- SECCIÓN DE BIBLIOTECA ---
+st.sidebar.divider()
+st.sidebar.subheader("📚 Biblioteca Técnica")
+
+if st.sidebar.button("📖 Generar Manual de Usuario (Libro)"):
+    try:
+        libro_bytes = generar_manual_tecnico_completo()
+        st.sidebar.download_button(
+            label="⬇️ Descargar Manual PDF",
+            data=libro_bytes,
+            file_name="Manual_Tecnico_Menfa_3.pdf",
+            mime="application/pdf"
+        )
+        st.sidebar.success("Manual listo para imprimir.")
+    except Exception as e:
+        st.sidebar.error("Error al compilar el libro.")
+
 def generar_manual_tecnico_descargable():
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
