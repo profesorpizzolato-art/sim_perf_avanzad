@@ -1281,7 +1281,7 @@ if st.sidebar.button("🛠️ Generar Reporte Técnico"):
             )
  except Exception as e:
             # Nivel 1 (8 espacios, alineado con el try)
-            st.sidebar.error(f"Error: {e}"
+            st.sidebar.error(f"Error: {e}")
             pdf.set_text_color(*color_eval)
             pdf.cell(0, 10, f"Evaluacion de Respuesta: {calificacion_seguridad} ({t} seg)", ln=True)
             datos_errores = st.session_state.get('errores_iadc', [])
