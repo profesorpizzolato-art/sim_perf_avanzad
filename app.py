@@ -121,13 +121,36 @@ else:
             st.success("¡Pozo cerrado! Informe al instructor para estabilizar.")
     else:
         st.info("✅ Estado del Pozo: Estable (Circulando)")
-
-    
 if 'vibracion_reloj' not in st.session_state:
     st.session_state.vibracion_reloj = time.time()
 if 'presion_vibracion' not in st.session_state:
     st.session_state.presion_vibracion = 0
+import base64
+
+# 1. FUNCIÓN PARA DISPARAR EL AUDIO (Inyecta HTML)
+def disparar_sirena():
+    # Puedes usar un archivo local: "assets/alarma.mp3" 
+    # O un link directo de internet para probar ahora:
+    url_sonido = "https://www.soundjay.com/buttons/beep-01a.mp3" 
     
+    html_string = f"""
+        <audio autoplay loop>
+            <source src="{url_sonido}" type="audio/mp3">
+        </audio>
+    """
+    st.components.v1.html(html_string, height=0)
+
+# 2. DENTRO DE LA VISTA DEL ALUMNO (Donde ya tenías el error del Kick)
+if pizarra["alarma_activa"]:
+    st.error(f"🔥 {pizarra['mensaje']}")
+    
+    # ¡ESTO DISPARA EL SONIDO!
+    disparar_sirena()
+    
+    st.toast("🚨 ¡ALARMA DE PRESIÓN ALTA!", icon="⚠️")
+else:
+    st.info("✅ Estado del Pozo: Estable")
+
 # --- INICIALIZACIÓN DE ESTADOS DE SEGURIDAD ---
 if 'evento_activo' not in st.session_state:
     st.session_state.evento_activo = None
