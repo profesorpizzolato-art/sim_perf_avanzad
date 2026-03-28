@@ -88,7 +88,22 @@ if st.session_state.rol == "instructor":
             pizarra["alarma_activa"] = False
             pizarra["incremento_kick"] = 0
             pizarra["mensaje_inst"] = "Operación Normal"
-
+# --- DENTRO DE LA VISTA DEL ALUMNO ---
+if pizarra["alarma_activa"]:
+    st.error(f"🔥 {pizarra['mensaje_inst']}")
+    
+    # Llamamos a la alarma sonora de tu carpeta assets
+    reproducir_alarma_local()
+    
+    # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
+    if st.button("🔴 CERRAR BOP Y ESTABILIZAR", type="primary", use_container_width=True):
+        pizarra["alarma_activa"] = False  # Esto apaga la luz roja para TODOS
+        pizarra["mensaje_inst"] = f"✅ Pozo controlado por: {st.session_state.usuario}"
+        pizarra["incremento_kick"] = 0    # Resetea la presión
+        st.success("¡Operación exitosa! Pozo bajo control.")
+        st.rerun() # Refresca para que deje de sonar la alarma
+   else:
+    st.success(f"✅ Estado: {pizarra['mensaje_inst']}")
 # VISUALIZACIÓN DE SIMULACIÓN (Común para ambos)
 st.title("Simulador de Perforación en Tiempo Real")
 
@@ -231,7 +246,15 @@ def calcular_metricas(presion, caudal, densidad):
     # IF = (Densidad * Caudal * Velocidad) / 1930 -> Simplificado para simulador
     if_force = (densidad * caudal * 0.05) * (caudal / 100) 
     return round(hhp, 2), round(if_force, 2)
+# --- LOGO EN LA PARTE SUPERIOR IZQUIERDA (SIDEBAR) ---
+try:
+    # 'use_container_width=True' hace que el logo se ajuste al ancho de la barra lateral
+    st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
+except Exception as e:
+    # Si el logo falla, ponemos un texto elegante para que no quede vacío
+    st.sidebar.markdown("<h2 style='text-align: center; color: #004280;'>🏗️ MENFA 3.0</h2>", unsafe_allow_html=True)
 
+st.sidebar.markdown("---") # Una línea divisoria para separar el logo de los mandos
 # --- SIDEBAR (CONTROLES) ---
 st.sidebar.header("🕹️ Mandos de la Cabina")
 densidad = st.sidebar.slider("Densidad del Lodo (ppg)", 8.0, 19.0, 10.5)
