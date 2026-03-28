@@ -48,87 +48,80 @@ if not st.session_state.autenticado:
 st.sidebar.success(f"Sesión iniciada: {st.session_state.usuario_logueado}")
 import streamlit as st
 import time
-from streamlit_autorefresh import st_autorefresh # Recordá agregar esto a requirements.txt
+from streamlit_autorefresh import st_autorefresh
 
-# 1. CONFIGURACIÓN Y MEMORIA COMPARTIDA (LA PIZARRA)
+# 1. LA PIZARRA COMPARTIDA (El cerebro del aula)
 @st.cache_resource
-def obtener_pizarra_menfa():
-    # Esta memoria es global: lo que cambia acá, cambia para todos los usuarios
+def conectar_pizarra():
     return {
-        "estado_kick": False,
-        "formacion_maestra": "Cacheuta",
-        "presion_fondo": 2500,
-        "mensaje_alerta": ""
+        "alarma_activa": False, 
+        "presion_base": 2500, 
+        "incremento_presion": 0, # Lo que sube por el Kick
+        "mensaje": "Operación Normal"
     }
 
-pizarra = obtener_pizarra_menfa()
+pizarra = conectar_pizarra()
 
-# 2. SISTEMA DE LOGIN DOBLE
+# 2. EL "LATIDO" (Sincronización cada 2 segundos)
+if st.session_state.get('rol'):
+    st_autorefresh(interval=2000, key="sincro_menfa")
+
+# 3. LÓGICA DE ROLES
 if "rol" not in st.session_state:
-    st.session_state.rol = None # Puede ser 'instructor' o 'alumno'
+    st.session_state.rol = None
 
 if st.session_state.rol is None:
-    st.image("logo_menfa.png", width=250)
-    st.title("MENFA 3.0 - Acceso al Sistema")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        with st.container(border=True):
-            st.subheader("👨‍🏫 Instructor")
-            clave_ins = st.text_input("Clave Maestra", type="password", key="ins_pass")
-            if st.button("Ingresar como Instructor"):
-                if clave_ins == "menfa2026": # Tu clave secreta
-                    st.session_state.rol = "instructor"
-                    st.session_state.usuario = "Fabricio"
-                    st.rerun()
-                else:
-                    st.error("Clave incorrecta")
-
-    with col2:
-        with st.container(border=True):
-            st.subheader("🎓 Alumno")
-            nombre_al = st.text_input("Nombre Completo", key="alu_name")
-            if st.button("Ingresar a Clase"):
-                if nombre_al:
-                    st.session_state.rol = "alumno"
-                    st.session_state.usuario = nombre_al
-                    st.rerun()
-                else:
-                    st.warning("Por favor, poné tu nombre")
+    st.title("🏗️ MENFA 3.0 - SIMULADOR")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("ACCESO INSTRUCTOR"):
+            st.session_state.rol = "instructor"
+            st.rerun()
+    with c2:
+        if st.button("ACCESO ALUMNO"):
+            st.session_state.rol = "alumno"
+            st.rerun()
     st.stop()
 
-# 3. EL "LATIDO" (Sincronización automática cada 2 segundos)
-st_autorefresh(interval=2000, key="refresh_global")
-
-# 4. INTERFAZ SEGÚN EL ROL
+# --- LÓGICA DE CONTROL ---
 if st.session_state.rol == "instructor":
-    st.sidebar.header(f"Panel Maestro: {st.session_state.usuario}")
-    st.sidebar.info("Tus acciones afectarán a todos los alumnos conectados.")
+    st.sidebar.header("👨‍🏫 PANEL MAESTRO")
     
-    # CONTROLES DEL INSTRUCTOR
-    st.subheader("🎮 Consola de Control de Aula")
-    if st.button("🚨 DISPARAR KICK A TODOS", type="primary"):
-        pizarra["estado_kick"] = True
-        pizarra["mensaje_alerta"] = "¡EMERGENCIA! El instructor ha detectado una surgencia."
+    if st.button("🚨 DISPARAR KICK (Surgencia)", type="primary", use_container_width=True):
+        pizarra["alarma_activa"] = True
+        pizarra["mensaje"] = "¡KICK DETECTADO! Cierre el preventor (BOP)."
         
-    if st.button("✅ REINICIAR SIMULACIÓN"):
-        pizarra["estado_kick"] = False
-        pizarra["mensaje_alerta"] = ""
+    if st.button("✅ RESETEAR POZO", use_container_width=True):
+        pizarra["alarma_activa"] = False
+        pizarra["incremento_presion"] = 0
+        pizarra["mensaje"] = "Operación Normal"
+        st.rerun()
+
+    # Si la alarma está activa, la presión sube en el "servidor"
+    if pizarra["alarma_activa"]:
+        pizarra["incremento_presion"] += 50 # Sube 50 PSI cada 2 segundos
+        st.sidebar.warning(f"Presión actual del Kick: {pizarra['incremento_presion']} PSI")
 
 else:
-    # VISTA DEL ALUMNO
-    st.sidebar.success(f"Alumno: {st.session_state.usuario}")
-    st.title("Simulador de Perforación")
+    # --- VISTA DEL ALUMNO ---
+    st.title("🎮 Estación de Control de Perforación")
     
-    # El alumno REACCIONA a lo que hay en la pizarra
-    if pizarra["estado_kick"]:
-        st.error(f"⚠️ {pizarra['mensaje_alerta']}")
-        # Aquí disparás el sonido de la sirena y el movimiento de las agujas
-        st.session_state.kick_activo = True
+    # Calculamos la presión total que ve el alumno
+    presion_total = pizarra["presion_base"] + pizarra["incremento_presion"]
+    
+    col_a, col_b = st.columns(2)
+    col_a.metric("SIDP (Presión tubería)", f"{presion_total} PSI", delta=f"{pizarra['incremento_presion']} PSI" if pizarra['alarma_activa'] else 0)
+    col_b.metric("SICP (Presión espacio anular)", f"{presion_total + 150} PSI")
+
+    if pizarra["alarma_activa"]:
+        st.error(f"🔥 {pizarra['mensaje']}")
+        st.toast("🚨 ¡ALARMA DE PRESIÓN ALTA!", icon="⚠️")
+        # Aquí puedes poner un botón que el alumno deba tocar para "cerrar" el pozo
+        if st.button("🔴 CERRAR BOP (Shut-in)"):
+            st.success("¡Pozo cerrado! Informe al instructor para estabilizar.")
     else:
-        st.info("Operación normal. Esperando instrucciones del pozo...")
-        st.session_state.kick_activo = False
+        st.info("✅ Estado del Pozo: Estable (Circulando)")
+
     
 if 'vibracion_reloj' not in st.session_state:
     st.session_state.vibracion_reloj = time.time()
