@@ -12,56 +12,41 @@ import time
 from fpdf import FPDF
 import os
 
-# 1. CONFIGURACIÓN Y ESTADO DE SESIÓN
-st.set_page_config(page_title="MENFA 3.0", layout="centered")
-
+# --- PANTALLA DE LOGIN / CARÁTULA ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
+    st.session_state.usuario_logueado = "" # Creamos el espacio en memoria
 
-# 2. DEFINICIÓN DE LA FUNCIÓN (Declarala ARRIBA para que no de error 'not defined')
-def generar_reporte_tecnico(nombre, tiempo, formacion):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Helvetica", "B", 20)
-    pdf.cell(0, 10, "REPORTE TÉCNICO - MENFA 3.0", ln=True, align='C')
-    pdf.ln(10)
-    pdf.set_font("Helvetica", "", 12)
-    pdf.multi_cell(0, 10, f"Alumno: {nombre}\nFormación: {formacion}\nTiempo de Reacción: {tiempo}s")
-    return pdf.output()
-
-# 3. PANTALLA DE LOGIN Y CARÁTULA
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
+    
     with col2:
         try:
             st.image("logo_menfa.png", use_container_width=True)
         except:
             st.title("🏗️ MENFA 3.0")
-        
-        st.subheader("Ingreso al Simulador")
-        with st.form("login"):
-            user = st.text_input("Instructor")
-            pw = st.text_input("Clave", type="password")
-            if st.form_submit_button("ENTRAR"):
-                if user.lower() == "fabricio" and pw == "menfa2026":
+
+        with st.form("login_form"):
+            # Usamos variables temporales para el input
+            input_user = st.text_input("Instructor / Operador")
+            input_pass = st.text_input("Contraseña de Acceso", type="password")
+            btn_entrar = st.form_submit_button("INGRESAR AL SISTEMA", use_container_width=True)
+
+            if btn_entrar:
+                if input_user.lower() == "fabricio" and input_pass == "menfa2026":
                     st.session_state.autenticado = True
+                    # GUARDAMOS EL NOMBRE EN LA MEMORIA DE SESIÓN
+                    st.session_state.usuario_logueado = input_user 
+                    st.success("Acceso concedido...")
+                    time.sleep(1)
                     st.rerun()
                 else:
                     st.error("Credenciales incorrectas")
-    st.stop() # Bloquea el resto del código si no entró
+    st.stop()
+# --- LÍNEA 64 CORREGIDA ---
+# Ahora llamamos a la variable desde la 'mochila' (session_state)
+st.sidebar.success(f"Sesión iniciada: {st.session_state.usuario_logueado}")
 
-# 4. CUERPO DEL SIMULADOR (Si llegó acá, ya se logueó)
-st.title("Simulador de Perforación Activo")
-# ... Aquí va toda tu lógica de WOB, RPM y el KICK ...
-
-# 5. BOTÓN DE DESCARGA (Al final de la lógica del cierre del BOP)
-if st.session_state.get('tiempo_reaccion'):
-    nombre_alumno = st.text_input("Nombre para el certificado:")
-    if nombre_alumno:
-        # LLAMADA A LA FUNCIÓN (Ahora sí está definida arriba)
-        pdf_bytes = generar_reporte_tecnico(nombre_alumno, st.session_state.tiempo_reaccion, "Vaca Muerta")
-        st.download_button("📥 Descargar Reporte", data=bytes(pdf_bytes), file_name="Reporte.pdf")
-st.sidebar.success(f"Sesión iniciada: {usuario}")
 if 'vibracion_reloj' not in st.session_state:
     st.session_state.vibracion_reloj = time.time()
 if 'presion_vibracion' not in st.session_state:
