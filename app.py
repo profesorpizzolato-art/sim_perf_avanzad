@@ -1547,6 +1547,26 @@ with st.expander("🛠️ CONSOLA DE INSTRUCTOR", expanded=False):
         st.session_state.falla_bomba = False
         st.session_state.cronometro_activo = False
 
+# --- EN EL PANEL DEL INSTRUCTOR ---
+if st.session_state.rol == "instructor":
+    st.sidebar.subheader("🏢 Selección de Escenario Industrial")
+    escenario = st.sidebar.selectbox("Elegir Ejercicio", [
+        "Normal: Perforación Estándar",
+        "Escenario 1: Turno de Perforador (Leve aumento)",
+        "Escenario 2: Evento Crítico (Kick rápido)",
+        "Escenario 3: Presión de Producción (ROP al límite)",
+        "Escenario 4: Company Man (Toma de decisiones)"
+    ])
+    
+    if st.sidebar.button("🚀 Lanzar Escenario Seleccionado"):
+        pizarra["escenario_actual"] = escenario
+        pizarra["alarma_activa"] = True
+        # Aquí podés variar la velocidad del incremento_kick según el escenario
+        if "Crítico" in escenario:
+            pizarra["velocidad_presion"] = 50 
+        else:
+            pizarra["velocidad_presion"] = 10
+
 import plotly.graph_objects as go
 
 def graficar_geologia_y_pozo(profundidad):
@@ -1843,3 +1863,30 @@ try:
 
 except Exception as e:
     st.sidebar.error(f"❌ Error al compilar el libro: {e}")
+def mostrar_evaluacion(puntos):
+    st.markdown("---")
+    st.header("🧾 Planilla de Evaluación Final")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Puntaje Total", f"{puntos}/100")
+        if puntos >= 90:
+            st.success("🏆 Nivel: EXCELENTE (Operativo Real)")
+            nivel = "Nivel 3: Avanzado / Criterio Operativo"
+        elif puntos >= 70:
+            st.info("🥈 Nivel: APROBADO (Competente)")
+            nivel = "Nivel 2: Operador Competente"
+        else:
+            st.warning("⚠️ Nivel: A MEJORAR")
+            nivel = "Nivel 1: Operador en Entrenamiento"
+            
+    with col2:
+        st.write("**Desglose de Competencias:**")
+        st.write("- Monitoreo de variables: 20/20 pts")
+        st.write("- Toma de decisiones: 30/30 pts")
+        st.write("- Control del evento: 20/20 pts")
+
+    # Botón para generar el certificado (usando tu lógica de FPDF si la tenés)
+    if puntos >= 70:
+        st.balloons()
+        st.download_button("📜 Descargar Certificado MENFA", "Certificado...", file_name="Certificado_Menfa.pdf")
