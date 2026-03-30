@@ -831,8 +831,14 @@ if st.session_state.errores_iadc:
     df_errores = pd.DataFrame(st.session_state.errores_iadc)
     st.table(df_errores)
     
-    calculo de Nota (Empieza en 100 y resta 25 por cada error crítico)
-    nota_final = max(0, 100 - (len(st.session_state.errores_iadc) * 25))
+# 834: Cálculo de Nota (Empieza en 100 y resta 25 por cada error crítico)
+nota_final = 100
+
+if pizarra["rebalse_tanques"]:
+    nota_final -= 25
+    
+if pizarra["presion_excedida"]:
+    nota_final -= 25
     
     col_score1, col_score2 = st.columns(2)
     with col_score1:
