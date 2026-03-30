@@ -1972,5 +1972,18 @@ if st.button("🔴 FINALIZAR EVALUACIÓN"):
     st.balloons()                 # <--- MOVELO ACÁ ADENTRO
     st.success("¡Simulación completada con éxito!")
     
-    # Aquí iría tu lógica de Scoring y PDF que armamos
-        st.download_button("📜 Descargar Certificado MENFA", "Certificado...", file_name="Certificado_Menfa.pdf")
+ # --- BLOQUE FINAL DE EVALUACIÓN ---
+    st.markdown(f"### 🎓 Resultado para {st.session_state.usuario}")
+    
+    if nota_final >= 75:
+        st.success(f"✅ APROBADO - Nota Final: {nota_final}/100")
+    else:
+        st.error(f"❌ REQUIERE RE-ENTRENAMIENTO - Nota Final: {nota_final}/100")
+
+    # ESTA ES LA LÍNEA 1976 CORREGIDA:
+    st.download_button(
+        label="📜 Descargar Certificado MENFA",
+        data="Certificado...", # Aquí va tu variable de PDF generada con FPDF
+        file_name=f"Certificado_{st.session_state.usuario}.pdf",
+        mime="application/pdf"
+    )
