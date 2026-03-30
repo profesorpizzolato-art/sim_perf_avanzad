@@ -53,15 +53,16 @@ def reproducir_alarma_local():
 
 # --- ACÁ EMPIEZA TU LÓGICA DE LOGIN ---
 
-# 2. SISTEMA DE LOGIN CON CONTRASEÑAS DISTINTAS
+# --- ACÁ EMPIEZA TU LÓGICA DE LOGIN ---
+
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.rol = None
 
 if not st.session_state.autenticado:
     st.title("🏗️ MENFA 3.0 - ACCESO AL SISTEMA")
-    # --- LOGO EN LA BARRA LATERAL ---
-st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
+    
+    # ESTA ES LA LÍNEA 65: Asegurate de que NO tenga espacios al inicio
     tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
     
     with tab1:
