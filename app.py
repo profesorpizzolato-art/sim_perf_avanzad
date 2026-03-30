@@ -37,10 +37,7 @@ def conectar_pizarra():
         "incremento_kick": 0,     # Lo que sube solo en el accidente
         "caudal_gpm": 400         # Flujo de retorno
     }
-pizarra = obtener_pizarra()
 
-# ... (Aquí sigue tu código de Login y la línea 96 que ahora sí va a funcionar)
-# 1. LA PIZARRA (Base de datos compartida en el servidor)
 @st.cache_resource
 def obtener_pizarra():
     return {
