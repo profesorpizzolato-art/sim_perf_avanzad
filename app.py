@@ -31,7 +31,12 @@ def obtener_pizarra():
     }
 
 pizarra = obtener_pizarra()
-
+@st.cache_resource
+def obtener_pizarra():
+    return {
+        # ... todas tus variables actuales ...
+        "festejo_realizado": False  # <--- AGREGÁ ESTO
+    }
 # --- 3. LOGO EN LA BARRA LATERAL ---
 if os.path.exists("assets/logo_menfa.png"):
     st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
