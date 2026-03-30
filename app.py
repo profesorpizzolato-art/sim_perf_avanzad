@@ -10,7 +10,12 @@ import os
 import base64
 import os
 from streamlit_autorefresh import st_autorefresh
-
+@st.cache_resource
+def obtener_pizarra():
+    return {
+        # ... tus otras variables ...
+        "festejo_realizado": False  # <--- AGREGÁ ESTA LÍNEA
+    }
 # --- 1. DEFINICIÓN DE FUNCIONES (DEBE IR ARRIBA DE TODO) ---
 def reproducir_alarma_local():
     archivo_audio = "assets/alarma.mp3"
@@ -791,7 +796,15 @@ with col_iadc2:
     ))
     fig_maasp.update_layout(height=250, paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_maasp, use_container_width=True)
-
+if st.button("🔴 FINALIZAR EVALUACIÓN"):
+    # ... tu lógica de nota y PDF ...
+    
+    # SOLO LANZA GLOBOS SI NO SALIERON ANTES
+    if not pizarra.get("festejo_realizado", False):
+        st.balloons()
+        pizarra["festejo_realizado"] = True  # Cerramos el candado
+        
+    st.success(f"Simulación terminada. Nota: {nota_final}/100")
 # Lógica de fracaso IADC
 if sicp > maasp:
     st.markdown("""
