@@ -850,7 +850,16 @@ if pizarra.get("rebalse_tanques", False):
 if pizarra.get("presion_excedida", False):
     st.error("❌ PENALIZACIÓN: Se excedió la presión máxima permitida.")
     nota_final -= 25
+# --- CÁLCULO DE PRESIÓN CORRELACIONADA ---
+# Sumamos la base que manejás vos como Instructor + el aumento del Kick
+presion_actual = pizarra.get("presion_base", 2500) + pizarra.get("incremento_kick", 0)
 
+# Ahora sí, la línea 854 puede comparar:
+if presion_actual > 4500: # Límite de seguridad del pozo
+    pizarra["presion_excedida"] = True
+    st.error("🚨 ¡PRESIÓN CRÍTICA! Se excedió el límite de formación.")
+else:
+    pizarra["presion_excedida"] = False
 if presion_actual > 4500: # Límite de seguridad del pozo
     pizarra["presion_excedida"] = True
     st.warning("⚠️ CRÍTICO: ¡Presión por encima del límite de formación!")
