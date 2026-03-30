@@ -833,9 +833,12 @@ if st.session_state.errores_iadc:
     
 # 834: Cálculo de Nota (Empieza en 100 y resta 25 por cada error crítico)
 nota_final = 100
-# Lógica de seguridad: Si supera los 580 barriles, se marca el error
-if pizarra["volumen_tanques"] > 580:
+# Usamos .get con un valor por defecto de 500 para que NUNCA falle
+vol_actual = pizarra.get("volumen_tanques", 500)
+
+if vol_actual > 580:
     pizarra["rebalse_tanques"] = True
+    st.error("🚨 ¡REBALSE EN TANQUES! Capacidad excedida.")
 else:
     pizarra["rebalse_tanques"] = False
 # Si no encuentra 'rebalse_tanques', asume False y la app NO se corta.
