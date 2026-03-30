@@ -11,10 +11,13 @@ import base64
 import os
 from streamlit_autorefresh import st_autorefresh
 @st.cache_resource
+@st.cache_resource
 def obtener_pizarra():
     return {
-        # ... tus otras variables ...
-        "festejo_realizado": False  # <--- AGREGÁ ESTA LÍNEA
+        # ... tus variables de presión y tanques ...
+        "finalizado": False,        # Nueva
+        "festejo_realizado": False  # Nueva para frenar los globos
+    }
     }
 # --- 1. DEFINICIÓN DE FUNCIONES (DEBE IR ARRIBA DE TODO) ---
 def reproducir_alarma_local():
@@ -65,7 +68,8 @@ if "autenticado" not in st.session_state:
 
 if not st.session_state.autenticado:
     st.title("🏗️ MENFA 3.0 - ACCESO AL SISTEMA")
-    
+    # --- LOGO EN LA BARRA LATERAL ---
+st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
     tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
     
     with tab1:
@@ -796,15 +800,38 @@ with col_iadc2:
     ))
     fig_maasp.update_layout(height=250, paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_maasp, use_container_width=True)
-if st.button("🔴 FINALIZAR EVALUACIÓN"):
-    # ... tu lógica de nota y PDF ...
+# --- BLOQUE DE FINALIZACIÓN Y EVALUACIÓN (Línea 830 aprox) ---
+if st.button("🔴 FINALIZAR EVALUACIÓN Y GENERAR REPORTE"):
+    # 1. Marcamos el fin en la pizarra
+    pizarra["finalizado"] = True
     
-    # SOLO LANZA GLOBOS SI NO SALIERON ANTES
+    # 2. CÁLCULO DE NOTA (Sin errores de NameError)
+    nota_final = 100
+    if pizarra.get("rebalse_tanques", False):
+        nota_final -= 25
+    if pizarra.get("presion_excedida", False):
+        nota_final -= 25
+    
+    # 3. EL CANDADO DE LOS GLOBOS (Solo salen una vez)
     if not pizarra.get("festejo_realizado", False):
         st.balloons()
-        pizarra["festejo_realizado"] = True  # Cerramos el candado
-        
-    st.success(f"Simulación terminada. Nota: {nota_final}/100")
+        pizarra["festejo_realizado"] = True # Cerramos el candado
+    
+    # 4. RESULTADOS EN PANTALLA
+    st.markdown(f"### 🎓 Resultado para {st.session_state.usuario}")
+    if nota_final >= 75:
+        st.success(f"✅ APROBADO - Nota Final: {nota_final}/100")
+    else:
+        st.error(f"❌ REQUIERE RE-ENTRENAMIENTO - Nota Final: {nota_final}/100")
+
+    # 5. EL BOTÓN DE DESCARGA (Alineado perfectamente para evitar IndentationError)
+    # Nota: Asegurate que la variable 'pdf_output' exista o usá un texto de prueba
+    st.download_button(
+        label="📜 Descargar Certificado MENFA",
+        data="Contenido del Certificado...", # Aquí iría tu variable del PDF (fpdf)
+        file_name=f"Certificado_{st.session_state.usuario}.pdf",
+        mime="application/pdf"
+    )
 # Lógica de fracaso IADC
 if sicp > maasp:
     st.markdown("""
