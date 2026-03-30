@@ -845,7 +845,17 @@ else:
 if pizarra.get("rebalse_tanques", False):
     st.error("❌ PENALIZACIÓN: Rebalse de tanques detectado.")
     nota_final -= 25
-    
+# Lógica de Seguridad de Presión
+# Si no encuentra 'presion_excedida', asume False y la app sigue corriendo.
+if pizarra.get("presion_excedida", False):
+    st.error("❌ PENALIZACIÓN: Se excedió la presión máxima permitida.")
+    nota_final -= 25
+
+if presion_actual > 4500: # Límite de seguridad del pozo
+    pizarra["presion_excedida"] = True
+    st.warning("⚠️ CRÍTICO: ¡Presión por encima del límite de formación!")
+else:
+    pizarra["presion_excedida"] = False     
 if pizarra["presion_excedida"]:
     nota_final -= 25
     
