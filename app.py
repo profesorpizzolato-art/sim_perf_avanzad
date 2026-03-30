@@ -5,61 +5,53 @@ import time
 import random
 import plotly.graph_objects as go
 from datetime import datetime
-from fpdf import FPDF  # <--- NOTA: Aunque la librería se instala como fpdf2, el import suele ser 'from fpdf import FPDF'
+from fpdf import FPDF
 import os
 import base64
-import os
 from streamlit_autorefresh import st_autorefresh
-@st.cache_resource
+
+# --- 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO DE STREAMLIT) ---
+st.set_page_config(page_title="Simulador MENFA 3.0", layout="wide")
+
+# --- 2. EL "CEREBRO" UNIFICADO (PIZARRA COMPARTIDA) ---
 @st.cache_resource
 def obtener_pizarra():
     return {
-        # ... tus variables de presión y tanques ...
-        "finalizado": False,        # Nueva
-        "festejo_realizado": False  # Nueva para frenar los globos
+        "alarma_activa": False,
+        "presion_base": 2500,
+        "volumen_tanques": 500,
+        "incremento_kick": 0,
+        "caudal_gpm": 400,
+        "rebalse_tanques": False,
+        "presion_excedida": False,
+        "mensaje_inst": "Operación Normal",
+        "formacion": "Cacheuta",
+        "finalizado": False,
+        "festejo_realizado": False  # <-- Para que los globos no salgan mil veces
     }
-    }
-# --- 1. DEFINICIÓN DE FUNCIONES (DEBE IR ARRIBA DE TODO) ---
+
+pizarra = obtener_pizarra()
+
+# --- 3. LOGO EN LA BARRA LATERAL ---
+if os.path.exists("assets/logo_menfa.png"):
+    st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
+else:
+    st.sidebar.markdown("<h2 style='text-align: center;'>🏗️ MENFA 3.0</h2>", unsafe_allow_html=True)
+
+# --- 4. REFRESCO AUTOMÁTICO (Cada 1 segundo) ---
+st_autorefresh(interval=1000, key="latido_menfa")
+
+# --- 5. SISTEMA DE AUDIO ---
 def reproducir_alarma_local():
     archivo_audio = "assets/alarma.mp3"
     if os.path.exists(archivo_audio):
         with open(archivo_audio, "rb") as f:
             data = f.read()
             base64_audio = base64.b64encode(data).decode()
-            html_audio = f"""
-                <audio autoplay loop>
-                    <source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3">
-                </audio>
-            """
+            html_audio = f'<audio autoplay loop><source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3"></audio>'
             st.components.v1.html(html_audio, height=0)
-    else:
-        # Esto te avisará si el archivo no está en GitHub
-        st.sidebar.error("⚠️ No se encontró 'assets/alarma.mp3'")
 
-@st.cache_resource
-def conectar_pizarra():
-    return {
-        "alarma_activa": False,
-        "presion_base": 2500,     # Lo que vos manejás con el slider
-        "volumen_tanques": 500,   # Nivel inicial
-        "incremento_kick": 0,     # Lo que sube solo en el accidente
-        "caudal_gpm": 400,  
-        "alarma_activa": False,
-        "rebalse_tanques": False,  # <--- AGREGÁ ESTA LÍNEA AQUÍ
-        "mensaje_inst": "Operación Normal"# Flujo de retorno
-    }
-
-@st.cache_resource
-def obtener_pizarra():
-    return {
-        "alarma_activa": False,
-        "presion_base": 2500,
-        "incremento_kick": 0,
-        "mensaje_inst": "Operación Normal",
-        "formacion": "Cacheuta"
-    }
-
-pizarra = obtener_pizarra()
+# --- ACÁ EMPIEZA TU LÓGICA DE LOGIN ---
 
 # 2. SISTEMA DE LOGIN CON CONTRASEÑAS DISTINTAS
 if "autenticado" not in st.session_state:
