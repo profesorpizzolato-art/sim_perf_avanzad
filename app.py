@@ -106,7 +106,8 @@ if pizarra["alarma_activa"]:
 
 # VISUALIZACIÓN: Los relojes ahora leen la pizarra compartida
 st.metric("SIDP", f"{pizarra['presion_base'] + pizarra["incremento_kick"]} PSI")
-st.metric("Nivel de Tanques", f"{pizarra['volumen_tanques']} BBL")
+valor_tanque = pizarra.get("volumen_tanques", 500) 
+st.metric("Nivel de Tanques", f"{valor_tanque} BBL")
 # PANEL DEL INSTRUCTOR (Solo Fabricio puede modificar datos)
 if st.session_state.rol == "instructor":
     st.sidebar.markdown("---")
