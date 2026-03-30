@@ -35,7 +35,10 @@ def conectar_pizarra():
         "presion_base": 2500,     # Lo que vos manejás con el slider
         "volumen_tanques": 500,   # Nivel inicial
         "incremento_kick": 0,     # Lo que sube solo en el accidente
-        "caudal_gpm": 400         # Flujo de retorno
+        "caudal_gpm": 400  
+        "alarma_activa": False,
+        "rebalse_tanques": False,  # <--- AGREGÁ ESTA LÍNEA AQUÍ
+        "mensaje_inst": "Operación Normal"# Flujo de retorno
     }
 
 @st.cache_resource
@@ -830,8 +833,14 @@ if st.session_state.errores_iadc:
     
 # 834: Cálculo de Nota (Empieza en 100 y resta 25 por cada error crítico)
 nota_final = 100
-
-if pizarra["rebalse_tanques"]:
+# Lógica de seguridad: Si supera los 580 barriles, se marca el error
+if pizarra["volumen_tanques"] > 580:
+    pizarra["rebalse_tanques"] = True
+else:
+    pizarra["rebalse_tanques"] = False
+# Si no encuentra 'rebalse_tanques', asume False y la app NO se corta.
+if pizarra.get("rebalse_tanques", False):
+    st.error("❌ PENALIZACIÓN: Rebalse de tanques detectado.")
     nota_final -= 25
     
 if pizarra["presion_excedida"]:
