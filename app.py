@@ -94,7 +94,7 @@ if not st.session_state.autenticado:
     st.stop()
 
 # 3. SINCRONIZACIÓN (1 segundo para máxima velocidad)
-st_autorefresh(interval=1000, key="latido_menfa")
+st_autorefresh(interval=1000, key="latido_principal_menfa")
 
 # --- 4. PROCEDIMIENTO COMÚN (Lo que ven ambos después del Login) ---
 
