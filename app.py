@@ -35,7 +35,7 @@ def conectar_pizarra():
         "presion_base": 2500,     # Lo que vos manejás con el slider
         "volumen_tanques": 500,   # Nivel inicial
         "incremento_kick": 0,     # Lo que sube solo en el accidente
-        "caudal_gpm": 400  
+        "caudal_gpm": 400,  
         "alarma_activa": False,
         "rebalse_tanques": False,  # <--- AGREGÁ ESTA LÍNEA AQUÍ
         "mensaje_inst": "Operación Normal"# Flujo de retorno
