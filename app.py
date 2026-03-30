@@ -37,7 +37,6 @@ def conectar_pizarra():
         "incremento_kick": 0,     # Lo que sube solo en el accidente
         "caudal_gpm": 400         # Flujo de retorno
     }
-
 pizarra = obtener_pizarra()
 
 # ... (Aquí sigue tu código de Login y la línea 96 que ahora sí va a funcionar)
