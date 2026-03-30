@@ -6,12 +6,7 @@ import random
 import plotly.graph_objects as go
 from datetime import datetime
 from fpdf import FPDF  # <--- NOTA: Aunque la librería se instala como fpdf2, el import suele ser 'from fpdf import FPDF'
-import numpy as np # Necesitamos Numpy para la vibración
-import streamlit as st
-from fpdf import FPDF
 import os
-from streamlit_autorefresh import st_autorefresh
-import streamlit as st
 import base64
 import os
 from streamlit_autorefresh import st_autorefresh
@@ -33,14 +28,14 @@ def reproducir_alarma_local():
         # Esto te avisará si el archivo no está en GitHub
         st.sidebar.error("⚠️ No se encontró 'assets/alarma.mp3'")
 
-# --- 2. EL RESTO DE TU LÓGICA (PIZARRA, LOGIN, ETC.) ---
 @st.cache_resource
-def obtener_pizarra():
+def conectar_pizarra():
     return {
         "alarma_activa": False,
-        "presion_base": 2500,
-        "incremento_kick": 0,
-        "mensaje_inst": "Operación Normal"
+        "presion_base": 2500,     # Lo que vos manejás con el slider
+        "volumen_tanques": 500,   # Nivel inicial
+        "incremento_kick": 0,     # Lo que sube solo en el accidente
+        "caudal_gpm": 400         # Flujo de retorno
     }
 
 pizarra = obtener_pizarra()
@@ -104,12 +99,24 @@ st_autorefresh(interval=1000, key="latido_menfa")
 
 st.sidebar.title(f"Sesión: {st.session_state.usuario}")
 st.sidebar.write(f"Rol: **{st.session_state.rol.upper()}**")
+# LÓGICA DE CORRELACIÓN: Si el instructor activó la alarma, los datos se conectan:
+if pizarra["alarma_activa"]:
+    pizarra["incremento_kick"] += 5       # La presión sube sola
+    pizarra["volumen_tanques"] += 1       # El lodo sube en los tanques (PIT GAIN)
+    pizarra["caudal_gpm"] = 400 + (pizarra["incremento_kick"] * 2) # El flujo aumenta
+    
+    # Disparar sonido (la función que ya tenías)
+    reproducir_alarma_local() 
 
+# VISUALIZACIÓN: Los relojes ahora leen la pizarra compartida
+st.metric("SIDP", f"{pizarra['presion_base'] + pizarra["incremento_kick"]} PSI")
+st.metric("Nivel de Tanques", f"{pizarra['volumen_tanques']} BBL")
 # PANEL DEL INSTRUCTOR (Solo Fabricio puede modificar datos)
 if st.session_state.rol == "instructor":
     st.sidebar.markdown("---")
     st.sidebar.subheader("🎮 PANEL DE MODIFICACIÓN")
-    
+if st.sidebar.button("🚨 ACTIVAR KICK"):
+    pizarra["alarma_activa"] = True    
     # Modificar presión base del alumno en tiempo real
     pizarra["presion_base"] = st.sidebar.number_input("Presión Base (PSI)", value=pizarra["presion_base"], step=100)
     
@@ -811,7 +818,6 @@ def registrar_error(descripcion):
             "Gravedad": "CRÍTICA"
         })
 
-# Verificación automática de errores en tiempo real
 if sicp > maasp:
     registrar_error("Excedió el MAASP (Riesgo de Fractura en Zapata)")
 if sidpp > 0 and st.session_state.falla_activa == "Normal" and not activar_fallas:
@@ -821,12 +827,11 @@ if ecd > presion_fractura:
 if st.session_state.volumen_actual > volumen_inicial + 50:
     registrar_error("Ganancia excesiva en tanques sin acción correctiva")
 
-# Mostrar Tabla de Errores
 if st.session_state.errores_iadc:
     df_errores = pd.DataFrame(st.session_state.errores_iadc)
     st.table(df_errores)
     
-    # Cálculo de Nota (Empieza en 100 y resta 25 por cada error crítico)
+    calculo de Nota (Empieza en 100 y resta 25 por cada error crítico)
     nota_final = max(0, 100 - (len(st.session_state.errores_iadc) * 25))
     
     col_score1, col_score2 = st.columns(2)
