@@ -11,7 +11,7 @@ import base64
 from streamlit_autorefresh import st_autorefresh
 
 # --- 1. CONFIGURACIÓN DE PÁGINA (SIEMPRE PRIMERO) ---
-st.set_page_config(page_title="Simulador MENFA 3.0", layout="wide", page_icon="🏗️")
+st.set_page_config(page_title="Simulador MENFA 3.0", layout="wide", page_icon="logo_menfa.png")
 
 # --- 2. EL CEREBRO DEL SIMULADOR (PIZARRA COMPARTIDA) ---
 @st.cache_resource
@@ -72,14 +72,14 @@ if pizarra.get("alarma_activa", False):
 # --- 8. INICIO DE PÁGINA / LOGIN ---
 if not st.session_state.autenticado:
     st.title("🛢️ Sistema de Simulación de Perforación")
-    st.info("Bienvenido al simulador avanzado para las cuencas Neuquina y Cuyana.")
+    st.info("Bienvenido al simulador avanzado de perforaciòn.")
     
     tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
     
     with tab1:
         with st.form("login_alumno"):
-            nombre = st.text_input("Nombre del Operador")
-            if st.form_submit_button("Ingresar al Pozo"):
+            nombre = st.text_input("Nombre del alumno")
+            if st.form_submit_button("Alumno2026"):
                 if nombre:
                     st.session_state.autenticado = True
                     st.session_state.usuario = nombre
