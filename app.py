@@ -15,7 +15,50 @@ import streamlit as st
 import base64
 import os
 from streamlit_autorefresh import st_autorefresh
+# --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+    st.session_state.usuario = ""
+    st.session_state.rol = None
 
+# --- 2. AHORA SÍ, LA CARÁTULA DE INGRESO (Tu línea 62 corregida) ---
+if not st.session_state.autenticado:
+    col_izq, col_logo, col_der = st.columns([1, 2, 1])
+    
+    with col_logo:
+        # (Aquí va el código del logo que pegamos antes)
+        if os.path.exists("logo_menfa.png"):
+            st.image("logo_menfa.png", use_container_width=True)
+        st.markdown("<h2 style='text-align: center;'>MENFA 3.0 - ACCESO</h2>", unsafe_allow_html=True)
+
+    tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
+    
+    with tab1:
+        with st.form("login_alumno"):
+            nombre_alumno = st.text_input("Nombre y Apellido")
+            clave_alumno = st.text_input("Contraseña de Curso", type="password")
+            if st.form_submit_button("Ingresar"):
+                if nombre_alumno and clave_alumno == "alumno2026":
+                    st.session_state.autenticado = True
+                    st.session_state.usuario = nombre_alumno
+                    st.session_state.rol = "alumno"
+                    st.rerun()
+                else:
+                    st.error("Datos incorrectos")
+
+    with tab2:
+        with st.form("login_instructor"):
+            clave_inst = st.text_input("Clave de Instructor", type="password")
+            if st.form_submit_button("Acceder"):
+                if clave_inst == "menfa2026":
+                    st.session_state.autenticado = True
+                    st.session_state.usuario = "Inst. Fabricio Pizzolato"
+                    st.session_state.rol = "instructor"
+                    st.rerun()
+                else:
+                    st.error("Clave incorrecta")
+
+    st.stop() # Esto detiene el código aquí hasta que se logueen
 # --- 1. DEFINICIÓN DE FUNCIONES (DEBE IR ARRIBA DE TODO) ---
 def reproducir_alarma_local():
     archivo_audio = "assets/alarma.mp3"
