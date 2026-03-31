@@ -1961,30 +1961,40 @@ def mostrar_evaluacion(puntos):
         st.write("- Monitoreo de variables: 20/20 pts")
         st.write("- Toma de decisiones: 30/30 pts")
         st.write("- Control del evento: 20/20 pts")
-     # Botón para generar el certificado (usando tu lógica de FPDF si la tenés)
-    if puntos >= 70:
-    if pizarra.get("finalizado") and not pizarra.get("mostró_festejo"):
-   # Línea 1966
-    if pizarra.get("finalizado") and not pizarra.get("mostró_festejo"):
-    pass  # <--- Esta palabra le dice a Python: "No hagas nada, pero no te rompas"
-    pizarra["mostró_festejo"] = True
-    if st.button("🔴 FINALIZAR EVALUACIÓN"):
-    pizarra["finalizado"] = True  # Marcamos que terminó
-    st.balloons()                 # <--- MOVELO ACÁ ADENTRO
-    st.success("¡Simulación completada con éxito!")
+ # --- SECCIÓN FINAL: EVALUACIÓN Y CIERRE ---
+st.divider()
+st.header("📋 Finalización de Simulación")
+
+if st.button("🔴 FINALIZAR EVALUACIÓN Y GENERAR REPORTE", type="primary", use_container_width=True):
+    # 1. Marcamos el estado en la pizarra
+    pizarra["finalizado"] = True
     
- # --- BLOQUE FINAL DE EVALUACIÓN ---
-    st.markdown(f"### 🎓 Resultado para {st.session_state.usuario}")
+    # 2. Cálculo de la nota (Basado en los incidentes detectados)
+    nota_final = 100
+    if pizarra.get("rebalse_tanques", False):
+        nota_final -= 25
+    if pizarra.get("presion_excedida", False):
+        nota_final -= 25
+
+    # 3. Mostrar resultados en pantalla
+    st.markdown(f"### 🎓 Resultado para: {st.session_state.usuario}")
     
     if nota_final >= 75:
-        st.success(f"✅ APROBADO - Nota Final: {nota_final}/100")
+        st.success(f"✅ EXCELENTE - Nota Final: {nota_final}/100")
+        st.info("El pozo fue controlado siguiendo los protocolos de seguridad.")
     else:
-        st.error(f"❌ REQUIERE RE-ENTRENAMIENTO - Nota Final: {nota_final}/100")
+        st.warning(f"⚠️ REVISAR PROTOCOLOS - Nota Final: {nota_final}/100")
+        st.error("Se detectaron desviaciones críticas en los niveles o presiones.")
 
-    # ESTA ES LA LÍNEA 1976 CORREGIDA:
+    # 4. Botón de Descarga (Alineado perfectamente para evitar IndentationError)
+    # Nota: Asegurate de que 'pdf_output' sea tu variable de FPDF
     st.download_button(
-        label="📜 Descargar Certificado MENFA",
-        data="Certificado...", # Aquí va tu variable de PDF generada con FPDF
+        label="📜 Descargar Certificado de Entrenamiento",
+        data="Certificado de Simulación MENFA 3.0 - Operador: " + st.session_state.usuario, 
         file_name=f"Certificado_{st.session_state.usuario}.pdf",
         mime="application/pdf"
     )
+
+# --- PIE DE PÁGINA ---
+st.sidebar.markdown("---")
+st.sidebar.caption(f"Configuración: @fabricio-menfa | {datetime.now().strftime('%d/%m/%Y')}")
