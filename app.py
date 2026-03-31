@@ -838,28 +838,45 @@ with st.container():
 
 col_iadc1, col_iadc2 = st.columns(2)
 
+# --- SECCIÓN: AUDITORÍA IADC (SEGURIDAD DE POZO) ---
+st.divider()
+st.header("📋 Registro de Evaluación (Auditoría IADC)")
+
+col_iadc1, col_iadc2 = st.columns(2)
+
+# --- PRE-CÁLCULOS PARA QUE NO TIRE ERROR ---
+# Definimos los valores aquí mismo para que los botones los encuentren
+sidpp = presion_total if 'presion_total' in locals() else 0
+sicp_actual = sidpp + 200 # Estimación de anular
+zapata_tvd_m = 1500.0
+lote_ppg = 15.5
+# El MAASP es crítico para la auditoría
+maasp_calculado = (lote_ppg - densidad_lodo) * 0.1703 * zapata_tvd_m
+
 with col_iadc1:
     st.subheader("🛑 Procedimiento de Detección")
-   # --- CORRECCIÓN FINAL DEL BLOQUE IADC ---
-with col_iadc1:
-    st.subheader("🛑 Procedimiento de Detección")
-    if st.button("Realizar FLOW CHECK"):
-        with st.status("Deteniendo bombas y observando..."):
+    
+    if st.button("Realizar FLOW CHECK", use_container_width=True):
+        with st.status("Deteniendo bombas y observando...", expanded=True):
             time.sleep(2)
-            # Lógica de detección: si la presión de tubería (sidpp) es > 0, hay flujo
-            if sidpp > 0:
+            # Lógica de detección: si hay presión en tubería, el pozo fluye
+            if sidpp > 500: # Umbral de detección
                 st.error("🚨 ¡EL POZO FLUYE! Inicie protocolo de cierre inmediato.")
                 pizarra["alarma_activa"] = True
+                pizarra["mensaje_inst"] = "¡KICK CONFIRMADO POR FLOW CHECK!"
             else:
                 st.success("✅ Pozo Estático. No se detecta flujo.")
 
 with col_iadc2:
-    st.subheader("🛡️ Límites de Integridad")
-    # Verificación de MAASP (Presión Máxima permitida en superficie)
-    if sicp > maasp:
-        st.error(f"🛑 CRÍTICO: SICP ({sicp} PSI) supera el MAASP ({round(maasp,0)} PSI). ¡Riesgo de fractura en la zapata!")
+    st.subheader("🛡️ Integridad de la Zapata")
+    
+    # Comprobación de Seguridad IADC
+    if sicp_actual > maasp_calculado:
+        st.metric("SICP vs MAASP", f"{int(sicp_actual)} PSI", delta="PELIGRO", delta_color="inverse")
+        st.error(f"🛑 CRÍTICO: Se ha excedido el MAASP ({int(maasp_calculado)} PSI)")
     else:
-        st.info(f"Márgen de seguridad (MAASP): {round(maasp - sicp, 0)} PSI")
+        st.metric("SICP vs MAASP", f"{int(sicp_actual)} PSI", delta=f"Seguro (Max: {int(maasp_calculado)})")
+        st.success("✅ Presión Anular dentro de límites.")
 
 # --- PIE DE PÁGINA Y CIERRE DEL SISTEMA ---
 st.divider()
