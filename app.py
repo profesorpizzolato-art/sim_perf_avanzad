@@ -812,7 +812,6 @@ if st.button("🔴 FINALIZAR EVALUACIÓN Y GENERAR REPORTE"):
     
     # 3. EL CANDADO DE LOS GLOBOS (Solo salen una vez)
     if not pizarra.get("festejo_realizado", False):
-        st.balloons()
         pizarra["festejo_realizado"] = True # Cerramos el candado
     
     # 4. RESULTADOS EN PANTALLA
