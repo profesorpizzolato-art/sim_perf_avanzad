@@ -65,7 +65,7 @@ if "autenticado" not in st.session_state:
     st.session_state.rol = None
 
 if not st.session_state.autenticado:
-    st.title("🏗️ MENFA 3.0 - ACCESO AL SISTEMA")
+    st.title("logo_menfa.png - MENFA 3.0 - ACCESO AL SISTEMA")
     
     tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
     
