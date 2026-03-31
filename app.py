@@ -33,12 +33,25 @@ def obtener_pizarra():
     }
 
 pizarra = obtener_pizarra()
-@st.cache_resource
-def obtener_pizarra():
-    return {
-        # ... todas tus variables actuales ...
-        "festejo_realizado": False  # <--- AGREGÁ ESTO
+lizado": False  # <--- AGREGÁ ESTO
     }
+def reproducir_alarma_pizarra():
+    # Solo intentamos reproducir si la alarma está activa en la pizarra global
+    if pizarra.get("alarma_activa", False):
+        archivo_audio = "assets/alarma.mp3"
+        if os.path.exists(archivo_audio):
+            with open(archivo_audio, "rb") as f:
+                data = f.read()
+                base64_audio = base64.b64encode(data).decode()
+                
+                # El tag 'autoplay' y 'loop' hace que suene apenas cargue
+                html_audio = f"""
+                    <audio autoplay loop>
+                        <source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3">
+                    </audio>
+                """
+                # Usamos un height=0 para que no desplace los relojes
+                st.components.v1.html(html_audio, height=0)
 # --- 3. LOGO EN LA BARRA LATERAL ---
 if os.path.exists("assets/logo_menfa.png"):
     st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
@@ -145,7 +158,13 @@ if pizarra["alarma_activa"]:
     
     # Llamamos a la alarma sonora de tu carpeta assets
     reproducir_alarma_local()
-    
+    # --- LÓGICA DE ALARMA SINCRONIZADA ---
+if pizarra["alarma_activa"]:
+    st.error(f"🚨 ¡ALERTA CRÍTICA! {pizarra['mensaje_inst']}")
+    reproducir_alarma_pizarra()  # <--- Esto hace que suene para todos
+    st.toast("¡Surgencia detectada!", icon="⚠️")
+else:
+    st.success("✅ Estado del Pozo: Estable")
     # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
     if st.button("🔴 CERRAR BOP Y ESTABILIZAR", type="primary", use_container_width=True):
         pizarra["alarma_activa"] = False  # Esto apaga la luz roja para TODOS
@@ -1642,6 +1661,20 @@ if st.session_state.rol == "instructor":
             pizarra["velocidad_presion"] = 50 
         else:
             pizarra["velocidad_presion"] = 10
+
+if st.session_state.rol == "instructor":
+    st.sidebar.divider()
+    if not pizarra["alarma_activa"]:
+        if st.sidebar.button("🚨 ACTIVAR KICK (SONIDO)", type="primary"):
+            pizarra["alarma_activa"] = True
+            pizarra["mensaje_inst"] = "KICK EN PROGRESO - CIERRE BOP"
+            st.rerun()
+    else:
+        if st.sidebar.button("✅ NORMALIZAR POZO"):
+            pizarra["alarma_activa"] = False
+            pizarra["incremento_kick"] = 0
+            pizarra["mensaje_inst"] = "Operación Normal"
+            st.rerun()
 
 import plotly.graph_objects as go
 
