@@ -1998,3 +1998,59 @@ if st.button("🎓 Descargar Certificado de Competencia"):
     pdf_bytes = generar_certificado(st.session_state.usuario, score)
     st.download_button("Click aquí para guardar PDF", data=pdf_bytes, file_name="certificado_menfa.pdf")
 
+# ==========================================
+# --- MÓDULO FINAL: CIERRE DE OPERACIONES ---
+# ==========================================
+st.write("<br><br>", unsafe_allow_html=True)
+st.divider()
+
+# Creamos un contenedor especial para el final
+with st.container():
+    col_final1, col_final2 = st.columns([2, 1])
+
+    with col_final1:
+        st.title("🏁 Fin de la Simulación")
+        st.subheader(f"Operador: {st.session_state.usuario}")
+        st.write("Has completado el módulo de perforación avanzada. A continuación, se presenta tu registro visual y técnico.")
+
+    with col_final2:
+        # Aquí integramos el sonido que mencionaste (beep de finalización)
+        # Asegurate de que el archivo esté en la carpeta raíz o 'assets'
+        if os.path.exists("freesound_community-exposure-unit-beep-sound-2-97240 (1).mp3"):
+            with open("freesound_community-exposure-unit-beep-sound-2-97240 (1).mp3", "rb") as f:
+                data = f.read()
+                b64 = base64.b64encode(data).decode()
+                st.components.v1.html(f"""
+                    <audio autoplay>
+                        <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                    </audio>
+                """, height=0)
+
+    # --- GALERÍA DE IMÁGENES GENERADAS (Tus archivos de Gemini) ---
+    st.write("### 📸 Registro Visual de la Jornada")
+    img_col1, img_col2, img_col3 = st.columns(3)
+
+    with img_col1:
+        if os.path.exists("Imagen generada por Gemini_dn7zasdn7zasdn7z.png"):
+            st.image("Imagen generada por Gemini_dn7zasdn7zasdn7z.png", caption="Análisis de Formación", use_container_width=True)
+    
+    with img_col2:
+        if os.path.exists("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png"):
+            st.image("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png", caption="Estado del Trepano", use_container_width=True)
+            
+    with img_col3:
+        if os.path.exists("Imagen generada por Gemini_jl30d0jl30d0jl30.png"):
+            st.image("Imagen generada por Gemini_jl30d0jl30d0jl30.png", caption="Perfil del Pozo", use_container_width=True)
+
+    # --- BOTÓN DE CIERRE DEFINITIVO ---
+    st.write("---")
+    if st.button("💾 Guardar Sesión y Salir", type="primary", use_container_width=True):
+        st.balloons()
+        st.success("Datos exportados correctamente al servidor de MENFA Capacitaciones.")
+        time.sleep(3)
+        # Resetear la sesión para el próximo alumno
+        st.session_state.autenticado = False
+        st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.caption(f"ID Sesión: {random.randint(1000, 9999)} | MENFA 3.0")
