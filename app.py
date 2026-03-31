@@ -108,8 +108,12 @@ st_autorefresh(interval=1000, key="latido_unico_definitivo_v3")
 # --- 4. PROCEDIMIENTO COMÚN (Lo que ven ambos después del Login) ---
 
 st.sidebar.title(f"Sesión: {st.session_state.usuario}")
-st.sidebar.write(f"Rol: **{st.session_state.rol.upper()}**")
-# LÓGICA DE CORRELACIÓN: Si el instructor activó la alarma, los datos se conectan:
+# --- LÍNEA 111 CORREGIDA ---
+rol_usuario = st.session_state.get("rol")
+if rol_usuario:
+    st.sidebar.write(f"Rol: **{rol_usuario.upper()}**")
+else:
+    st.sidebar.write("Estado: **Esperando Ingreso**")
 if pizarra["alarma_activa"]:
     pizarra["incremento_kick"] += 5       # La presión sube sola
     pizarra["volumen_tanques"] += 1       # El lodo sube en los tanques (PIT GAIN)
