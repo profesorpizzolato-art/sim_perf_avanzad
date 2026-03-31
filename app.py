@@ -777,6 +777,18 @@ if st.session_state.volumen_actual > volumen_inicial + 20:
     st.error("🚨 ¡GANANCIA EN TANQUES! Posible entrada de fluido de formación.")
 elif st.session_state.volumen_actual < volumen_inicial - 20:
     st.warning("⚠️ PÉRDIDA DE CIRCULACIÓN: El lodo se está filtrando a la formación.")
+
+# --- CÁLCULO DINÁMICO DE MAASP (Asegurate que esté antes de la línea 851) ---
+# Usamos los valores de la zapata que definiste en el Sidebar
+zapata_tvd_m = st.sidebar.get('zapata_tvd', 1500) # Evita error si no existe en el sidebar
+lote_ppg = st.sidebar.get('gradiente_leak_off', 15.5)
+
+# Fórmula: (LOT - Densidad Lodo) * Factor * Profundidad Zapata
+maasp = (lote_ppg - densidad_lodo) * 0.1703 * zapata_tvd_m
+
+# --- AHORA SÍ, LA EVALUACIÓN (Tu línea 851) ---
+if sicp > maasp:
+    st.error(f"🛑 CRÍTICO: SICP ({sicp} PSI) supera el MAASP ({round(maasp,0)} PSI)")
 # --- SECCIÓN: PROTOCOLO IADC WELLSHARP ---
 st.divider()
 # --- ESPACIADOR VISUAL ---
