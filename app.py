@@ -50,8 +50,8 @@ def reproducir_alarma_pizarra():
             st.components.v1.html(html_audio, height=0)
 
 # --- 4. INTERFAZ LATERAL (LOGO Y ESTADO) ---
-if os.path.exists("assets/logo_menfa.png"):
-    st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
+if os.path.exists("logo_menfa.png"):
+    st.sidebar.image("logo_menfa.png", use_container_width=True)
 else:
     st.sidebar.markdown("<h2 style='text-align: center;'>🏗️ MENFA 3.0</h2>", unsafe_allow_html=True)
 
