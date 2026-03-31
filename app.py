@@ -32,7 +32,6 @@ def obtener_pizarra():
         "festejo_realizado": False  # <-- Para que los globos no salgan mil veces
     }
 @st.cache_resource
-@st.cache_resource
 def obtener_pizarra():
     return {
         "alarma_activa": False,
