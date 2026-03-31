@@ -30,8 +30,6 @@ def obtener_pizarra():
         "finalizado": False,
         "festejo_realizado": False
     }
-
-# CREACIÓN DE LA VARIABLE GLOBAL (Evita el NameError en la línea 129/130)
 pizarra = obtener_pizarra()
 
 # --- 3. FUNCIONES DE APOYO (AUDIO Y LOGO) ---
