@@ -31,7 +31,15 @@ def obtener_pizarra():
         "finalizado": False,
         "festejo_realizado": False  # <-- Para que los globos no salgan mil veces
     }
-
+@st.cache_resource
+def obtener_pizarra():
+    return {
+        "alarma_activa": False,
+        "presion_base": 2500,
+        "volumen_tanques": 500,
+        "finalizado": False,        # <--- REVISÁ QUE TENGA COMILLAS Y COMA
+        "festejo_realizado": False  # <--- REVISÁ QUE TENGA COMILLAS
+    } # <-- ESTA LLAVE CIERRA TODO EL DICCIONARIO
 pizarra = obtener_pizarra()
 lizado": False  # <--- AGREGÁ ESTO
     }
