@@ -1962,8 +1962,7 @@ def mostrar_evaluacion(puntos):
         st.write("- Monitoreo de variables: 20/20 pts")
         st.write("- Toma de decisiones: 30/30 pts")
         st.write("- Control del evento: 20/20 pts")
-
-    # Botón para generar el certificado (usando tu lógica de FPDF si la tenés)
+     # Botón para generar el certificado (usando tu lógica de FPDF si la tenés)
     if puntos >= 70:
     if pizarra.get("finalizado") and not pizarra.get("mostró_festejo"):
     pizarra["mostró_festejo"] = True # Esto evita que salgan de nuevo en el próximo segundo
