@@ -102,7 +102,7 @@ if not st.session_state.autenticado:
         with tab1:
             with st.form("login_alumno"):
                 nombre = st.text_input("Nombre y Apellido del Alumno")
-                if st.form_submit_button("Ingresar al Simulador"):
+                if st.form_submit_button("Alumno2026")
                     if nombre:
                         st.session_state.autenticado = True
                         st.session_state.usuario = nombre
@@ -816,7 +816,26 @@ with st.container():
         st.info("El alumno debe reducir el peso del lodo o controlar la surgencia.")
     else:
         st.success(f"✅ Integridad de Zapata OK (MAASP: {int(maasp)} PSI)")
+# --- 1. PRIMERO CREAMOS LAS PESTAÑAS ---
+# Asegurate de que los nombres coincidan exactamente con los 'with' de abajo
+tab_status, tab_bitacora, tab_certificacion = st.tabs([
+    "📊 Estado de Competencias", 
+    "📝 Bitácora de Eventos", 
+    "🎓 Pre-Certificado"
+])
 
+# --- 2. RECIÉN DESPUÉS ENTRAMOS EN ELLAS ---
+with tab_status:  # <--- Aquí ya no dará error porque arriba se definió 'tab_status'
+    c1, c2, c3 = st.columns(3)
+    # Tus métricas de MAASP y presiones...
+    st.metric("SICP vs MAASP", f"{int(sicp)} PSI")
+
+with tab_bitacora:
+    st.write("### Historial de Maniobras")
+    # Tu tabla de auditoría...
+
+with tab_certificacion:
+    st.info("Módulo de certificación para MENFA.")
     with tab_status:
         c1, c2, c3 = st.columns(3)
         # Aquí vinculamos los cálculos que ya tenías de MAASP y Presiones
