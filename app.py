@@ -914,9 +914,7 @@ if pizarra["presion_excedida"]:
             st.success("🎯 ESTADO: APROBADO PARA CERTIFICACIÓN")
         else:
             st.error("❌ ESTADO: REQUIERE RE-ENTRENAMIENTO")
-else:
-    st.balloons()
-    st.success("🌟 ¡PERFORMANCE PERFECTA! No se detectaron violaciones de seguridad.")
+
 
 # Botón para limpiar el expediente del alumno
 if st.button("Reiniciar Evaluación"):
@@ -1965,14 +1963,9 @@ def mostrar_evaluacion(puntos):
 
     # Botón para generar el certificado (usando tu lógica de FPDF si la tenés)
     if puntos >= 70:
-        st.balloons()
-        # ❌ MAL (Sale todo el tiempo):
-# st.balloons() 
-if pizarra.get("finalizado") and not pizarra.get("mostró_festejo"):
-    st.balloons()
+    if pizarra.get("finalizado") and not pizarra.get("mostró_festejo"):
     pizarra["mostró_festejo"] = True # Esto evita que salgan de nuevo en el próximo segundo
-# ✅ BIEN (Solo sale al apretar el botón):
-if st.button("🔴 FINALIZAR EVALUACIÓN"):
+    if st.button("🔴 FINALIZAR EVALUACIÓN"):
     pizarra["finalizado"] = True  # Marcamos que terminó
     st.balloons()                 # <--- MOVELO ACÁ ADENTRO
     st.success("¡Simulación completada con éxito!")
