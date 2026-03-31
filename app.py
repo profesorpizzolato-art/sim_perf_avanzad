@@ -102,7 +102,8 @@ if not st.session_state.autenticado:
 
 # --- FIN DE LAS PRIMERAS 100 LÍNEAS ---
 # 3. SINCRONIZACIÓN (1 segundo para máxima velocidad)
-st_autorefresh(interval=1000, key="latido_principal_menfa")
+# Cambiá la línea 105 por esta:
+st_autorefresh(interval=1000, key="latido_unico_definitivo_v3")
 
 # --- 4. PROCEDIMIENTO COMÚN (Lo que ven ambos después del Login) ---
 
