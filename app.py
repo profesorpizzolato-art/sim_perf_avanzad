@@ -9,7 +9,6 @@ from fpdf import FPDF
 import os
 import base64
 from streamlit_autorefresh import st_autorefresh
-
 # --- 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO DE STREAMLIT) ---
 st.set_page_config(page_title="Simulador MENFA 3.0", layout="wide")
 if os.path.exists("assets/logo_menfa.png"):
@@ -1965,7 +1964,10 @@ def mostrar_evaluacion(puntos):
      # Botón para generar el certificado (usando tu lógica de FPDF si la tenés)
     if puntos >= 70:
     if pizarra.get("finalizado") and not pizarra.get("mostró_festejo"):
-    pizarra["mostró_festejo"] = True # Esto evita que salgan de nuevo en el próximo segundo
+   # Línea 1966
+    if pizarra.get("finalizado") and not pizarra.get("mostró_festejo"):
+    pass  # <--- Esta palabra le dice a Python: "No hagas nada, pero no te rompas"
+    pizarra["mostró_festejo"] = True
     if st.button("🔴 FINALIZAR EVALUACIÓN"):
     pizarra["finalizado"] = True  # Marcamos que terminó
     st.balloons()                 # <--- MOVELO ACÁ ADENTRO
