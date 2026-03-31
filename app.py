@@ -59,6 +59,39 @@ if not st.session_state.autenticado:
                     st.error("Clave incorrecta")
 
     st.stop() # Esto detiene el código aquí hasta que se logueen
+
+def generar_certificado_final(nombre, puntaje, nivel, fecha):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Marco y Logo (Simulado con texto si el archivo no carga)
+    pdf.set_draw_color(0, 66, 128)
+    pdf.rect(5, 5, 200, 287)
+    
+    pdf.set_font("Arial", 'B', 24)
+    pdf.set_text_color(0, 66, 128)
+    pdf.cell(0, 30, "MENFA CAPACITACIONES", 0, 1, 'C')
+    
+    pdf.set_font("Arial", 'B', 18)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 15, "CERTIFICADO DE COMPETENCIA", 0, 1, 'C')
+    pdf.ln(10)
+    
+    pdf.set_font("Arial", '', 14)
+    pdf.multi_cell(0, 10, f"Se hace entrega del presente a {nombre.upper()}, por haber completado el entrenamiento en el Simulador de Perforacion Avanzada 3.0.", align='C')
+    
+    pdf.ln(10)
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, f"Resultado: {puntaje}/100", 0, 1, 'C')
+    pdf.cell(0, 10, f"Calificacion: {nivel}", 0, 1, 'C')
+    
+    pdf.ln(20)
+    pdf.set_font("Arial", 'I', 10)
+    pdf.cell(0, 10, f"Fecha de emision: {fecha}", 0, 1, 'C')
+    pdf.cell(0, 10, "Firma del Instructor: Fabricio Pizzolato", 0, 1, 'C')
+    
+    return pdf.output(dest='S').encode('latin-1')
+    
 # --- 1. DEFINICIÓN DE FUNCIONES (DEBE IR ARRIBA DE TODO) ---
 def reproducir_alarma_local():
     archivo_audio = "assets/alarma.mp3"
@@ -2025,7 +2058,46 @@ with st.container():
                         <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
                     </audio>
                 """, height=0)
+# --- BOTÓN DE CIERRE Y CERTIFICACIÓN ---
+    st.write("---")
+    
+    # Calculamos variables finales para el certificado
+    puntaje_final = puntos if 'puntos' in locals() else 0
+    # Determinamos nivel (puedes usar la lógica que ya tienes en mostrar_evaluacion)
+    if puntaje_final >= 90: nivel_cert = "Excelente - Operativo Real"
+    elif puntaje_final >= 70: nivel_cert = "Aprobado - Competente"
+    else: nivel_cert = "En Entrenamiento"
 
+    col_btn1, col_btn2 = st.columns(2)
+    
+    with col_btn1:
+        if puntaje_final >= 70:
+            try:
+                pdf_bytes = generar_certificado_final(
+                    st.session_state.usuario, 
+                    puntaje_final, 
+                    nivel_cert, 
+                    datetime.now().strftime("%d/%m/%Y")
+                )
+                st.download_button(
+                    label="🎓 Descargar Certificado Oficial",
+                    data=pdf_bytes,
+                    file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.error(f"Error al generar PDF: {e}")
+        else:
+            st.warning("Puntaje insuficiente para certificación oficial.")
+
+    with col_btn2:
+        if st.button("💾 Finalizar y Salir", type="primary", use_container_width=True):
+            st.balloons()
+            st.success("Sesión guardada.")
+            time.sleep(2)
+            st.session_state.autenticado = False
+            st.rerun()
     # --- GALERÍA DE IMÁGENES GENERADAS (Tus archivos de Gemini) ---
     st.write("### 📸 Registro Visual de la Jornada")
     img_col1, img_col2, img_col3 = st.columns(3)
