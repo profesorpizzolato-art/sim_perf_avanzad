@@ -58,43 +58,61 @@ def obtener_pizarra():
     }
 
 pizarra = obtener_pizarra()
-
-# 2. SISTEMA DE LOGIN CON CONTRASEÑAS DISTINTAS
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
-    st.session_state.rol = None
-
+# --- 8. CARÁTULA DE INGRESO CON CONTRASEÑA DOBLE ---
 if not st.session_state.autenticado:
-    st.title("logo_menfa.png - MENFA 3.0 - ACCESO AL SISTEMA")
+    # Centramos el logo y el título
+    col_izq, col_logo, col_der = st.columns([1, 2, 1])
     
+    with col_logo:
+        # Buscamos el logo en las rutas posibles
+        if os.path.exists("logo_menfa.png"):
+            st.image("logo_menfa.png", use_container_width=True)
+        elif os.path.exists("assets/logo_menfa.png"):
+            st.image("assets/logo_menfa.png", use_container_width=True)
+        else:
+            st.markdown("<h1 style='text-align: center;'>🏗️</h1>", unsafe_allow_html=True)
+        
+        st.markdown("<h2 style='text-align: center; color: #004280;'>MENFA 3.0 - ACCESO AL SISTEMA</h2>", unsafe_allow_html=True)
+        st.write("<br>", unsafe_allow_html=True)
+
+    # Tabs de acceso
     tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
     
     with tab1:
         with st.form("login_alumno"):
-            user_al = st.text_input("Nombre del Alumno")
-            pass_al = st.text_input("Contraseña de Clase", type="password")
-            if st.form_submit_button("Ingresar a Simulación"):
-                # Clave simple para los alumnos
-                if pass_al == "alumno2026" and user_al:
+            st.subheader("Ingreso de Estudiante")
+            nombre_alumno = st.text_input("Nombre y Apellido")
+            clave_alumno = st.text_input("Contraseña de Curso", type="password", help="Solicite la clave al instructor")
+            
+            if st.form_submit_button("Validar e Ingresar", use_container_width=True):
+                # Podés cambiar 'alumno2026' por la clave que prefieras
+                if nombre_alumno and clave_alumno == "alumno2026":
                     st.session_state.autenticado = True
+                    st.session_state.usuario = nombre_alumno
                     st.session_state.rol = "alumno"
-                    st.session_state.usuario = user_al
+                    st.success(f"Bienvenido {nombre_alumno}")
                     st.rerun()
+                elif not nombre_alumno:
+                    st.error("Por favor, ingrese su nombre para el certificado.")
                 else:
-                    st.error("Nombre o contraseña de alumno incorrecta")
+                    st.error("Contraseña de alumno incorrecta.")
 
     with tab2:
         with st.form("login_instructor"):
-            pass_ins = st.text_input("Contraseña Maestra", type="password")
-            if st.form_submit_button("Ingresar como Administrador"):
-                # Tu clave secreta de instructor
-                if pass_ins == "menfa_pro_2026":
+            st.subheader("Panel de Control Maestro")
+            clave_inst = st.text_input("Clave de Instructor", type="password")
+            
+            if st.form_submit_button("Acceder al Sistema", use_container_width=True):
+                if clave_inst == "menfa2026":
                     st.session_state.autenticado = True
+                    st.session_state.usuario = "Inst. Fabricio Pizzolato"
                     st.session_state.rol = "instructor"
-                    st.session_state.usuario = "Fabricio"
+                    st.success("Acceso concedido, Fabricio.")
                     st.rerun()
                 else:
-                    st.error("Contraseña maestra incorrecta")
+                    st.error("Clave de instructor incorrecta.")
+
+    # IMPORTANTE: Detener ejecución aquí para bloquear el simulador
     st.stop()
 
 # 3. SINCRONIZACIÓN (1 segundo para máxima velocidad)
