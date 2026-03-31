@@ -67,40 +67,53 @@ if "autenticado" not in st.session_state:
 if pizarra.get("alarma_activa", False):
     reproducir_alarma_pizarra()
 
-# --- 8. INICIO DE PÁGINA / LOGIN ---
+# --- 8. CARÁTULA DE INGRESO (OCULTA EL SIMULADOR) ---
 if not st.session_state.autenticado:
-    st.title("🛢️ Sistema de Simulación de Perforación")
-    st.info("Bienvenido al simulador avanzado de perforaciòn.")
+    # Centramos el contenido de la carátula
+    col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
     
-    tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
+    with col_logo2:
+        if os.path.exists("logo_menfa.png"):
+            st.image("logo_menfa.png", use_container_width=True)
+        else:
+            st.markdown("<h1 style='text-align: center;'>🏗️ MENFA 3.0</h1>", unsafe_allow_html=True)
+        
+        st.markdown("<h3 style='text-align: center;'>Sistema Integral de Simulación de Perforación</h3>", unsafe_allow_html=True)
+        st.write("---")
+
+        # Tabs de acceso dentro de la carátula
+        tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
+        
+        with tab1:
+            with st.form("login_alumno"):
+                nombre = st.text_input("Nombre y Apellido del Alumno")
+                if st.form_submit_button("Ingresar al Simulador"):
+                    if nombre:
+                        st.session_state.autenticado = True
+                        st.session_state.usuario = nombre
+                        st.session_state.rol = "alumno"
+                        st.rerun()
+                    else:
+                        st.error("Por favor, ingrese su nombre para el certificado.")
+
+        with tab2:
+            with st.form("login_instructor"):
+                clave = st.text_input("Clave de Instructor", type="password")
+                if st.form_submit_button("Acceder al Panel Maestro"):
+                    if clave == "menfa2026":
+                        st.session_state.autenticado = True
+                        st.session_state.usuario = "Inst. Fabricio Pizzolato"
+                        st.session_state.rol = "instructor"
+                        st.rerun()
+                    else:
+                        st.error("Clate incorrecta.")
     
-    with tab1:
-        with st.form("login_alumno"):
-            nombre = st.text_input("Nombre del alumno")
-            if st.form_submit_button("Alumno2026"):
-                if nombre:
-                    st.session_state.autenticado = True
-                    st.session_state.usuario = nombre
-                    st.session_state.rol = "alumno"
-                    st.rerun()
-                else:
-                    st.error("Por favor, ingrese su nombre.")
+    # IMPORTANTE: Este 'stop' detiene la ejecución aquí. 
+    # El resto de las 1500 líneas NO se leen hasta que el usuario se autentique.
+    st.stop() 
 
-    with tab2:
-        with st.form("login_instructor"):
-            clave = st.text_input("Clave de Instructor", type="password")
-            if st.form_submit_button("Acceder al Panel de Control"):
-                if clave == "menfa2026":  # Cambiala por tu clave
-                    st.session_state.autenticado = True
-                    st.session_state.usuario = "Instructor Fabricio"
-                    st.session_state.rol = "instructor"
-                    st.rerun()
-                else:
-                    st.error("Clave incorrecta.")
-
-# --- FIN DE LAS PRIMERAS 100 LÍNEAS ---
-# 3. SINCRONIZACIÓN (1 segundo para máxima velocidad)
-# Cambiá la línea 105 por esta:
+# --- A PARTIR DE AQUÍ EMPIEZA TU SIMULADOR DEsiempre ---
+# (Todo el código de los gauges, mapas, y cálculos de lodo va acá abajo)
 st_autorefresh(interval=1000, key="latido_unico_definitivo_v3")
 
 # --- 4. PROCEDIMIENTO COMÚN (Lo que ven ambos después del Login) ---
