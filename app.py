@@ -31,6 +31,15 @@ def obtener_pizarra():
         "festejo_realizado": False
     }
 pizarra = obtener_pizarra()
+# --- 2.5 INICIALIZACIÓN DE SEGURIDAD (PARA EVITAR NAMEERROR) ---
+if 'maasp' not in st.session_state:
+    st.session_state.maasp = 0.0
+if 'sicp' not in st.session_state:
+    st.session_state.sicp = 0.0
+
+# Creamos alias locales para que tus fórmulas de la línea 850 sigan funcionando
+maasp = st.session_state.maasp
+sicp = st.session_state.sicp
 
 # --- 3. FUNCIONES DE APOYO (AUDIO Y LOGO) ---
 def reproducir_alarma_pizarra():
@@ -778,42 +787,29 @@ if st.session_state.volumen_actual > volumen_inicial + 20:
 elif st.session_state.volumen_actual < volumen_inicial - 20:
     st.warning("⚠️ PÉRDIDA DE CIRCULACIÓN: El lodo se está filtrando a la formación.")
 
-# --- CÁLCULO DINÁMICO DE MAASP (Asegurate que esté antes de la línea 851) ---
-# Usamos los valores de la zapata que definiste en el Sidebar
-zapata_tvd_m = st.sidebar.get('zapata_tvd', 1500) # Evita error si no existe en el sidebar
-lote_ppg = st.sidebar.get('gradiente_leak_off', 15.5)
-
-# Fórmula: (LOT - Densidad Lodo) * Factor * Profundidad Zapata
-maasp = (lote_ppg - densidad_lodo) * 0.1703 * zapata_tvd_m
-
-# --- AHORA SÍ, LA EVALUACIÓN (Tu línea 851) ---
-if sicp > maasp:
-    st.error(f"🛑 CRÍTICO: SICP ({sicp} PSI) supera el MAASP ({round(maasp,0)} PSI)")
-# --- SECCIÓN: PROTOCOLO IADC WELLSHARP ---
+# --- SECCIÓN: AUDITORÍA IADC (DISTANCIADA) ---
+st.write("<br><br><br>", unsafe_allow_html=True) # Triple espacio para alejarlo de los gauges
 st.divider()
-# --- ESPACIADOR VISUAL ---
-# Metemos un divisor doble y espacio en blanco para "despegarlo" del simulador
-st.write("<br><br>", unsafe_allow_html=True)
-st.divider()
-st.write("<br>", unsafe_allow_html=True)
 
-# --- CONTENEDOR DE AUDITORÍA IADC ---
-# Usamos un 'container' para agrupar todo lo que es legal/administrativo
 with st.container():
-    col_titulo, col_logo_audit = st.columns([3, 1])
-    with col_titulo:
-        st.title("📋 Registro de Evaluación (Auditoría IADC)")
-        st.subheader("Control de Pozos - Estándar Wellsharp 2026")
-    with col_logo_audit:
-        # Aquí podrías poner un sello de 'Aprobado' o el logo de MENFA en chiquito
-        st.markdown("🔒 **MODULO AUDITORÍA**")
+    st.title("📋 Registro de Evaluación (IADC)")
+    
+    # RE-CALCULAMOS AQUÍ PARA ASEGURAR QUE EXISTAN
+    # Usamos .get() por si el slider aún no se movió
+    densidad_actual = st.session_state.get('densidad_lodo', 9.5)
+    zapata_tvd = 1500.0 
+    lote = 15.5
+    
+    # Cálculo real del MAASP
+    maasp = (lote - densidad_actual) * 0.1703 * zapata_tvd
+    # Supongamos que SICP es la presión de anular que ya tenés en tus gauges
+    sicp = presion_total + 200 
 
-    # Usamos pestañas para que el alumno solo vea lo que necesita en el momento
-    tab_status, tab_bitacora, tab_certificacion = st.tabs([
-        "📊 Estado de Competencias", 
-        "📝 Bitácora de Eventos", 
-        "🎓 Pre-Certificado"
-    ])
+    if sicp > maasp:
+        st.error(f"🚨 FALLA DE INTEGRIDAD: SICP ({int(sicp)} PSI) > MAASP ({int(maasp)} PSI)")
+        st.info("El alumno debe reducir el peso del lodo o controlar la surgencia.")
+    else:
+        st.success(f"✅ Integridad de Zapata OK (MAASP: {int(maasp)} PSI)")
 
     with tab_status:
         c1, c2, c3 = st.columns(3)
