@@ -36,8 +36,14 @@ if 'maasp' not in st.session_state:
     st.session_state.maasp = 0.0
 if 'sicp' not in st.session_state:
     st.session_state.sicp = 0.0
+# --- INICIALIZACIÓN GLOBAL DE SEGURIDAD (Línea 35 aprox) ---
+# Esto evita que el error 'NameError' bloquee la App
+if 'maasp' not in st.session_state:
+    st.session_state.maasp = 0.0
+if 'sicp' not in st.session_state:
+    st.session_state.sicp = 0.0
 
-# Creamos alias locales para que tus fórmulas de la línea 850 sigan funcionando
+# Creamos alias para que tus fórmulas sigan funcionando sin cambiar nombres
 maasp = st.session_state.maasp
 sicp = st.session_state.sicp
 
