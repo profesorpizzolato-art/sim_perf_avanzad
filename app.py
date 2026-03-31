@@ -11,8 +11,8 @@ import base64
 from streamlit_autorefresh import st_autorefresh
 # --- 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO DE STREAMLIT) ---
 st.set_page_config(page_title="Simulador MENFA 3.0", layout="wide")
-if os.path.exists("assets/logo_menfa.png"):
-    st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
+if os.path.exists("logo_menfa.png"):
+    st.sidebar.image("logo_menfa.png", use_container_width=True)
 else:
     st.sidebar.title("🏗️ MENFA 3.0") # Texto elegante si falta la imagen
 # --- 2. EL "CEREBRO" UNIFICADO (PIZARRA COMPARTIDA) ---
