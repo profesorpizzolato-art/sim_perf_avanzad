@@ -783,33 +783,35 @@ col_iadc1, col_iadc2 = st.columns(2)
 
 with col_iadc1:
     st.subheader("🛑 Procedimiento de Detección")
+   # --- CORRECCIÓN FINAL DEL BLOQUE IADC ---
+with col_iadc1:
+    st.subheader("🛑 Procedimiento de Detección")
     if st.button("Realizar FLOW CHECK"):
         with st.status("Deteniendo bombas y observando..."):
             time.sleep(2)
-            if sidpp > 0 or cambio_flujo > 0:
-                st.error("🚨 ¡EL POZO FLUYE! Proceda a cerrar el pozo (Hard Shut-in).")
+            # Lógica de detección: si la presión de tubería (sidpp) es > 0, hay flujo
+            if sidpp > 0:
+                st.error("🚨 ¡EL POZO FLUYE! Inicie protocolo de cierre inmediato.")
+                pizarra["alarma_activa"] = True
             else:
-                st.success("✅ El pozo está estático. Continúe perforando.")
+                st.success("✅ Pozo Estático. No se detecta flujo.")
 
 with col_iadc2:
-    st.subheader("📉 Monitor de Seguridad IADC")
-    # Gráfico de presión actual vs MAASP
-    fig_maasp = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = sicp,
-        title = {'text': "SICP vs MAASP (Límite)"},
-        gauge = {
-            'axis': {'range': [0, maasp*1.2]},
-            'threshold': {
-                'line': {'color': "red", 'width': 5},
-                'thickness': 0.75,
-                'value': maasp
-            },
-            'bar': {'color': "yellow" if sicp < maasp else "red"}
-        }
-    ))
-    fig_maasp.update_layout(height=250, paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_maasp, use_container_width=True)
+    st.subheader("🛡️ Límites de Integridad")
+    # Verificación de MAASP (Presión Máxima permitida en superficie)
+    if sicp > maasp:
+        st.error(f"🛑 CRÍTICO: SICP ({sicp} PSI) supera el MAASP ({round(maasp,0)} PSI). ¡Riesgo de fractura en la zapata!")
+    else:
+        st.info(f"Márgen de seguridad (MAASP): {round(maasp - sicp, 0)} PSI")
+
+# --- PIE DE PÁGINA Y CIERRE DEL SISTEMA ---
+st.divider()
+st.markdown(f"""
+    <div style="text-align: center; color: #555;">
+        <p>Propiedad Intelectual de <b>MENFA Capacitaciones</b> | Instructor: {st.session_state.usuario}</p>
+        <p>Simulador de Ingeniería de Petróleos v3.0 - Mendoza, Argentina 2026</p>
+    </div>
+    """, unsafe_allow_html=True)
 # --- BLOQUE DE FINALIZACIÓN Y EVALUACIÓN (Línea 830 aprox) ---
 if st.button("🔴 FINALIZAR EVALUACIÓN Y GENERAR REPORTE"):
     # 1. Marcamos el fin en la pizarra
