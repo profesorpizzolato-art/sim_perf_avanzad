@@ -5,51 +5,19 @@ import time
 import random
 import plotly.graph_objects as go
 from datetime import datetime
+from fpdf import FPDF  # <--- NOTA: Aunque la librería se instala como fpdf2, el import suele ser 'from fpdf import FPDF'
+import numpy as np # Necesitamos Numpy para la vibración
+import streamlit as st
 from fpdf import FPDF
 import os
+from streamlit_autorefresh import st_autorefresh
+import streamlit as st
 import base64
+import os
 from streamlit_autorefresh import st_autorefresh
 
-# --- 1. CONFIGURACIÓN DE PÁGINA (SIEMPRE PRIMERO) ---
-st.set_page_config(page_title="Simulador MENFA 3.0", layout="wide", page_icon="logo_menfa.png")
-
-# --- 2. EL CEREBRO DEL SIMULADOR (PIZARRA COMPARTIDA) ---
-@st.cache_resource
-def obtener_pizarra():
-    """Inicializa las variables globales que ven tanto alumnos como el instructor."""
-    return {
-        "alarma_activa": False,
-        "presion_base": 2500,
-        "volumen_tanques": 500,
-        "incremento_kick": 0,
-        "caudal_gpm": 400,
-        "rebalse_tanques": False,
-        "presion_excedida": False,
-        "mensaje_inst": "Operación Normal",
-        "formacion": "Cacheuta",
-        "finalizado": False,
-        "festejo_realizado": False
-    }
-pizarra = obtener_pizarra()
-# --- 2.5 INICIALIZACIÓN DE SEGURIDAD (PARA EVITAR NAMEERROR) ---
-if 'maasp' not in st.session_state:
-    st.session_state.maasp = 0.0
-if 'sicp' not in st.session_state:
-    st.session_state.sicp = 0.0
-# --- INICIALIZACIÓN GLOBAL DE SEGURIDAD (Línea 35 aprox) ---
-# Esto evita que el error 'NameError' bloquee la App
-if 'maasp' not in st.session_state:
-    st.session_state.maasp = 0.0
-if 'sicp' not in st.session_state:
-    st.session_state.sicp = 0.0
-
-# Creamos alias para que tus fórmulas sigan funcionando sin cambiar nombres
-maasp = st.session_state.maasp
-sicp = st.session_state.sicp
-
-# --- 3. FUNCIONES DE APOYO (AUDIO Y LOGO) ---
-def reproducir_alarma_pizarra():
-    """Inyecta audio en el navegador si la alarma está activa."""
+# --- 1. DEFINICIÓN DE FUNCIONES (DEBE IR ARRIBA DE TODO) ---
+def reproducir_alarma_local():
     archivo_audio = "assets/alarma.mp3"
     if os.path.exists(archivo_audio):
         with open(archivo_audio, "rb") as f:
@@ -57,107 +25,91 @@ def reproducir_alarma_pizarra():
             base64_audio = base64.b64encode(data).decode()
             html_audio = f"""
                 <audio autoplay loop>
-                    <source src="data:audio/mp3;base64={base64_audio}" type="audio/mp3">
+                    <source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3">
                 </audio>
             """
             st.components.v1.html(html_audio, height=0)
+    else:
+        # Esto te avisará si el archivo no está en GitHub
+        st.sidebar.error("⚠️ No se encontró 'assets/alarma.mp3'")
 
-# --- 4. INTERFAZ LATERAL (LOGO Y ESTADO) ---
-if os.path.exists("logo_menfa.png"):
-    st.sidebar.image("logo_menfa.png", use_container_width=True)
-else:
-    st.sidebar.markdown("<h2 style='text-align: center;'>🏗️ MENFA 3.0</h2>", unsafe_allow_html=True)
+# --- 2. EL RESTO DE TU LÓGICA (PIZARRA, LOGIN, ETC.) ---
+@st.cache_resource
+def obtener_pizarra():
+    return {
+        "alarma_activa": False,
+        "presion_base": 2500,
+        "incremento_kick": 0,
+        "mensaje_inst": "Operación Normal"
+    }
 
-# --- 5. LATIDO DEL SISTEMA (REFRESCO AUTOMÁTICO) ---
-# Cambiamos la key para evitar el StreamlitDuplicateElementKey
-st_autorefresh(interval=1000, key="latido_principal_menfa")
+pizarra = obtener_pizarra()
 
-# --- 6. GESTIÓN DE SESIÓN (LOGIN) ---
+# ... (Aquí sigue tu código de Login y la línea 96 que ahora sí va a funcionar)
+# 1. LA PIZARRA (Base de datos compartida en el servidor)
+@st.cache_resource
+def obtener_pizarra():
+    return {
+        "alarma_activa": False,
+        "presion_base": 2500,
+        "incremento_kick": 0,
+        "mensaje_inst": "Operación Normal",
+        "formacion": "Cacheuta"
+    }
+
+pizarra = obtener_pizarra()
+
+# 2. SISTEMA DE LOGIN CON CONTRASEÑAS DISTINTAS
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
-    st.session_state.usuario = ""
     st.session_state.rol = None
 
-# --- 7. LÓGICA DE ALARMA SONORA (DISPARADOR) ---
-if pizarra.get("alarma_activa", False):
-    reproducir_alarma_pizarra()
-
-# --- 8. CARÁTULA DE INGRESO (OCULTA EL SIMULADOR) ---
 if not st.session_state.autenticado:
-    # Centramos el contenido de la carátula
-    col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+    st.title("🏗️ MENFA 3.0 - ACCESO AL SISTEMA")
     
-    with col_logo2:
-        if os.path.exists("logo_menfa.png"):
-            st.image("logo_menfa.png", use_container_width=True)
-        else:
-            st.markdown("<h1 style='text-align: center;'>🏗️ MENFA 3.0</h1>", unsafe_allow_html=True)
-        
-        st.markdown("<h3 style='text-align: center;'>Sistema Integral de Simulación de Perforación</h3>", unsafe_allow_html=True)
-        st.write("---")
-
-        # Tabs de acceso dentro de la carátula
-        tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
-        
-        with tab1:
-            with st.form("login_alumno"):
-                nombre = st.text_input("Nombre y Apellido del Alumno")
-                if st.form_submit_button("Alumno2026")
-                    if nombre:
-                        st.session_state.autenticado = True
-                        st.session_state.usuario = nombre
-                        st.session_state.rol = "alumno"
-                        st.rerun()
-                    else:
-                        st.error("Por favor, ingrese su nombre para el certificado.")
-
-        with tab2:
-            with st.form("login_instructor"):
-                clave = st.text_input("Clave de Instructor", type="password")
-                if st.form_submit_button("Acceder al Panel Maestro"):
-                    if clave == "menfa2026":
-                        st.session_state.autenticado = True
-                        st.session_state.usuario = "Inst. Fabricio Pizzolato"
-                        st.session_state.rol = "instructor"
-                        st.rerun()
-                    else:
-                        st.error("Clate incorrecta.")
+    tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
     
-    # IMPORTANTE: Este 'stop' detiene la ejecución aquí. 
-    # El resto de las 1500 líneas NO se leen hasta que el usuario se autentique.
-    st.stop() 
+    with tab1:
+        with st.form("login_alumno"):
+            user_al = st.text_input("Nombre del Alumno")
+            pass_al = st.text_input("Contraseña de Clase", type="password")
+            if st.form_submit_button("Ingresar a Simulación"):
+                # Clave simple para los alumnos
+                if pass_al == "alumno2026" and user_al:
+                    st.session_state.autenticado = True
+                    st.session_state.rol = "alumno"
+                    st.session_state.usuario = user_al
+                    st.rerun()
+                else:
+                    st.error("Nombre o contraseña de alumno incorrecta")
 
-# --- A PARTIR DE AQUÍ EMPIEZA TU SIMULADOR DEsiempre ---
-# (Todo el código de los gauges, mapas, y cálculos de lodo va acá abajo)
-st_autorefresh(interval=1000, key="latido_unico_definitivo_v3")
+    with tab2:
+        with st.form("login_instructor"):
+            pass_ins = st.text_input("Contraseña Maestra", type="password")
+            if st.form_submit_button("Ingresar como Administrador"):
+                # Tu clave secreta de instructor
+                if pass_ins == "menfa_pro_2026":
+                    st.session_state.autenticado = True
+                    st.session_state.rol = "instructor"
+                    st.session_state.usuario = "Fabricio"
+                    st.rerun()
+                else:
+                    st.error("Contraseña maestra incorrecta")
+    st.stop()
+
+# 3. SINCRONIZACIÓN (1 segundo para máxima velocidad)
+st_autorefresh(interval=1000, key="latido_menfa")
 
 # --- 4. PROCEDIMIENTO COMÚN (Lo que ven ambos después del Login) ---
 
 st.sidebar.title(f"Sesión: {st.session_state.usuario}")
-# --- LÍNEA 111 CORREGIDA ---
-rol_usuario = st.session_state.get("rol")
-if rol_usuario:
-    st.sidebar.write(f"Rol: **{rol_usuario.upper()}**")
-else:
-    st.sidebar.write("Estado: **Esperando Ingreso**")
-if pizarra["alarma_activa"]:
-    pizarra["incremento_kick"] += 5       # La presión sube sola
-    pizarra["volumen_tanques"] += 1       # El lodo sube en los tanques (PIT GAIN)
-    pizarra["caudal_gpm"] = 400 + (pizarra["incremento_kick"] * 2) # El flujo aumenta
-    
-    # Disparar sonido (la función que ya tenías)
-    reproducir_alarma_local() 
+st.sidebar.write(f"Rol: **{st.session_state.rol.upper()}**")
 
-# VISUALIZACIÓN: Los relojes ahora leen la pizarra compartida
-st.metric("SIDP", f"{pizarra['presion_base'] + pizarra["incremento_kick"]} PSI")
-valor_tanque = pizarra.get("volumen_tanques", 500) 
-st.metric("Nivel de Tanques", f"{valor_tanque} BBL")
 # PANEL DEL INSTRUCTOR (Solo Fabricio puede modificar datos)
 if st.session_state.rol == "instructor":
     st.sidebar.markdown("---")
     st.sidebar.subheader("🎮 PANEL DE MODIFICACIÓN")
-if st.sidebar.button("🚨 ACTIVAR KICK"):
-    pizarra["alarma_activa"] = True    
+    
     # Modificar presión base del alumno en tiempo real
     pizarra["presion_base"] = st.sidebar.number_input("Presión Base (PSI)", value=pizarra["presion_base"], step=100)
     
@@ -177,13 +129,7 @@ if pizarra["alarma_activa"]:
     
     # Llamamos a la alarma sonora de tu carpeta assets
     reproducir_alarma_local()
-    # --- LÓGICA DE ALARMA SINCRONIZADA ---
-if pizarra["alarma_activa"]:
-    st.error(f"🚨 ¡ALERTA CRÍTICA! {pizarra['mensaje_inst']}")
-    reproducir_alarma_pizarra()  # <--- Esto hace que suene para todos
-    st.toast("¡Surgencia detectada!", icon="⚠️")
-else:
-    st.success("✅ Estado del Pozo: Estable")
+    
     # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
     if st.button("🔴 CERRAR BOP Y ESTABILIZAR", type="primary", use_container_width=True):
         pizarra["alarma_activa"] = False  # Esto apaga la luz roja para TODOS
@@ -792,156 +738,53 @@ if st.session_state.volumen_actual > volumen_inicial + 20:
     st.error("🚨 ¡GANANCIA EN TANQUES! Posible entrada de fluido de formación.")
 elif st.session_state.volumen_actual < volumen_inicial - 20:
     st.warning("⚠️ PÉRDIDA DE CIRCULACIÓN: El lodo se está filtrando a la formación.")
-
-# --- SECCIÓN: AUDITORÍA IADC (DISTANCIADA) ---
-st.write("<br><br><br>", unsafe_allow_html=True) # Triple espacio para alejarlo de los gauges
+# --- SECCIÓN: PROTOCOLO IADC WELLSHARP ---
 st.divider()
+st.header("🏆 Evaluación de Control de Pozos (Estándar IADC)")
 
-with st.container():
-    st.title("📋 Registro de Evaluación (IADC)")
-    
-    # RE-CALCULAMOS AQUÍ PARA ASEGURAR QUE EXISTAN
-    # Usamos .get() por si el slider aún no se movió
-    densidad_actual = st.session_state.get('densidad_lodo', 9.5)
-    zapata_tvd = 1500.0 
-    lote = 15.5
-    
-    # Cálculo real del MAASP
-    maasp = (lote - densidad_actual) * 0.1703 * zapata_tvd
-    # Supongamos que SICP es la presión de anular que ya tenés en tus gauges
-    sicp = presion_total + 200 
+# Parámetros de la Zapata (Casing Shoe) para el MAASP
+st.sidebar.subheader("🏗️ Integridad del Pozo")
+zapata_tvd = st.sidebar.number_input("Profundidad de Zapata (m)", value=1500)
+gradiente_leak_off = st.sidebar.slider("LOT (Leak-off Test) [ppg]", 13.0, 18.0, 15.5)
 
-    if sicp > maasp:
-        st.error(f"🚨 FALLA DE INTEGRIDAD: SICP ({int(sicp)} PSI) > MAASP ({int(maasp)} PSI)")
-        st.info("El alumno debe reducir el peso del lodo o controlar la surgencia.")
-    else:
-        st.success(f"✅ Integridad de Zapata OK (MAASP: {int(maasp)} PSI)")
-# --- 1. PRIMERO CREAMOS LAS PESTAÑAS ---
-# Asegurate de que los nombres coincidan exactamente con los 'with' de abajo
-tab_status, tab_bitacora, tab_certificacion = st.tabs([
-    "📊 Estado de Competencias", 
-    "📝 Bitácora de Eventos", 
-    "🎓 Pre-Certificado"
-])
+# Cálculo del MAASP (Maximum Allowable Annular Surface Pressure)
+# Presión máxima que puede aguantar el pozo en superficie sin romper la zapata
+maasp = (gradiente_leak_off - densidad_lodo) * 0.1703 * zapata_tvd
 
-# --- 2. RECIÉN DESPUÉS ENTRAMOS EN ELLAS ---
-with tab_status:  # <--- Aquí ya no dará error porque arriba se definió 'tab_status'
-    c1, c2, c3 = st.columns(3)
-    # Tus métricas de MAASP y presiones...
-    st.metric("SICP vs MAASP", f"{int(sicp)} PSI")
-
-with tab_bitacora:
-    st.write("### Historial de Maniobras")
-    # Tu tabla de auditoría...
-
-with tab_certificacion:
-    st.info("Módulo de certificación para MENFA.")
-    with tab_status:
-        c1, c2, c3 = st.columns(3)
-        # Aquí vinculamos los cálculos que ya tenías de MAASP y Presiones
-        c1.metric("Cumplimiento MAASP", "DENTRO DE LÍMITE", delta="Seguro")
-        c2.metric("Tiempo de Cierre (BOP)", "45 seg", delta="-5 seg", delta_color="normal")
-        c3.metric("Puntaje Técnico", "92/100")
-
-    with tab_bitacora:
-        st.write("### Historial de Maniobras")
-        # Aquí podrías mostrar un DataFrame con las acciones que el alumno tomó
-        data_auditoria = {
-            "Hora": [datetime.now().strftime("%H:%M:%S")],
-            "Evento": ["Detección de Kick"],
-            "Acción": ["Cierre de BOP"],
-            "Resultado": ["Exitoso"]
-        }
-        st.table(pd.DataFrame(data_auditoria))
-
-    with tab_certificacion:
-        st.info("Este registro se utiliza para la generación automática del certificado de la Municipalidad.")
-        if st.button("📥 FINALIZAR Y GENERAR ACTA DE AUDITORÍA"):
-            st.balloons()
-            st.success(f"Acta de evaluación generada para el alumno: {st.session_state.usuario}")
-            # Aquí iría tu función del PDF
+st.sidebar.metric("MAASP (Límite de Presión)", f"{round(maasp, 0)} PSI")
 
 col_iadc1, col_iadc2 = st.columns(2)
-
-# --- SECCIÓN: AUDITORÍA IADC (SEGURIDAD DE POZO) ---
-st.divider()
-st.header("📋 Registro de Evaluación (Auditoría IADC)")
-
-col_iadc1, col_iadc2 = st.columns(2)
-
-# --- PRE-CÁLCULOS PARA QUE NO TIRE ERROR ---
-# Definimos los valores aquí mismo para que los botones los encuentren
-sidpp = presion_total if 'presion_total' in locals() else 0
-sicp_actual = sidpp + 200 # Estimación de anular
-zapata_tvd_m = 1500.0
-lote_ppg = 15.5
-# El MAASP es crítico para la auditoría
-maasp_calculado = (lote_ppg - densidad_lodo) * 0.1703 * zapata_tvd_m
 
 with col_iadc1:
     st.subheader("🛑 Procedimiento de Detección")
-    
-    if st.button("Realizar FLOW CHECK", use_container_width=True):
-        with st.status("Deteniendo bombas y observando...", expanded=True):
+    if st.button("Realizar FLOW CHECK"):
+        with st.status("Deteniendo bombas y observando..."):
             time.sleep(2)
-            # Lógica de detección: si hay presión en tubería, el pozo fluye
-            if sidpp > 500: # Umbral de detección
-                st.error("🚨 ¡EL POZO FLUYE! Inicie protocolo de cierre inmediato.")
-                pizarra["alarma_activa"] = True
-                pizarra["mensaje_inst"] = "¡KICK CONFIRMADO POR FLOW CHECK!"
+            if sidpp > 0 or cambio_flujo > 0:
+                st.error("🚨 ¡EL POZO FLUYE! Proceda a cerrar el pozo (Hard Shut-in).")
             else:
-                st.success("✅ Pozo Estático. No se detecta flujo.")
+                st.success("✅ El pozo está estático. Continúe perforando.")
 
 with col_iadc2:
-    st.subheader("🛡️ Integridad de la Zapata")
-    
-    # Comprobación de Seguridad IADC
-    if sicp_actual > maasp_calculado:
-        st.metric("SICP vs MAASP", f"{int(sicp_actual)} PSI", delta="PELIGRO", delta_color="inverse")
-        st.error(f"🛑 CRÍTICO: Se ha excedido el MAASP ({int(maasp_calculado)} PSI)")
-    else:
-        st.metric("SICP vs MAASP", f"{int(sicp_actual)} PSI", delta=f"Seguro (Max: {int(maasp_calculado)})")
-        st.success("✅ Presión Anular dentro de límites.")
+    st.subheader("📉 Monitor de Seguridad IADC")
+    # Gráfico de presión actual vs MAASP
+    fig_maasp = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = sicp,
+        title = {'text': "SICP vs MAASP (Límite)"},
+        gauge = {
+            'axis': {'range': [0, maasp*1.2]},
+            'threshold': {
+                'line': {'color': "red", 'width': 5},
+                'thickness': 0.75,
+                'value': maasp
+            },
+            'bar': {'color': "yellow" if sicp < maasp else "red"}
+        }
+    ))
+    fig_maasp.update_layout(height=250, paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_maasp, use_container_width=True)
 
-# --- PIE DE PÁGINA Y CIERRE DEL SISTEMA ---
-st.divider()
-st.markdown(f"""
-    <div style="text-align: center; color: #555;">
-        <p>Propiedad Intelectual de <b>MENFA Capacitaciones</b> | Instructor: {st.session_state.usuario}</p>
-        <p>Simulador de Ingeniería de Petróleos v3.0 - Mendoza, Argentina 2026</p>
-    </div>
-    """, unsafe_allow_html=True)
-# --- BLOQUE DE FINALIZACIÓN Y EVALUACIÓN (Línea 830 aprox) ---
-if st.button("🔴 FINALIZAR EVALUACIÓN Y GENERAR REPORTE"):
-    # 1. Marcamos el fin en la pizarra
-    pizarra["finalizado"] = True
-    
-    # 2. CÁLCULO DE NOTA (Sin errores de NameError)
-    nota_final = 100
-    if pizarra.get("rebalse_tanques", False):
-        nota_final -= 25
-    if pizarra.get("presion_excedida", False):
-        nota_final -= 25
-    
-    # 3. EL CANDADO DE LOS GLOBOS (Solo salen una vez)
-    if not pizarra.get("festejo_realizado", False):
-        pizarra["festejo_realizado"] = True # Cerramos el candado
-    
-    # 4. RESULTADOS EN PANTALLA
-    st.markdown(f"### 🎓 Resultado para {st.session_state.usuario}")
-    if nota_final >= 75:
-        st.success(f"✅ APROBADO - Nota Final: {nota_final}/100")
-    else:
-        st.error(f"❌ REQUIERE RE-ENTRENAMIENTO - Nota Final: {nota_final}/100")
-
-    # 5. EL BOTÓN DE DESCARGA (Alineado perfectamente para evitar IndentationError)
-    # Nota: Asegurate que la variable 'pdf_output' exista o usá un texto de prueba
-    st.download_button(
-        label="📜 Descargar Certificado MENFA",
-        data="Contenido del Certificado...", # Aquí iría tu variable del PDF (fpdf)
-        file_name=f"Certificado_{st.session_state.usuario}.pdf",
-        mime="application/pdf"
-    )
 # Lógica de fracaso IADC
 if sicp > maasp:
     st.markdown("""
@@ -968,6 +811,7 @@ def registrar_error(descripcion):
             "Gravedad": "CRÍTICA"
         })
 
+# Verificación automática de errores en tiempo real
 if sicp > maasp:
     registrar_error("Excedió el MAASP (Riesgo de Fractura en Zapata)")
 if sidpp > 0 and st.session_state.falla_activa == "Normal" and not activar_fallas:
@@ -977,46 +821,13 @@ if ecd > presion_fractura:
 if st.session_state.volumen_actual > volumen_inicial + 50:
     registrar_error("Ganancia excesiva en tanques sin acción correctiva")
 
+# Mostrar Tabla de Errores
 if st.session_state.errores_iadc:
     df_errores = pd.DataFrame(st.session_state.errores_iadc)
     st.table(df_errores)
     
-# 834: Cálculo de Nota (Empieza en 100 y resta 25 por cada error crítico)
-nota_final = 100
-# Usamos .get con un valor por defecto de 500 para que NUNCA falle
-vol_actual = pizarra.get("volumen_tanques", 500)
-
-if vol_actual > 580:
-    pizarra["rebalse_tanques"] = True
-    st.error("🚨 ¡REBALSE EN TANQUES! Capacidad excedida.")
-else:
-    pizarra["rebalse_tanques"] = False
-# Si no encuentra 'rebalse_tanques', asume False y la app NO se corta.
-if pizarra.get("rebalse_tanques", False):
-    st.error("❌ PENALIZACIÓN: Rebalse de tanques detectado.")
-    nota_final -= 25
-# Lógica de Seguridad de Presión
-# Si no encuentra 'presion_excedida', asume False y la app sigue corriendo.
-if pizarra.get("presion_excedida", False):
-    st.error("❌ PENALIZACIÓN: Se excedió la presión máxima permitida.")
-    nota_final -= 25
-# --- CÁLCULO DE PRESIÓN CORRELACIONADA ---
-# Sumamos la base que manejás vos como Instructor + el aumento del Kick
-presion_actual = pizarra.get("presion_base", 2500) + pizarra.get("incremento_kick", 0)
-
-# Ahora sí, la línea 854 puede comparar:
-if presion_actual > 4500: # Límite de seguridad del pozo
-    pizarra["presion_excedida"] = True
-    st.error("🚨 ¡PRESIÓN CRÍTICA! Se excedió el límite de formación.")
-else:
-    pizarra["presion_excedida"] = False
-if presion_actual > 4500: # Límite de seguridad del pozo
-    pizarra["presion_excedida"] = True
-    st.warning("⚠️ CRÍTICO: ¡Presión por encima del límite de formación!")
-else:
-    pizarra["presion_excedida"] = False     
-if pizarra["presion_excedida"]:
-    nota_final -= 25
+    # Cálculo de Nota (Empieza en 100 y resta 25 por cada error crítico)
+    nota_final = max(0, 100 - (len(st.session_state.errores_iadc) * 25))
     
     col_score1, col_score2 = st.columns(2)
     with col_score1:
@@ -1026,7 +837,9 @@ if pizarra["presion_excedida"]:
             st.success("🎯 ESTADO: APROBADO PARA CERTIFICACIÓN")
         else:
             st.error("❌ ESTADO: REQUIERE RE-ENTRENAMIENTO")
-
+else:
+    st.balloons()
+    st.success("🌟 ¡PERFORMANCE PERFECTA! No se detectaron violaciones de seguridad.")
 
 # Botón para limpiar el expediente del alumno
 if st.button("Reiniciar Evaluación"):
@@ -1754,20 +1567,6 @@ if st.session_state.rol == "instructor":
         else:
             pizarra["velocidad_presion"] = 10
 
-if st.session_state.rol == "instructor":
-    st.sidebar.divider()
-    if not pizarra["alarma_activa"]:
-        if st.sidebar.button("🚨 ACTIVAR KICK (SONIDO)", type="primary"):
-            pizarra["alarma_activa"] = True
-            pizarra["mensaje_inst"] = "KICK EN PROGRESO - CIERRE BOP"
-            st.rerun()
-    else:
-        if st.sidebar.button("✅ NORMALIZAR POZO"):
-            pizarra["alarma_activa"] = False
-            pizarra["incremento_kick"] = 0
-            pizarra["mensaje_inst"] = "Operación Normal"
-            st.rerun()
-
 import plotly.graph_objects as go
 
 def graficar_geologia_y_pozo(profundidad):
@@ -2086,40 +1885,8 @@ def mostrar_evaluacion(puntos):
         st.write("- Monitoreo de variables: 20/20 pts")
         st.write("- Toma de decisiones: 30/30 pts")
         st.write("- Control del evento: 20/20 pts")
- # --- SECCIÓN FINAL: EVALUACIÓN Y CIERRE ---
-st.divider()
-st.header("📋 Finalización de Simulación")
 
-if st.button("🔴 FINALIZAR EVALUACIÓN Y GENERAR REPORTE", type="primary", use_container_width=True):
-    # 1. Marcamos el estado en la pizarra
-    pizarra["finalizado"] = True
-    
-    # 2. Cálculo de la nota (Basado en los incidentes detectados)
-    nota_final = 100
-    if pizarra.get("rebalse_tanques", False):
-        nota_final -= 25
-    if pizarra.get("presion_excedida", False):
-        nota_final -= 25
-
-    # 3. Mostrar resultados en pantalla
-    st.markdown(f"### 🎓 Resultado para: {st.session_state.usuario}")
-    
-    if nota_final >= 75:
-        st.success(f"✅ EXCELENTE - Nota Final: {nota_final}/100")
-        st.info("El pozo fue controlado siguiendo los protocolos de seguridad.")
-    else:
-        st.warning(f"⚠️ REVISAR PROTOCOLOS - Nota Final: {nota_final}/100")
-        st.error("Se detectaron desviaciones críticas en los niveles o presiones.")
-
-    # 4. Botón de Descarga (Alineado perfectamente para evitar IndentationError)
-    # Nota: Asegurate de que 'pdf_output' sea tu variable de FPDF
-    st.download_button(
-        label="📜 Descargar Certificado de Entrenamiento",
-        data="Certificado de Simulación MENFA 3.0 - Operador: " + st.session_state.usuario, 
-        file_name=f"Certificado_{st.session_state.usuario}.pdf",
-        mime="application/pdf"
-    )
-
-# --- PIE DE PÁGINA ---
-st.sidebar.markdown("---")
-st.sidebar.caption(f"Configuración: @fabricio-menfa | {datetime.now().strftime('%d/%m/%Y')}")
+    # Botón para generar el certificado (usando tu lógica de FPDF si la tenés)
+    if puntos >= 70:
+        st.balloons()
+        st.download_button("📜 Descargar Certificado MENFA", "Certificado...", file_name="Certificado_Menfa.pdf")
