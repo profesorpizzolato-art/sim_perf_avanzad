@@ -9,15 +9,14 @@ from fpdf import FPDF
 import os
 import base64
 from streamlit_autorefresh import st_autorefresh
-# --- 1. CONFIGURACIÓN DE PÁGINA (DEBE SER LO PRIMERO DE STREAMLIT) ---
-st.set_page_config(page_title="Simulador MENFA 3.0", layout="wide")
-if os.path.exists("logo_menfa.png"):
-    st.sidebar.image("logo_menfa.png", use_container_width=True)
-else:
-    st.sidebar.title("🏗️ MENFA 3.0") # Texto elegante si falta la imagen
-# --- 2. EL "CEREBRO" UNIFICADO (PIZARRA COMPARTIDA) ---
+
+# --- 1. CONFIGURACIÓN DE PÁGINA (SIEMPRE PRIMERO) ---
+st.set_page_config(page_title="Simulador MENFA 3.0", layout="wide", page_icon="🏗️")
+
+# --- 2. EL CEREBRO DEL SIMULADOR (PIZARRA COMPARTIDA) ---
 @st.cache_resource
 def obtener_pizarra():
+    """Inicializa las variables globales que ven tanto alumnos como el instructor."""
     return {
         "alarma_activa": False,
         "presion_base": 2500,
@@ -29,95 +28,79 @@ def obtener_pizarra():
         "mensaje_inst": "Operación Normal",
         "formacion": "Cacheuta",
         "finalizado": False,
-        "festejo_realizado": False  # <-- Para que los globos no salgan mil veces
+        "festejo_realizado": False
     }
-@st.cache_resource
-def obtener_pizarra():
-    return {
-        "alarma_activa": False,
-        "presion_base": 2500,
-        "volumen_tanques": 500,
-        "finalizado": False,         # <--- ASEGURATE QUE DIGA "finalizado"
-        "festejo_realizado": False   # <--- Y ESTA CON COMILLA AL FINAL
-    }
+
+# CREACIÓN DE LA VARIABLE GLOBAL (Evita el NameError en la línea 129/130)
+pizarra = obtener_pizarra()
+
+# --- 3. FUNCIONES DE APOYO (AUDIO Y LOGO) ---
 def reproducir_alarma_pizarra():
-    # Solo intentamos reproducir si la alarma está activa en la pizarra global
-    if pizarra.get("alarma_activa", False):
-        archivo_audio = "assets/alarma.mp3"
-        if os.path.exists(archivo_audio):
-            with open(archivo_audio, "rb") as f:
-                data = f.read()
-                base64_audio = base64.b64encode(data).decode()
-                
-                # El tag 'autoplay' y 'loop' hace que suene apenas cargue
-                html_audio = f"""
-                    <audio autoplay loop>
-                        <source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3">
-                    </audio>
-                """
-                # Usamos un height=0 para que no desplace los relojes
-                st.components.v1.html(html_audio, height=0)
-# --- 3. LOGO EN LA BARRA LATERAL ---
-if os.path.exists("assets/logo_menfa.png"):
-    st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
-else:
-    st.sidebar.markdown("<h2 style='text-align: center;'>🏗️ MENFA 3.0</h2>", unsafe_allow_html=True)
-
-# --- 4. REFRESCO AUTOMÁTICO (Cada 1 segundo) ---
-st_autorefresh(interval=1000, key="latido_menfa")
-
-# --- 5. SISTEMA DE AUDIO ---
-def reproducir_alarma_local():
+    """Inyecta audio en el navegador si la alarma está activa."""
     archivo_audio = "assets/alarma.mp3"
     if os.path.exists(archivo_audio):
         with open(archivo_audio, "rb") as f:
             data = f.read()
             base64_audio = base64.b64encode(data).decode()
-            html_audio = f'<audio autoplay loop><source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3"></audio>'
+            html_audio = f"""
+                <audio autoplay loop>
+                    <source src="data:audio/mp3;base64={base64_audio}" type="audio/mp3">
+                </audio>
+            """
             st.components.v1.html(html_audio, height=0)
 
-# --- ACÁ EMPIEZA TU LÓGICA DE LOGIN ---
+# --- 4. INTERFAZ LATERAL (LOGO Y ESTADO) ---
+if os.path.exists("assets/logo_menfa.png"):
+    st.sidebar.image("assets/logo_menfa.png", use_container_width=True)
+else:
+    st.sidebar.markdown("<h2 style='text-align: center;'>🏗️ MENFA 3.0</h2>", unsafe_allow_html=True)
 
-# --- ACÁ EMPIEZA TU LÓGICA DE LOGIN ---
+# --- 5. LATIDO DEL SISTEMA (REFRESCO AUTOMÁTICO) ---
+# Cambiamos la key para evitar el StreamlitDuplicateElementKey
+st_autorefresh(interval=1000, key="latido_principal_menfa")
 
+# --- 6. GESTIÓN DE SESIÓN (LOGIN) ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
+    st.session_state.usuario = ""
     st.session_state.rol = None
 
+# --- 7. LÓGICA DE ALARMA SONORA (DISPARADOR) ---
+if pizarra.get("alarma_activa", False):
+    reproducir_alarma_pizarra()
+
+# --- 8. INICIO DE PÁGINA / LOGIN ---
 if not st.session_state.autenticado:
-    st.title("🏗️ MENFA 3.0 - ACCESO AL SISTEMA")
+    st.title("🛢️ Sistema de Simulación de Perforación")
+    st.info("Bienvenido al simulador avanzado para las cuencas Neuquina y Cuyana.")
     
-    # ESTA ES LA LÍNEA 65: Asegurate de que NO tenga espacios al inicio
     tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
     
     with tab1:
         with st.form("login_alumno"):
-            user_al = st.text_input("Nombre del Alumno")
-            pass_al = st.text_input("Contraseña de Clase", type="password")
-            if st.form_submit_button("Ingresar a Simulación"):
-                # Clave simple para los alumnos
-                if pass_al == "alumno2026" and user_al:
+            nombre = st.text_input("Nombre del Operador")
+            if st.form_submit_button("Ingresar al Pozo"):
+                if nombre:
                     st.session_state.autenticado = True
+                    st.session_state.usuario = nombre
                     st.session_state.rol = "alumno"
-                    st.session_state.usuario = user_al
                     st.rerun()
                 else:
-                    st.error("Nombre o contraseña de alumno incorrecta")
+                    st.error("Por favor, ingrese su nombre.")
 
     with tab2:
         with st.form("login_instructor"):
-            pass_ins = st.text_input("Contraseña Maestra", type="password")
-            if st.form_submit_button("Ingresar como Administrador"):
-                # Tu clave secreta de instructor
-                if pass_ins == "menfa_pro_2026":
+            clave = st.text_input("Clave de Instructor", type="password")
+            if st.form_submit_button("Acceder al Panel de Control"):
+                if clave == "menfa2026":  # Cambiala por tu clave
                     st.session_state.autenticado = True
+                    st.session_state.usuario = "Instructor Fabricio"
                     st.session_state.rol = "instructor"
-                    st.session_state.usuario = "Fabricio"
                     st.rerun()
                 else:
-                    st.error("Contraseña maestra incorrecta")
-    st.stop()
+                    st.error("Clave incorrecta.")
 
+# --- FIN DE LAS PRIMERAS 100 LÍNEAS ---
 # 3. SINCRONIZACIÓN (1 segundo para máxima velocidad)
 st_autorefresh(interval=1000, key="latido_principal_menfa")
 
