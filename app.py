@@ -1890,3 +1890,50 @@ def mostrar_evaluacion(puntos):
     if puntos >= 70:
         st.balloons()
         st.download_button("📜 Descargar Certificado MENFA", "Certificado...", file_name="Certificado_Menfa.pdf")
+# --- SISTEMA DE PENALIZACIONES AUTOMÁTICAS ---
+if 'penalizaciones' not in st.session_state:
+    st.session_state.penalizaciones = []
+
+def agregar_falla(msg):
+    if msg not in [p['error'] for p in st.session_state.penalizaciones]:
+        st.session_state.penalizaciones.append({"hora": datetime.now().strftime("%H:%M"), "error": msg})
+
+# Verificaciones en tiempo real
+if sicp > maasp:
+    agregar_falla("⚠️ Violación de MAASP: Fractura de Zapata")
+if ecd > presion_fractura:
+    agregar_falla("🚨 Exceso de ECD: Pérdida de lodo por fractura")
+
+st.divider()
+tab_sim, tab_eval = st.tabs(["🎮 Simulador Activo", "📊 Reporte de Competencias"])
+
+with tab_eval:
+    st.header("Resultados de la Maniobra")
+    col_e1, col_e2, col_e3 = st.columns(3)
+    
+    with col_e1:
+        # Nota dinámica basada en errores
+        score = max(0, 100 - (len(st.session_state.penalizaciones) * 20))
+        st.metric("Puntaje Final", f"{score}/100", delta=f"-{len(st.session_state.penalizaciones)} errores")
+    
+    with col_e2:
+        st.write("**Infracciones Detectadas:**")
+        for p in st.session_state.penalizaciones:
+            st.write(f"- {p['hora']}: {p['error']}")
+
+def generar_certificado(nombre, nota):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, "CERTIFICADO DE ENTRENAMIENTO - MENFA", 0, 1, 'C')
+    pdf.ln(10)
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(200, 10, f"Se certifica que el alumno: {nombre}", 0, 1, 'L')
+    pdf.cell(200, 10, f"Ha completado la simulación con una nota de: {nota}/100", 0, 1, 'L')
+    return pdf.output(dest='S').encode('latin-1')
+
+# Botón de descarga en la pestaña de evaluación
+if st.button("🎓 Descargar Certificado de Competencia"):
+    pdf_bytes = generar_certificado(st.session_state.usuario, score)
+    st.download_button("Click aquí para guardar PDF", data=pdf_bytes, file_name="certificado_menfa.pdf")
+
