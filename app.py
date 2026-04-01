@@ -103,6 +103,28 @@ if ganancia_tanques > limite_seguridad and not bop_cerrado:
             "Gravedad": "CRÍTICA"
         })
         st.session_state.error_cierre_activo = True
+# --- VARIABLES DE TRAYECTORIA (Agregá esto arriba de la línea 107) ---
+# 1. Calculamos la desviación (ejemplo: diferencia entre profundidad real y objetivo)
+# Si tenés un slider de profundidad, usalo aquí:
+profundidad_objetivo = 2500.0 
+profundidad_actual = st.session_state.get('profundidad', 0.0)
+
+# La desviación es la resta de ambas
+desviacion_vertical = profundidad_actual - profundidad_objetivo
+
+# 2. Margen de tolerancia (ejemplo: 5 metros para no salir de la formación)
+margen_formacion = 5.0
+# --- AHORA SÍ, LA LÍNEA 107 FUNCIONARÁ ---
+if abs(desviacion_vertical) > margen_formacion:
+    if not st.session_state.get('error_geo_activo', False):
+        st.session_state.penalizaciones.append({
+            "Hora": datetime.now().strftime("%H:%M:%S"),
+            "Infracción": "Error de Geonavegación: Salida de zona productiva",
+            "Gravedad": "CRÍTICA"
+        })
+        st.session_state.error_geo_activo = True
+else:
+    st.session_state.error_geo_activo = False        
 # --- EJEMPLO: GEONAVEGACIÓN ---
 if abs(desviacion_vertical) > margen_formacion:
     if not st.session_state.error_geo_activo:
