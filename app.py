@@ -2211,12 +2211,13 @@ with col_btn1:
                 nivel_cert, 
                 datetime.now().strftime("%d/%m/%Y")
             )
- # --- LÍNEA 2214 ---
+# --- 10. MÓDULO DE EVALUACIÓN FINAL ---
 try:
-    # Intentamos calcular el puntaje basado en las penalizaciones únicas
-    eventos = len(st.session_state.get('penalizaciones', []))
-    puntos = max(0, 100 - (eventos * 20))
+    # Intentamos calcular el puntaje de seguridad
+    eventos_criticos = len(st.session_state.get('penalizaciones', []))
+    puntos = max(0, 100 - (eventos_criticos * 20))
     
+    # Determinamos el nivel para el certificado de MENFA
     if puntos >= 90:
         nivel_cert = "Excelente - Operativo Real"
     elif puntos >= 70:
@@ -2224,16 +2225,15 @@ try:
     else:
         nivel_cert = "En Entrenamiento"
 
-# --- AQUÍ ES DONDE FALTABA ESTO: ---
+# ESTO ES LO QUE FALTA (El bloque except)
 except Exception as e:
-    # Si algo falla (por ejemplo, si 'penalizaciones' no existe), 
-    # definimos valores por defecto para que la app no se cierre.
+    # Si algo falla en el cálculo, definimos valores seguros
     puntos = 0
-    nivel_cert = "Error de Cálculo"
-    st.error(f"Error técnico en evaluación: {e}")
+    nivel_cert = "Revisión Requerida"
+    st.error(f"Error en el motor de evaluación: {e}")
 
-# Ahora el código puede continuar con el Reporte
-st.markdown("### 📊 Reporte de Seguridad Operacional")           
+# Ahora el Reporte puede continuar sin errores de sintaxis
+st.markdown("### 📊 Reporte de Seguridad Operacional")     
 if st.session_state.penalizaciones:
     # Convertimos a DataFrame para mostrarlo lindo
     df_reporte = pd.DataFrame(st.session_state.penalizaciones)
