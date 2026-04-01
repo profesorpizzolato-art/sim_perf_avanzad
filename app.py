@@ -2180,47 +2180,36 @@ elif puntaje_final >= 70:
 else: 
     nivel_cert = "En Entrenamiento"
 
-# --- PASO B: REGISTRO VISUAL (IMÁGENES GEMINI) ---
+# ==========================================
+# --- 10. CIERRE DE SESIÓN Y EVALUACIÓN ---
+# ==========================================
+
+# --- PASO A: REGISTRO VISUAL ---
 st.write("### 📸 Registro Visual de la Jornada")
 img_col1, img_col2, img_col3 = st.columns(3)
 
 with img_col1:
     if os.path.exists("Imagen generada por Gemini_dn7zasdn7zasdn7z.png"):
         st.image("Imagen generada por Gemini_dn7zasdn7zasdn7z.png", caption="Análisis de Formación", use_container_width=True)
-
 with img_col2:
     if os.path.exists("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png"):
         st.image("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png", caption="Estado del Trépano", use_container_width=True)
-        
 with img_col3:
     if os.path.exists("Imagen generada por Gemini_jl30d0jl30d0jl30.png"):
         st.image("Imagen generada por Gemini_jl30d0jl30d0jl30.png", caption="Perfil del Pozo", use_container_width=True)
 
-# --- PASO C: COLUMNAS DE ACCIÓN (AQUÍ ESTABA EL ERROR) ---
 st.write("---")
-# Definimos las columnas FUERA de cualquier 'with' o 'if' previo
-col_btn1, col_btn2 = st.columns(2)
 
-with col_btn1:
-    if puntaje_final >= 70:
-        try:
-            # Generamos los bytes del PDF
-            pdf_bytes = generar_certificado_final(
-                st.session_state.usuario, 
-                puntaje_final, 
-                nivel_cert, 
-                datetime.now().strftime("%d/%m/%Y")
-            )
-# --- 10. EVALUACIÓN FINAL DE SEGURIDAD ---
+# --- PASO B: EVALUACIÓN FINAL DE SEGURIDAD ---
 try:
-    # 1. Recuperamos las penalizaciones de la sesión
+    # 1. Recuperamos las penalizaciones
     penalizaciones_lista = st.session_state.get('penalizaciones', [])
     eventos_criticos = len(penalizaciones_lista)
     
-    # 2. Cálculo de puntos (20 menos por cada error crítico)
+    # 2. Cálculo de puntos
     puntaje_final = max(0, 100 - (eventos_criticos * 20))
     
-    # 3. Definición del rango para MENFA
+    # 3. Definición del rango
     if puntaje_final >= 90:
         nivel_cert = "Excelente - Operativo Real"
     elif puntaje_final >= 70:
@@ -2228,15 +2217,12 @@ try:
     else:
         nivel_cert = "En Entrenamiento"
 
-# ESTO ES LO QUE ESTABA FALTANDO Y CAUSABA EL SYNTAXERROR:
 except Exception as e:
-    # Si algo falla, la app no se cierra, solo avisa
     puntaje_final = 0
     nivel_cert = "Error de Sistema"
     st.error(f"Error en motor de evaluación: {e}")
 
-# --- AHORA SÍ: REPORTE VISUAL ---
-st.write("---") # <--- Línea 2217 (Ya no dará error)
+# --- PASO C: REPORTE VISUAL ---
 st.markdown("### 📊 Reporte de Seguridad Operacional")
 
 if st.session_state.get('penalizaciones'):
@@ -2247,14 +2233,15 @@ else:
     st.success("✅ Operación segura: Sin infracciones detectadas.")
 
 st.info(f"**Resultado Final:** {puntaje_final}/100 - **Nivel:** {nivel_cert}")
-# 3. BOTONES DE ACCIÓN (Al final de todo)
+
+# --- PASO D: BOTONES DE ACCIÓN ---
 st.write("---")
 col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
     if puntaje_final >= 70:
         try:
-            # Generamos los bytes del PDF con los datos ya calculados arriba
+            # Ahora sí, generamos el PDF con los datos calculados arriba
             pdf_bytes = generar_certificado_final(
                 st.session_state.usuario, 
                 puntaje_final, 
@@ -2273,7 +2260,7 @@ with col_btn1:
         except Exception as e:
             st.error(f"Error al preparar el PDF: {e}")
     else:
-        st.info("El puntaje es insuficiente para la certificación oficial.")
+        st.info("Puntaje insuficiente para la certificación oficial.")
 
 with col_btn2:
     if st.button("💾 Finalizar y Salir", type="primary", use_container_width=True, key="btn_salir_sistema"):
@@ -2283,6 +2270,6 @@ with col_btn2:
         st.session_state.autenticado = False
         st.rerun()
 
-# 4. SIDEBAR FINAL
+# --- PASO E: SIDEBAR FINAL ---
 st.sidebar.markdown("---")
 st.sidebar.caption(f"ID Sesión: {random.randint(1000, 9999)} | MENFA 3.0")
