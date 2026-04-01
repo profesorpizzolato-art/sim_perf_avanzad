@@ -57,9 +57,16 @@ if not st.session_state.autenticado:
                     st.rerun()
                 else:
                     st.error("Clave incorrecta")
-
     st.stop() # Esto detiene el código aquí hasta que se logueen
-
+# --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+    st.session_state.usuario = ""
+    st.session_state.rol = None
+    
+# AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:
+if "penalizaciones" not in st.session_state:
+    st.session_state.penalizaciones = []
 def generar_certificado_final(nombre, puntaje, nivel, fecha):
     try:
         pdf = FPDF()
@@ -2019,6 +2026,9 @@ if ecd > presion_fractura:
 
 st.divider()
 tab_sim, tab_eval = st.tabs(["🎮 Simulador Activo", "📊 Reporte de Competencias"])
+# Usamos .get() para dar una lista vacía si 'penalizaciones' no existe
+lista_errores = st.session_state.get('penalizaciones', [])
+score = max(0, 100 - (len(lista_errores) * 20))
 
 with tab_eval:
     st.header("Resultados de la Maniobra")
