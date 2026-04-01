@@ -2138,7 +2138,7 @@ with tab_eval:
     with col_e2:
         st.write("**Infracciones Detectadas:**")
         for p in st.session_state.penalizaciones:
-            st.write(f"- {p['hora']}: {p['error']}")
+        st.write(f"- {p.get('Hora', '00:00:00')}: {p.get('Infracción', 'Error no especificado')}")
 
 def generar_certificado(nombre, nota):
     pdf = FPDF()
@@ -2301,3 +2301,8 @@ with col_btn2:
 # --- PASO E: SIDEBAR FINAL ---
 st.sidebar.markdown("---")
 st.sidebar.caption(f"ID Sesión: {random.randint(1000, 9999)} | MENFA 3.0")
+for p in st.session_state.get('penalizaciones', []):
+    # Esto busca 'Hora' o 'hora' indistintamente
+    h = p.get('Hora') or p.get('hora') or "S/H"
+    i = p.get('Infracción') or p.get('error') or "Error desconocido"
+    st.write(f"⚠️ {h} - {i}")
