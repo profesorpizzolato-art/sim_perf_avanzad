@@ -61,37 +61,51 @@ if not st.session_state.autenticado:
     st.stop() # Esto detiene el código aquí hasta que se logueen
 
 def generar_certificado_final(nombre, puntaje, nivel, fecha):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Marco y Logo (Simulado con texto si el archivo no carga)
-    pdf.set_draw_color(0, 66, 128)
-    pdf.rect(5, 5, 200, 287)
-    
-    pdf.set_font("Arial", 'B', 24)
-    pdf.set_text_color(0, 66, 128)
-    pdf.cell(0, 30, "MENFA CAPACITACIONES", 0, 1, 'C')
-    
-    pdf.set_font("Arial", 'B', 18)
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 15, "CERTIFICADO DE COMPETENCIA", 0, 1, 'C')
-    pdf.ln(10)
-    
-    pdf.set_font("Arial", '', 14)
-    pdf.multi_cell(0, 10, f"Se hace entrega del presente a {nombre.upper()}, por haber completado el entrenamiento en el Simulador de Perforacion Avanzada 3.0.", align='C')
-    
-    pdf.ln(10)
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(0, 10, f"Resultado: {puntaje}/100", 0, 1, 'C')
-    pdf.cell(0, 10, f"Calificacion: {nivel}", 0, 1, 'C')
-    
-    pdf.ln(20)
-    pdf.set_font("Arial", 'I', 10)
-    pdf.cell(0, 10, f"Fecha de emision: {fecha}", 0, 1, 'C')
-    pdf.cell(0, 10, "Firma del Instructor: Fabricio Pizzolato", 0, 1, 'C')
-    
-    return pdf.output(dest='S').encode('latin-1')
-    
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        
+        # Marco y Estilo
+        pdf.set_draw_color(0, 66, 128)
+        pdf.rect(5, 5, 200, 287)
+        
+        pdf.set_font("Arial", 'B', 24)
+        pdf.set_text_color(0, 66, 128)
+        pdf.cell(0, 30, "MENFA CAPACITACIONES", 0, 1, 'C')
+        
+        pdf.set_font("Arial", 'B', 18)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 15, "CERTIFICADO DE COMPETENCIA", 0, 1, 'C')
+        pdf.ln(10)
+        
+        # Eliminamos tildes para evitar errores de encoding en FPDF
+        nombre_limpio = nombre.replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u").upper()
+        
+        pdf.set_font("Arial", '', 14)
+        texto_cuerpo = f"Se hace entrega del presente a {nombre_limpio}, por haber completado el entrenamiento en el Simulador de Perforacion Avanzada 3.0."
+        pdf.multi_cell(0, 10, texto_cuerpo, align='C')
+        
+        pdf.ln(10)
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(0, 10, f"Resultado: {puntaje}/100", 0, 1, 'C')
+        pdf.cell(0, 10, f"Calificacion: {nivel}", 0, 1, 'C')
+        
+        pdf.ln(20)
+        pdf.set_font("Arial", 'I', 10)
+        pdf.cell(0, 10, f"Fecha de emision: {fecha}", 0, 1, 'C')
+        pdf.cell(0, 10, "Firma del Instructor: Fabricio Pizzolato", 0, 1, 'C')
+        
+        # --- CORRECCIÓN DEL ERROR DE ENCODING ---
+        resultado = pdf.output(dest='S')
+        
+        # Si el resultado ya son bytes (o bytearray), lo devolvemos directo
+        if isinstance(resultado, (bytes, bytearray)):
+            return bytes(resultado)
+        # Si es un string, lo codificamos
+        return resultado.encode('latin-1')
+        
+    except Exception as e:
+        return f"Error interno: {str(e)}"
 # --- 1. DEFINICIÓN DE FUNCIONES (DEBE IR ARRIBA DE TODO) ---
 def reproducir_alarma_local():
     archivo_audio = "assets/alarma.mp3"
@@ -1980,13 +1994,18 @@ def mostrar_evaluacion(puntos):
         st.write("- Toma de decisiones: 30/30 pts")
         st.write("- Control del evento: 20/20 pts")
 
-    # Botón para generar el certificado (usando tu lógica de FPDF si la tenés)
-    if puntos >= 70:
-        st.balloons()
-        st.download_button("📜 Descargar Certificado MENFA", "Certificado...", file_name="Certificado_Menfa.pdf")
-# --- SISTEMA DE PENALIZACIONES AUTOMÁTICAS ---
-if 'penalizaciones' not in st.session_state:
-    st.session_state.penalizaciones = []
+    if puntaje_final >= 70:
+    pdf_bytes = generar_certificado_final(st.session_state.usuario, puntaje_final, nivel_cert, fecha_hoy)
+    
+    if isinstance(pdf_bytes, bytes):
+        st.download_button(
+            label="📥 Descargar Certificado Oficial",
+            data=pdf_bytes,
+            file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
+            mime="application/pdf"
+        )
+    else:
+        st.error(f"Error técnico: {pdf_bytes}")
 
 def agregar_falla(msg):
     if msg not in [p['error'] for p in st.session_state.penalizaciones]:
