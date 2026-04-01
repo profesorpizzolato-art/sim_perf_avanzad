@@ -2231,10 +2231,8 @@ except Exception as e:
     puntos = 0
     nivel_cert = "Revisión Requerida"
     st.error(f"Error en el motor de evaluación: {e}")
-
-# Ahora el Reporte puede continuar sin errores de sintaxis
-st.markdown("### 📊 Reporte de Seguridad Operacional")     
-if st.session_state.penalizaciones:
+    st.markdown("### 📊 Reporte de Seguridad Operacional")     
+    if st.session_state.penalizaciones:
     # Convertimos a DataFrame para mostrarlo lindo
     df_reporte = pd.DataFrame(st.session_state.penalizaciones)
     
