@@ -1995,7 +1995,7 @@ def mostrar_evaluacion(puntos):
         st.write("- Control del evento: 20/20 pts")
 
     if puntaje_final >= 70:
-    pdf_bytes = generar_certificado_final(st.session_state.usuario, puntaje_final, nivel_cert, fecha_hoy)
+       pdf_bytes = generar_certificado_final(st.session_state.usuario, puntaje_final, nivel_cert, fecha_hoy)
     
     if isinstance(pdf_bytes, bytes):
         st.download_button(
