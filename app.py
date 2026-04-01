@@ -2211,43 +2211,54 @@ with col_btn1:
                 nivel_cert, 
                 datetime.now().strftime("%d/%m/%Y")
             )
-# --- 10. MÓDULO DE EVALUACIÓN FINAL ---
+# ==========================================
+# --- 10. MÓDULO DE EVALUACIÓN Y CIERRE ---
+# ==========================================
+st.write("---")
+
+# 1. CÁLCULO DE PUNTAJE (Primero esto, para que el resto sepa qué mostrar)
 try:
-    # Intentamos calcular el puntaje de seguridad
-    eventos_criticos = len(st.session_state.get('penalizaciones', []))
-    puntos = max(0, 100 - (eventos_criticos * 20))
+    penalizaciones_lista = st.session_state.get('penalizaciones', [])
+    eventos_criticos = len(penalizaciones_lista)
+    puntaje_final = max(0, 100 - (eventos_criticos * 20))
     
-    # Determinamos el nivel para el certificado de MENFA
-    if puntos >= 90:
+    if puntaje_final >= 90:
         nivel_cert = "Excelente - Operativo Real"
-    elif puntos >= 70:
+    elif puntaje_final >= 70:
         nivel_cert = "Aprobado - Competente"
     else:
         nivel_cert = "En Entrenamiento"
-
-# ESTO ES LO QUE FALTA (El bloque except)
 except Exception as e:
-    # Si algo falla en el cálculo, definimos valores seguros
-    puntos = 0
+    puntaje_final = 0
     nivel_cert = "Revisión Requerida"
     st.error(f"Error en el motor de evaluación: {e}")
-    st.markdown("### 📊 Reporte de Seguridad Operacional")     
-    if st.session_state.penalizaciones:
-    # Convertimos a DataFrame para mostrarlo lindo
-    df_reporte = pd.DataFrame(st.session_state.penalizaciones)
-    
-    # Mostramos la tabla (Streamlit la formatea automáticamente)
+
+# 2. REPORTE VISUAL (Para que el alumno vea sus errores)
+st.markdown("### 📊 Reporte de Seguridad Operacional")
+if penalizaciones_lista:
+    df_reporte = pd.DataFrame(penalizaciones_lista)
     st.dataframe(df_reporte, use_container_width=True)
-    
-    # Cálculo de puntos basado en esta lista corta
-    eventos = len(st.session_state.penalizaciones)
-    puntos = max(0, 100 - (eventos * 20))
+    st.warning(f"Se registraron {eventos_criticos} eventos críticos.")
 else:
     st.success("✅ Operación completada sin infracciones de seguridad.")
-    puntos = 100
 
-# Esta variable 'puntos' es la que usará el certificado más abajo
-            # Botón de descarga
+st.write(f"**Puntaje Final:** {puntaje_final}/100 — **Nivel:** {nivel_cert}")
+
+# 3. BOTONES DE ACCIÓN (Al final de todo)
+st.write("---")
+col_btn1, col_btn2 = st.columns(2)
+
+with col_btn1:
+    if puntaje_final >= 70:
+        try:
+            # Generamos los bytes del PDF con los datos ya calculados arriba
+            pdf_bytes = generar_certificado_final(
+                st.session_state.usuario, 
+                puntaje_final, 
+                nivel_cert, 
+                datetime.now().strftime("%d/%m/%Y")
+            )
+            
             st.download_button(
                 label="🎓 Descargar Certificado Oficial",
                 data=pdf_bytes,
@@ -2257,19 +2268,18 @@ else:
                 key="descarga_final_cert"
             )
         except Exception as e:
-            st.error(f"Error en PDF: {e}")
+            st.error(f"Error al preparar el PDF: {e}")
     else:
-        st.warning("Puntaje insuficiente para certificación.")
+        st.info("El puntaje es insuficiente para la certificación oficial.")
 
 with col_btn2:
     if st.button("💾 Finalizar y Salir", type="primary", use_container_width=True, key="btn_salir_sistema"):
         st.balloons()
-        st.success("Sesión enviada a MENFA Capacitaciones.")
+        st.success("Sesión enviada a la base de datos de MENFA.")
         time.sleep(2)
-        # Limpiamos sesión y reiniciamos
         st.session_state.autenticado = False
         st.rerun()
 
-# Sidebar final
+# 4. SIDEBAR FINAL
 st.sidebar.markdown("---")
 st.sidebar.caption(f"ID Sesión: {random.randint(1000, 9999)} | MENFA 3.0")
