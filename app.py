@@ -2211,39 +2211,42 @@ with col_btn1:
                 nivel_cert, 
                 datetime.now().strftime("%d/%m/%Y")
             )
-# ==========================================
-# --- 10. MÓDULO DE EVALUACIÓN Y CIERRE ---
-# ==========================================
-st.write("---")
-
-# 1. CÁLCULO DE PUNTAJE (Primero esto, para que el resto sepa qué mostrar)
+# --- 10. EVALUACIÓN FINAL DE SEGURIDAD ---
 try:
+    # 1. Recuperamos las penalizaciones de la sesión
     penalizaciones_lista = st.session_state.get('penalizaciones', [])
     eventos_criticos = len(penalizaciones_lista)
+    
+    # 2. Cálculo de puntos (20 menos por cada error crítico)
     puntaje_final = max(0, 100 - (eventos_criticos * 20))
     
+    # 3. Definición del rango para MENFA
     if puntaje_final >= 90:
         nivel_cert = "Excelente - Operativo Real"
     elif puntaje_final >= 70:
         nivel_cert = "Aprobado - Competente"
     else:
         nivel_cert = "En Entrenamiento"
+
+# ESTO ES LO QUE ESTABA FALTANDO Y CAUSABA EL SYNTAXERROR:
 except Exception as e:
+    # Si algo falla, la app no se cierra, solo avisa
     puntaje_final = 0
-    nivel_cert = "Revisión Requerida"
-    st.error(f"Error en el motor de evaluación: {e}")
+    nivel_cert = "Error de Sistema"
+    st.error(f"Error en motor de evaluación: {e}")
 
-# 2. REPORTE VISUAL (Para que el alumno vea sus errores)
+# --- AHORA SÍ: REPORTE VISUAL ---
+st.write("---") # <--- Línea 2217 (Ya no dará error)
 st.markdown("### 📊 Reporte de Seguridad Operacional")
-if penalizaciones_lista:
-    df_reporte = pd.DataFrame(penalizaciones_lista)
+
+if st.session_state.get('penalizaciones'):
+    df_reporte = pd.DataFrame(st.session_state.penalizaciones)
     st.dataframe(df_reporte, use_container_width=True)
-    st.warning(f"Se registraron {eventos_criticos} eventos críticos.")
+    st.warning(f"Atención: Se registraron {len(st.session_state.penalizaciones)} infracciones.")
 else:
-    st.success("✅ Operación completada sin infracciones de seguridad.")
+    st.success("✅ Operación segura: Sin infracciones detectadas.")
 
-st.write(f"**Puntaje Final:** {puntaje_final}/100 — **Nivel:** {nivel_cert}")
-
+st.info(f"**Resultado Final:** {puntaje_final}/100 - **Nivel:** {nivel_cert}")
 # 3. BOTONES DE ACCIÓN (Al final de todo)
 st.write("---")
 col_btn1, col_btn2 = st.columns(2)
