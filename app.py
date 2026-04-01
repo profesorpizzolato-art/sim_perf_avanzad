@@ -83,20 +83,26 @@ if "error_geo_activo" not in st.session_state:
 if "error_tanques_activo" not in st.session_state:
     st.session_state.error_tanques_activo = False   
 # AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
-# (Suponiendo que tenés variables como 'ganancia_tanques' o 'kick_detectado')
+# --- DEFINICIÓN DE VARIABLES DE SEGURIDAD (Agregá esto arriba de la línea 87) ---
+
+# 1. Obtenemos el valor del slider de tanques (asegurate que el nombre coincida)
+ganancia_tanques = st.session_state.get('nivel_tanques', 0.0) 
+
+# 2. Definimos el límite de seguridad (ejemplo: 10 barriles)
+limite_seguridad = 10.0 
+
+# 3. Estado del BOP (podes usar un checkbox o un botón)
+bop_cerrado = st.session_state.get('bop_cerrado', False)
+
+# --- AHORA SÍ, TU LÓGICA DE LA LÍNEA 87 NO FALLARÁ ---
 if ganancia_tanques > limite_seguridad and not bop_cerrado:
-    if not st.session_state.error_cierre_activo:
+    if not st.session_state.get('error_cierre_activo', False):
         st.session_state.penalizaciones.append({
             "Hora": datetime.now().strftime("%H:%M:%S"),
             "Infracción": "No detectó el cierre de pozo a tiempo (Kick)",
             "Gravedad": "CRÍTICA"
         })
-        st.session_state.error_cierre_activo = True  # Bloquea repeticiones
-else:
-    # IMPORTANTE: Solo se resetea si el alumno cerró el BOP
-    if bop_cerrado:
-        st.session_state.error_cierre_activo = False
-
+        st.session_state.error_cierre_activo = True
 # --- EJEMPLO: GEONAVEGACIÓN ---
 if abs(desviacion_vertical) > margen_formacion:
     if not st.session_state.error_geo_activo:
