@@ -2211,8 +2211,15 @@ with col_btn1:
                 nivel_cert, 
                 datetime.now().strftime("%d/%m/%Y")
             )
-st.markdown("### 📊 Reporte de Seguridad Operacional")
+try:
+    puntos_raw = st.session_state.get('puntos', 0)
+    puntaje_final = int(puntos_raw)
+except Exception as e:
+    # Si algo falla, el puntaje es 0 por seguridad
+    puntaje_final = 0
 
+# AHORA SÍ, el markdown puede ir sin problemas
+st.markdown("### 📊 Reporte de Seguridad Operacional")
 if st.session_state.penalizaciones:
     # Convertimos a DataFrame para mostrarlo lindo
     df_reporte = pd.DataFrame(st.session_state.penalizaciones)
