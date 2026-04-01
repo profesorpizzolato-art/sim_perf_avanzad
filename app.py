@@ -2087,17 +2087,15 @@ with st.container():
                         <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
                     </audio>
                 """, height=0)
-# --- BOTÓN DE CIERRE Y CERTIFICACIÓN ---
-    st.write("---")
-    
-    # Calculamos variables finales para el certificado
-    puntaje_final = puntos if 'puntos' in locals() else 0
-  # --- CÁLCULO DE PUNTAJE SEGURO ---
+# ==========================================
+# --- MÓDULO FINAL: CIERRE Y CERTIFICACIÓN ---
+# ==========================================
+st.write("<br><br>", unsafe_allow_html=True)
+st.divider()
+
+# --- 1. CÁLCULO DE PUNTAJE SEGURO ---
 try:
-    # Si 'puntos' es un array o lista, tomamos el primer elemento o el promedio
     raw_puntos = puntos if 'puntos' in locals() else 0
-    
-    # Convertimos a flotante y luego a entero por seguridad
     if isinstance(raw_puntos, (list, np.ndarray)):
         puntaje_final = int(raw_puntos[0]) 
     else:
@@ -2105,64 +2103,78 @@ try:
 except:
     puntaje_final = 0
 
-# Ahora la comparación no fallará nunca
+# Definición del nivel según desempeño
 if puntaje_final >= 90: 
     nivel_cert = "Excelente - Operativo Real"
 elif puntaje_final >= 70: 
     nivel_cert = "Aprobado - Competente"
 else: 
     nivel_cert = "En Entrenamiento"
-    with col_btn1:
-        if puntaje_final >= 70:
-            try:
-                pdf_bytes = generar_certificado_final(
-                    st.session_state.usuario, 
-                    puntaje_final, 
-                    nivel_cert, 
-                    datetime.now().strftime("%d/%m/%Y")
-                )
-                st.download_button(
-                    label="🎓 Descargar Certificado Oficial",
-                    data=pdf_bytes,
-                    file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-            except Exception as e:
-                st.error(f"Error al generar PDF: {e}")
-        else:
-            st.warning("Puntaje insuficiente para certificación oficial.")
 
-    with col_btn2:
-        if st.button("💾 Finalizar y Salir", type="primary", use_container_width=True):
-            st.balloons()
-            st.success("Sesión guardada.")
-            time.sleep(2)
-            st.session_state.autenticado = False
-            st.rerun()
-    # --- GALERÍA DE IMÁGENES GENERADAS (Tus archivos de Gemini) ---
-    st.write("### 📸 Registro Visual de la Jornada")
-    img_col1, img_col2, img_col3 = st.columns(3)
-
-    with img_col1:
-        if os.path.exists("Imagen generada por Gemini_dn7zasdn7zasdn7z.png"):
-            st.image("Imagen generada por Gemini_dn7zasdn7zasdn7z.png", caption="Análisis de Formación", use_container_width=True)
+# --- 2. ENCABEZADO DE FINALIZACIÓN ---
+with st.container():
+    col_f1, col_f2 = st.columns([2, 1])
+    with col_f1:
+        st.title("🏁 Fin de la Simulación")
+        st.subheader(f"Operador: {st.session_state.usuario}")
+        st.write(f"**Resultado Final:** {puntaje_final}/100 - {nivel_cert}")
     
-    with img_col2:
-        if os.path.exists("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png"):
-            st.image("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png", caption="Estado del Trepano", use_container_width=True)
-            
-    with img_col3:
-        if os.path.exists("Imagen generada por Gemini_jl30d0jl30d0jl30.png"):
-            st.image("Imagen generada por Gemini_jl30d0jl30d0jl30.png", caption="Perfil del Pozo", use_container_width=True)
+    with col_f2:
+        # Reproducción de sonido de cierre
+        archivo_beep = "freesound_community-exposure-unit-beep-sound-2-97240 (1).mp3"
+        if os.path.exists(archivo_beep):
+            with open(archivo_beep, "rb") as f:
+                data_audio = f.read()
+                b64_audio = base64.b64encode(data_audio).decode()
+                st.components.v1.html(f'<audio autoplay><source src="data:audio/mp3;base64,{b64_audio}"></audio>', height=0)
 
-    # --- BOTÓN DE CIERRE DEFINITIVO ---
-    st.write("---")
-    if st.button("💾 Guardar Sesión y Salir", type="primary", use_container_width=True):
+# --- 3. GALERÍA DE IMÁGENES (REGISTRO VISUAL) ---
+st.write("### 📸 Registro Visual de la Jornada")
+img_col1, img_col2, img_col3 = st.columns(3)
+
+with img_col1:
+    if os.path.exists("Imagen generada por Gemini_dn7zasdn7zasdn7z.png"):
+        st.image("Imagen generada por Gemini_dn7zasdn7zasdn7z.png", caption="Análisis de Formación", use_container_width=True)
+
+with img_col2:
+    if os.path.exists("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png"):
+        st.image("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png", caption="Estado del Trépano", use_container_width=True)
+        
+with img_col3:
+    if os.path.exists("Imagen generada por Gemini_jl30d0jl30d0jl30.png"):
+        st.image("Imagen generada por Gemini_jl30d0jl30d0jl30.png", caption="Perfil del Pozo", use_container_width=True)
+
+# --- 4. BOTONES DE ACCIÓN FINAL ---
+st.write("---")
+col_btn1, col_btn2 = st.columns(2)
+
+with col_btn1:
+    if puntaje_final >= 70:
+        try:
+            pdf_bytes = generar_certificado_final(
+                st.session_state.usuario, 
+                puntaje_final, 
+                nivel_cert, 
+                datetime.now().strftime("%d/%m/%Y")
+            )
+            st.download_button(
+                label="🎓 Descargar Certificado Oficial",
+                data=pdf_bytes,
+                file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                key="btn_descarga_final"
+            )
+        except Exception as e:
+            st.error(f"Error al generar certificado: {e}")
+    else:
+        st.warning("Puntaje insuficiente para certificación.")
+
+with col_btn2:
+    if st.button("💾 Guardar y Salir del Sistema", type="primary", use_container_width=True, key="btn_salir_final"):
         st.balloons()
-        st.success("Datos exportados correctamente al servidor de MENFA Capacitaciones.")
-        time.sleep(3)
-        # Resetear la sesión para el próximo alumno
+        st.success("Datos exportados a MENFA Capacitaciones.")
+        time.sleep(2)
         st.session_state.autenticado = False
         st.rerun()
 
