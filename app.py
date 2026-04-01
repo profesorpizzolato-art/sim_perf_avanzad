@@ -63,8 +63,39 @@ if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario = ""
     st.session_state.rol = None
-    
-# AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:
+ # Inicializar banderas de error si no existen
+if "error_cierre_activo" not in st.session_state:
+    st.session_state.error_cierre_activo = False
+if "error_geo_activo" not in st.session_state:
+    st.session_state.error_geo_activo = False
+if "error_tanques_activo" not in st.session_state:
+    st.session_state.error_tanques_activo = False   
+# AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
+# (Suponiendo que tenés variables como 'ganancia_tanques' o 'kick_detectado')
+if ganancia_tanques > limite_seguridad and not bop_cerrado:
+    if not st.session_state.error_cierre_activo:
+        st.session_state.penalizaciones.append({
+            "Hora": datetime.now().strftime("%H:%M:%S"),
+            "Infracción": "No detectó el cierre de pozo a tiempo (Kick)",
+            "Gravedad": "CRÍTICA"
+        })
+        st.session_state.error_cierre_activo = True  # Bloquea repeticiones
+else:
+    # IMPORTANTE: Solo se resetea si el alumno cerró el BOP
+    if bop_cerrado:
+        st.session_state.error_cierre_activo = False
+
+# --- EJEMPLO: GEONAVEGACIÓN ---
+if abs(desviacion_vertical) > margen_formacion:
+    if not st.session_state.error_geo_activo:
+        st.session_state.penalizaciones.append({
+            "Hora": datetime.now().strftime("%H:%M:%S"),
+            "Infracción": "Error de Geonavegación: Fuera de formación",
+            "Gravedad": "CRÍTICA"
+        })
+        st.session_state.error_geo_activo = True
+else:
+    st.session_state.error_geo_activo = False
 if "penalizaciones" not in st.session_state:
     st.session_state.penalizaciones = []
 def generar_certificado_final(nombre, puntaje, nivel, fecha):
@@ -1661,7 +1692,32 @@ with st.expander("🛠️ CONSOLA DE INSTRUCTOR", expanded=False):
         st.session_state.evento_activo = None
         st.session_state.falla_bomba = False
         st.session_state.cronometro_activo = False
+# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
+# (Suponiendo que tenés variables como 'ganancia_tanques' o 'kick_detectado')
+if ganancia_tanques > limite_seguridad and not bop_cerrado:
+    if not st.session_state.error_cierre_activo:
+        st.session_state.penalizaciones.append({
+            "Hora": datetime.now().strftime("%H:%M:%S"),
+            "Infracción": "No detectó el cierre de pozo a tiempo (Kick)",
+            "Gravedad": "CRÍTICA"
+        })
+        st.session_state.error_cierre_activo = True  # Bloquea repeticiones
+else:
+    # IMPORTANTE: Solo se resetea si el alumno cerró el BOP
+    if bop_cerrado:
+        st.session_state.error_cierre_activo = False
 
+# --- EJEMPLO: GEONAVEGACIÓN ---
+if abs(desviacion_vertical) > margen_formacion:
+    if not st.session_state.error_geo_activo:
+        st.session_state.penalizaciones.append({
+            "Hora": datetime.now().strftime("%H:%M:%S"),
+            "Infracción": "Error de Geonavegación: Fuera de formación",
+            "Gravedad": "CRÍTICA"
+        })
+        st.session_state.error_geo_activo = True
+else:
+    st.session_state.error_geo_activo = False
 # --- EN EL PANEL DEL INSTRUCTOR ---
 if st.session_state.rol == "instructor":
     st.sidebar.subheader("🏢 Selección de Escenario Industrial")
@@ -2143,6 +2199,23 @@ with col_btn1:
                 nivel_cert, 
                 datetime.now().strftime("%d/%m/%Y")
             )
+st.markdown("### 📊 Reporte de Seguridad Operacional")
+
+if st.session_state.penalizaciones:
+    # Convertimos a DataFrame para mostrarlo lindo
+    df_reporte = pd.DataFrame(st.session_state.penalizaciones)
+    
+    # Mostramos la tabla (Streamlit la formatea automáticamente)
+    st.dataframe(df_reporte, use_container_width=True)
+    
+    # Cálculo de puntos basado en esta lista corta
+    eventos = len(st.session_state.penalizaciones)
+    puntos = max(0, 100 - (eventos * 20))
+else:
+    st.success("✅ Operación completada sin infracciones de seguridad.")
+    puntos = 100
+
+# Esta variable 'puntos' es la que usará el certificado más abajo
             # Botón de descarga
             st.download_button(
                 label="🎓 Descargar Certificado Oficial",
