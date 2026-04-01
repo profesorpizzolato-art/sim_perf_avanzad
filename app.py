@@ -2092,13 +2092,26 @@ with st.container():
     
     # Calculamos variables finales para el certificado
     puntaje_final = puntos if 'puntos' in locals() else 0
-    # Determinamos nivel (puedes usar la lógica que ya tienes en mostrar_evaluacion)
-    if puntaje_final >= 90: nivel_cert = "Excelente - Operativo Real"
-    elif puntaje_final >= 70: nivel_cert = "Aprobado - Competente"
-    else: nivel_cert = "En Entrenamiento"
-
-    col_btn1, col_btn2 = st.columns(2)
+  # --- CÁLCULO DE PUNTAJE SEGURO ---
+try:
+    # Si 'puntos' es un array o lista, tomamos el primer elemento o el promedio
+    raw_puntos = puntos if 'puntos' in locals() else 0
     
+    # Convertimos a flotante y luego a entero por seguridad
+    if isinstance(raw_puntos, (list, np.ndarray)):
+        puntaje_final = int(raw_puntos[0]) 
+    else:
+        puntaje_final = int(raw_puntos)
+except:
+    puntaje_final = 0
+
+# Ahora la comparación no fallará nunca
+if puntaje_final >= 90: 
+    nivel_cert = "Excelente - Operativo Real"
+elif puntaje_final >= 70: 
+    nivel_cert = "Aprobado - Competente"
+else: 
+    nivel_cert = "En Entrenamiento"
     with col_btn1:
         if puntaje_final >= 70:
             try:
