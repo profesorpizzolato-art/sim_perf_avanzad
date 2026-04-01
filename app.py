@@ -2211,15 +2211,29 @@ with col_btn1:
                 nivel_cert, 
                 datetime.now().strftime("%d/%m/%Y")
             )
+ # --- LÍNEA 2214 ---
 try:
-    puntos_raw = st.session_state.get('puntos', 0)
-    puntaje_final = int(puntos_raw)
-except Exception as e:
-    # Si algo falla, el puntaje es 0 por seguridad
-    puntaje_final = 0
+    # Intentamos calcular el puntaje basado en las penalizaciones únicas
+    eventos = len(st.session_state.get('penalizaciones', []))
+    puntos = max(0, 100 - (eventos * 20))
+    
+    if puntos >= 90:
+        nivel_cert = "Excelente - Operativo Real"
+    elif puntos >= 70:
+        nivel_cert = "Aprobado - Competente"
+    else:
+        nivel_cert = "En Entrenamiento"
 
-# AHORA SÍ, el markdown puede ir sin problemas
-st.markdown("### 📊 Reporte de Seguridad Operacional")
+# --- AQUÍ ES DONDE FALTABA ESTO: ---
+except Exception as e:
+    # Si algo falla (por ejemplo, si 'penalizaciones' no existe), 
+    # definimos valores por defecto para que la app no se cierre.
+    puntos = 0
+    nivel_cert = "Error de Cálculo"
+    st.error(f"Error técnico en evaluación: {e}")
+
+# Ahora el código puede continuar con el Reporte
+st.markdown("### 📊 Reporte de Seguridad Operacional")           
 if st.session_state.penalizaciones:
     # Convertimos a DataFrame para mostrarlo lindo
     df_reporte = pd.DataFrame(st.session_state.penalizaciones)
