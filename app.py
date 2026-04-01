@@ -2138,7 +2138,7 @@ with tab_eval:
     with col_e2:
         st.write("**Infracciones Detectadas:**")
         for p in st.session_state.penalizaciones:
-        st.write(f"- {p.get('Hora', '00:00:00')}: {p.get('Infracción', 'Error no especificado')}")
+            st.write(f"- {p.get('Hora', '00:00:00')}: {p.get('Infracción', 'Error no especificado')}")
 
 def generar_certificado(nombre, nota):
     pdf = FPDF()
