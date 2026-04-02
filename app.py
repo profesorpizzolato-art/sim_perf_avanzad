@@ -67,7 +67,15 @@ if not st.session_state.autenticado:
     
     # Detenemos la ejecución aquí para que no muestre el simulador si no está logueado
     st.stop()
+# --- BLOQUE DE INICIALIZACIÓN (PONELO ARRIBA DE TODO) ---
+if "profundidad" not in st.session_state:
+    st.session_state.profundidad = 0.0
 
+if "nivel_tanques" not in st.session_state:
+    st.session_state.nivel_tanques = 500.0
+
+if "penalizaciones" not in st.session_state:
+    st.session_state.penalizaciones = []
 # ==========================================
 # --- 1. INICIALIZACIÓN (Solo ocurre una vez) ---
 # ==========================================
