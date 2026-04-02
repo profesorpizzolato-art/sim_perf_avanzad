@@ -68,107 +68,73 @@ if not st.session_state.autenticado:
     # Detenemos la ejecución aquí para que no muestre el simulador si no está logueado
     st.stop()
 
-# --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
-# ... resto de tu código
-# --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
+# ==========================================
+# --- 1. INICIALIZACIÓN (Solo ocurre una vez) ---
+# ==========================================
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario = ""
-    st.session_state.rol = None
- # Inicializar banderas de error si no existen
-if "error_cierre_activo" not in st.session_state:
+    st.session_state.penalizaciones = []
+    st.session_state.nivel_tanques = 500.0
+    st.session_state.profundidad = 0.0
+    st.session_state.lcm_activado = False
+    # Banderas de control para no repetir errores
     st.session_state.error_cierre_activo = False
-if "error_geo_activo" not in st.session_state:
     st.session_state.error_geo_activo = False
-if "error_tanques_activo" not in st.session_state:
-    st.session_state.error_tanques_activo = False   
-# --- CONFIGURACIÓN TÉCNICA DEL POZO (WELL PROGRAM) ---
+    st.session_state.error_perdida_activo = False
+
+# --- CONFIGURACIÓN TÉCNICA ÚNICA (WELL PROGRAM) ---
 CONFIG_POZO = {
     "etapas": [
-        {
-            "nombre": "Tramo Superficial",
-            "rango": (0, 800),
-            "litologia": "Arcillas y Gravas",
-            "densidad_prog": 9.2,
-            "presion_formacion": 1200,
-            "color": "#964B00" # Marrón
-        },
-        {
-            "nombre": "Tramo Intermedio",
-            "rango": (800, 2200),
-            "litologia": "Lutitas y Calizas",
-            "densidad_prog": 10.5,
-            "presion_formacion": 3100,
-            "color": "#808080" # Gris
-        },
-        {
-            "nombre": "Tramo de Producción",
-            "rango": (2200, 3500),
-            "litologia": "Arenas Petrolíferas",
-            "densidad_prog": 12.0,
-            "presion_formacion": 4800,
-            "color": "#FFFF00" # Amarillo (Oro negro)
-        }
+        {"nombre": "Tramo Superficial", "rango": (0, 800), "litologia": "Arcillas y Gravas", "densidad_prog": 9.2, "presion": 1200},
+        {"nombre": "Tramo Intermedio", "rango": (800, 1500), "litologia": "Lutitas y Calizas", "densidad_prog": 10.5, "presion": 3100},
+        {"nombre": "Zona de PÉRDIDA", "rango": (1500, 1800), "litologia": "Calizas Fracturadas", "densidad_prog": 10.2, "presion": 3500},
+        {"nombre": "Tramo de Producción", "rango": (1800, 3500), "litologia": "Arenas Petrolíferas", "densidad_prog": 12.0, "presion": 4800}
     ]
 }
 
+# ==========================================
+# --- 2. LÓGICA DEL SIMULADOR (EL BUCLE) ---
+# ==========================================
 
-# AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
-# --- DEFINICIÓN DE VARIABLES DE SEGURIDAD (Agregá esto arriba de la línea 87) ---
+# A. Identificar etapa actual según profundidad
+prof_actual = st.session_state.profundidad
+etapa_actual = next((e for e in CONFIG_POZO["etapas"] if e["rango"][0] <= prof_actual < e["rango"][1]), CONFIG_POZO["etapas"][-1])
 
-# 1. Obtenemos el valor del slider de tanques (asegurate que el nombre coincida)
-ganancia_tanques = st.session_state.get('nivel_tanques', 0.0) 
+# B. Control de Pérdida de Circulación
+if 1500 <= prof_actual <= 1800:
+    if not st.session_state.lcm_activado:
+        st.session_state.nivel_tanques -= 2.5 # Pérdida constante
+        if st.session_state.nivel_tanques < 300 and not st.session_state.error_perdida_activo:
+            st.session_state.penalizaciones.append({"Hora": datetime.now().strftime("%H:%M:%S"), "Infracción": "Pérdida Crítica de Lodo", "Gravedad": "CRÍTICA"})
+            st.session_state.error_perdida_activo = True
+    else:
+        st.success("✅ Formación sellada con LCM")
 
-# 2. Definimos el límite de seguridad (ejemplo: 10 barriles)
-limite_seguridad = 10.0 
-
-# 3. Estado del BOP (podes usar un checkbox o un botón)
+# C. Control de Surgencia (Kick)
+ganancia_tanques = st.session_state.get('ganancia_extra', 0) # Esto vendría de otra lógica
 bop_cerrado = st.session_state.get('bop_cerrado', False)
-
-# --- AHORA SÍ, TU LÓGICA DE LA LÍNEA 87 NO FALLARÁ ---
-if ganancia_tanques > limite_seguridad and not bop_cerrado:
-    if not st.session_state.get('error_cierre_activo', False):
-        st.session_state.penalizaciones.append({
-            "Hora": datetime.now().strftime("%H:%M:%S"),
-            "Infracción": "No detectó el cierre de pozo a tiempo (Kick)",
-            "Gravedad": "CRÍTICA"
-        })
+if ganancia_tanques > 10.0 and not bop_cerrado:
+    if not st.session_state.error_cierre_activo:
+        st.session_state.penalizaciones.append({"Hora": datetime.now().strftime("%H:%M:%S"), "Infracción": "No detectó el Kick", "Gravedad": "CRÍTICA"})
         st.session_state.error_cierre_activo = True
-# --- VARIABLES DE TRAYECTORIA (Agregá esto arriba de la línea 107) ---
-# 1. Calculamos la desviación (ejemplo: diferencia entre profundidad real y objetivo)
-# Si tenés un slider de profundidad, usalo aquí:
-profundidad_objetivo = 2500.0 
-profundidad_actual = st.session_state.get('profundidad', 0.0)
 
-# La desviación es la resta de ambas
-desviacion_vertical = profundidad_actual - profundidad_objetivo
-
-# 2. Margen de tolerancia (ejemplo: 5 metros para no salir de la formación)
+# D. Control de Geonavegación
 margen_formacion = 5.0
-# --- AHORA SÍ, LA LÍNEA 107 FUNCIONARÁ ---
-if abs(desviacion_vertical) > margen_formacion:
-    if not st.session_state.get('error_geo_activo', False):
-        st.session_state.penalizaciones.append({
-            "Hora": datetime.now().strftime("%H:%M:%S"),
-            "Infracción": "Error de Geonavegación: Salida de zona productiva",
-            "Gravedad": "CRÍTICA"
-        })
-        st.session_state.error_geo_activo = True
-else:
-    st.session_state.error_geo_activo = False        
-# --- EJEMPLO: GEONAVEGACIÓN ---
-if abs(desviacion_vertical) > margen_formacion:
+desviacion_vertical = abs(prof_actual - 2500.0) if prof_actual > 2200 else 0
+if desviacion_vertical > margen_formacion:
     if not st.session_state.error_geo_activo:
-        st.session_state.penalizaciones.append({
-            "Hora": datetime.now().strftime("%H:%M:%S"),
-            "Infracción": "Error de Geonavegación: Fuera de formación",
-            "Gravedad": "CRÍTICA"
-        })
+        st.session_state.penalizaciones.append({"Hora": datetime.now().strftime("%H:%M:%S"), "Infracción": "Fuera de formación objetivo", "Gravedad": "CRÍTICA"})
         st.session_state.error_geo_activo = True
-else:
-    st.session_state.error_geo_activo = False
-if "penalizaciones" not in st.session_state:
-    st.session_state.penalizaciones = []
+
+# ==========================================
+# --- 3. INTERFAZ VISUAL (INSTRUMENTOS) ---
+# ==========================================
+st.write(f"## 🏗️ Operando en: {etapa_actual['nombre']}")
+col1, col2, col3 = st.columns(3)
+col1.metric("Profundidad", f"{prof_actual:.1f} m")
+col2.metric("Nivel Tanques", f"{st.session_state.nivel_tanques:.1f} bbl", delta="-2.5" if 1500 <= prof_actual <= 1800 and not st.session_state.lcm_activado else 0)
+col3.metric("Formación", etapa_actual['litologia'])
 def generar_certificado_final(nombre, puntaje, nivel, fecha):
     try:
         pdf = FPDF()
