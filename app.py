@@ -1153,20 +1153,6 @@ capas = [
     {"nombre": "Base Compacta", "tope": 3000, "base": 3500, "color": "#2f4f4f"},
 ]
 
-fig_geo_model = go.Figure()
-
-# Dibujar capas como bloques reales
-for capa in capas:
-    fig_geo_model.add_trace(go.Scatter(
-        x=[0, 1, 1, 0],
-        y=[capa["tope"], capa["tope"], capa["base"], capa["base"]],
-        fill="toself",
-        fillcolor=capa["color"],
-        line=dict(color="black"),
-        name=capa["nombre"],
-        opacity=0.6
-    ))
-
 # Determinar capa actual
 capa_actual = None
 for capa in capas:
@@ -1202,7 +1188,7 @@ fig_geo_model.add_trace(go.Scatter(
     textposition="middle right"
 ))
 
-st.plotly_chart(fig_geo_model, use_container_width=True)
+st.plotly_chart(fig_geo_model, width='stretch')
 if capa_actual:
     st.info(f"📍 Perforando en: {capa_actual['nombre']}")
     st.subheader("📡 Sensores LWD")
