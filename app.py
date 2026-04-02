@@ -307,23 +307,31 @@ if st.session_state.rol == "instructor":
             pizarra["incremento_kick"] = 0
             pizarra["mensaje_inst"] = "Operación Normal"
 # --- DENTRO DE LA VISTA DEL ALUMNO ---
+
+# 1. Alerta de Emergencia (Solo aparece si hay un Kick)
 if pizarra["alarma_activa"]:
     st.error(f"🔥 {pizarra['mensaje_inst']}")
+    reproducir_alarma_local() # Llamada a tus assets
     
-    # Llamamos a la alarma sonora de tu carpeta assets
-    reproducir_alarma_local()
-        with st.expander("📋 Ver Programa de Pozo Oficial (MENFA)"):
-             st.write("Siga los parámetros para evitar penalizaciones en el certificado.")
-             df_prog = pd.DataFrame(CONFIG_POZO["etapas"])
-    # Limpiamos el DF para que se vea lindo
-             st.table(df_prog[["nombre", "rango", "litologia", "densidad_prog"]])
-    # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
+    # BOTÓN DE ACCIÓN INMEDIATA
     if st.button("🔴 CERRAR BOP Y ESTABILIZAR", type="primary", use_container_width=True):
-        pizarra["alarma_activa"] = False  # Esto apaga la luz roja para TODOS
+        pizarra["alarma_activa"] = False  # Apaga la luz roja global
         pizarra["mensaje_inst"] = f"✅ Pozo controlado por: {st.session_state.usuario}"
-        pizarra["incremento_kick"] = 0    # Resetea la presión
+        pizarra["incremento_kick"] = 0    # Resetea la presión de surgencia
         st.success("¡Operación exitosa! Pozo bajo control.")
-        st.rerun() # Refresca para que deje de sonar la alarma
+        st.rerun()
+
+# 2. Programa de Pozo (Expander independiente para consulta)
+st.write("---")
+with st.expander("📋 Ver Programa de Pozo Oficial (MENFA)"):
+    st.write("Siga los parámetros para evitar penalizaciones en el certificado.")
+    # Convertimos la configuración en tabla para el alumno
+    df_prog = pd.DataFrame(CONFIG_POZO["etapas"])
+    st.table(df_prog[["nombre", "rango", "litologia", "densidad_prog"]])
+
+# 3. Sidebar o Info adicional
+st.sidebar.info(f"Operador: {st.session_state.usuario}")
+t.rerun() # Refresca para que deje de sonar la alarma
     else:
        st.success(f"✅ Estado: {pizarra['mensaje_inst']}")
        st.title("Simulador de Perforación en Tiempo Real")
