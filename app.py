@@ -1142,50 +1142,69 @@ st.divider()
 st.header("🎯 Geonavegación y Control de Trayectoria")
 st.subheader("🪨 Modelo Geológico del Pozo")
 
-prof = np.linspace(0, 3500, 100)
+# --- MODELO GEOLÓGICO AVANZADO ---
+st.subheader("🪨 Modelo Geológico del Pozo (Tiempo Real)")
 
-# Capas
-arena = np.where((prof > 2200) & (prof < 3500), 1, 0)
-lutita = np.where((prof > 800) & (prof <= 2200), 1, 0)
-superficie = np.where(prof <= 800, 1, 0)
+# Definición de capas (tipo cuenca real)
+capas = [
+    {"nombre": "Superficie", "tope": 0, "base": 800, "color": "#8B4513"},
+    {"nombre": "Lutita", "tope": 800, "base": 2200, "color": "#5c5c5c"},
+    {"nombre": "Arena Reservorio", "tope": 2200, "base": 3000, "color": "#FFD700"},
+    {"nombre": "Base Compacta", "tope": 3000, "base": 3500, "color": "#2f4f4f"},
+]
 
 fig_geo_model = go.Figure()
 
-# Capas geológicas
-fig_geo_model.add_trace(go.Scatter(x=[1]*len(prof), y=prof,
-    fill='tozerox', fillcolor='yellow',
-    mode='none', name='Arena (Reservorio)',
-    visible=True
-))
+# Dibujar capas como bloques reales
+for capa in capas:
+    fig_geo_model.add_trace(go.Scatter(
+        x=[0, 1, 1, 0],
+        y=[capa["tope"], capa["tope"], capa["base"], capa["base"]],
+        fill="toself",
+        fillcolor=capa["color"],
+        line=dict(color="black"),
+        name=capa["nombre"],
+        opacity=0.6
+    ))
 
-fig_geo_model.add_trace(go.Scatter(x=[1]*len(prof), y=prof,
-    fill='tozerox', fillcolor='gray',
-    mode='none', name='Lutita',
-    visible=True
-))
+# Determinar capa actual
+capa_actual = None
+for capa in capas:
+    if capa["tope"] <= profundidad_actual <= capa["base"]:
+        capa_actual = capa
+        break
 
-# Mecha
+# Color dinámico de la mecha
+color_mecha = "red"
+if capa_actual:
+    if "Arena" in capa_actual["nombre"]:
+        color_mecha = "lime"
+    elif "Lutita" in capa_actual["nombre"]:
+        color_mecha = "orange"
+
+# Mecha (bit)
 fig_geo_model.add_trace(go.Scatter(
-    x=[1],
+    x=[0.5],
     y=[profundidad_actual],
     mode='markers+text',
-    marker=dict(size=12, color='red'),
-    text=["🛠️ Mecha"],
-    textposition="right"
+    marker=dict(size=16, color=color_mecha, symbol="diamond"),
+    text=["🛠️ BIT"],
+    textposition="middle right"
 ))
 
+# Layout profesional
 fig_geo_model.update_layout(
-    title="Perfil Geológico Vertical",
-    yaxis=dict(autorange="reversed"),
+    title="Perfil Geológico Vertical del Pozo",
+    yaxis=dict(autorange="reversed", title="Profundidad (m)"),
     xaxis=dict(visible=False),
-    height=500,
-    template="plotly_dark"
+    height=600,
+    template="plotly_dark",
+    showlegend=True
 )
 
 st.plotly_chart(fig_geo_model, use_container_width=True)
-col_geo1, col_geo2 = st.columns([1, 2])
-
-with col_geo1:
+if capa_actual:
+    st.info(f"📍 Perforando en: {capa_actual['nombre']}")
     st.subheader("📡 Sensores LWD")
     # Simulación de Rayos Gamma (Gamma Ray)
     gr_valor = 30 + 10 * np.sin(profundidad_actual / 10) + random.uniform(-5, 5)
