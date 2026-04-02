@@ -20,6 +20,14 @@ if "autenticado" not in st.session_state:
     st.session_state.rol = None
 if "penalizaciones" not in st.session_state:
     st.session_state.penalizaciones = []
+# --- RECUPERACIÓN DE PARÁMETROS DEL SISTEMA ---
+# (Asegurate de que los nombres coincidan con tus sliders)
+rpm_act = st.session_state.get('rpm', 60)
+wob_act = st.session_state.get('wob', 15)
+caudal_act = st.session_state.get('caudal_bomba', 500)
+densidad_act = st.session_state.get('densidad_lodo', 10.0)
+presion_bomba = st.session_state.get('presion_manifold', 2500)
+torque = st.session_state.get('torque_rotaria', 1200)
 # --- MOTOR DE CÁLCULO (Sincronización de lo que tenías) ---
 if st.session_state.get('btn_perf', False): # Si el switch está en ON
     # 1. Avance de Profundidad (ROP)
@@ -542,6 +550,37 @@ presion_fondo, ecd_actual = calcular_hidraulica(
     st.session_state.get('densidad_lodo', 9.0),
     200.0 # Valor de ejemplo de fricción
 )
+# ==========================================
+# --- VISTA DEL ALUMNO (TABLERO DE COMANDOS) ---
+# ==========================================
+
+# 1. Recuperamos los datos del session_state que YA TENÍAS en tu código
+# (Asegurate de usar los mismos nombres de variables que usaste en las 2200 líneas)
+
+with st.container():
+    st.subheader(f"🚀 Monitor en Tiempo Real - Pozo: {st.session_state.usuario}")
+    
+    # Creamos 4 columnas para que quepa todo lo que tenías
+    c1, c2, c3, c4 = st.columns(4)
+    
+    with c1:
+        st.metric("PROFUNDIDAD", f"{st.session_state.get('profundidad', 0.0):.2f} m")
+        st.metric("ROP (Avance)", f"{st.session_state.get('rop', 0.0):.1f} m/h")
+        
+    with c2:
+        st.metric("PESO (WOB)", f"{st.session_state.get('wob', 0)} klbs")
+        st.metric("TORQUE", f"{st.session_state.get('torque', 0)} ft-lbs")
+        
+    with c3:
+        st.metric("CAUDAL", f"{st.session_state.get('caudal_bomba', 0)} GPM")
+        st.metric("PRESION SPP", f"{st.session_state.get('presion_manifold', 0)} PSI")
+        
+    with c4:
+        st.metric("LODO (Densidad)", f"{st.session_state.get('densidad_lodo', 10.0)} ppg")
+        st.metric("NIVEL TANQUES", f"{st.session_state.get('nivel_tanques', 500.0):.1f} bbl")
+
+# --- BARRA DE PROGRESO GEOLÓGICO ---
+st.progress(min(st.session_state.get('profundidad', 0) / 3500, 1.0))
 # --- LÓGICA DE CÁLCULOS ---
 def calcular_metricas(presion, caudal, densidad):
     # Potencia Hidráulica (HHP)
