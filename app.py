@@ -67,10 +67,13 @@ if not st.session_state.autenticado:
     
     # Detenemos la ejecución aquí para que no muestre el simulador si no está logueado
     st.stop()
-    if isinstance(fase_actual, dict) and fase_actual["fase"] == "Producción":
-    margen_formacion = 2.0  # más exigente
-            if fase_actual["formacion"] == "Arena Productiva" and gr_valor > 45:
-    registrar_error("Mala navegación en reservorio")
+   if isinstance(fase_actual, dict):
+    if fase_actual["fase"] == "Producción":
+        margen_formacion = 2.0
+    elif fase_actual["fase"] == "Intermedio":
+        margen_formacion = 5.0
+    else:
+        margen_formacion = 10.0
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
 # ... resto de tu código
 # --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
