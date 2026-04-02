@@ -332,9 +332,16 @@ with st.expander("📋 Ver Programa de Pozo Oficial (MENFA)"):
 # 3. Sidebar o Info adicional
 st.sidebar.info(f"Operador: {st.session_state.usuario}")
 t.rerun() # Refresca para que deje de sonar la alarma
-else:
-       st.success(f"✅ Estado: {pizarra['mensaje_inst']}")
-       st.title("Simulador de Perforación en Tiempo Real")
+# --- LÓGICA CORREGIDA ---
+if 1500 <= prof_actual <= 1800:
+    # Si estamos en la zona de pérdida...
+    if not st.session_state.lcm_activado:
+        st.session_state.nivel_tanques -= 2.5
+    else: # <-- Alineado con el 'if not st.session_state.lcm_activado'
+        st.success("✅ Formación sellada con LCM")
+else: # <-- Alineado con el 'if 1500 <= prof_actual <= 1800'
+    # Si NO estamos en esa zona, reseteamos el estado
+    st.session_state.lcm_activado = False
 
 # Lógica de incremento si hay Kick
 if pizarra["alarma_activa"]:
