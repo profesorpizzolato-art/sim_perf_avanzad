@@ -20,7 +20,8 @@ if "autenticado" not in st.session_state:
     st.session_state.rol = None
 if "penalizaciones" not in st.session_state:
     st.session_state.penalizaciones = []
-
+if fase_actual:
+    st.write(f"Fase actual: {fase_actual['fase']}")
 # --- 2. CARÁTULA DE INGRESO ---
 if not st.session_state.autenticado:
     # Contenedor para el logo y título principal
