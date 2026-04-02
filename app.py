@@ -67,7 +67,10 @@ if not st.session_state.autenticado:
     
     # Detenemos la ejecución aquí para que no muestre el simulador si no está logueado
     st.stop()
-
+    if isinstance(fase_actual, dict) and fase_actual["fase"] == "Producción":
+    margen_formacion = 2.0  # más exigente
+            if fase_actual["formacion"] == "Arena Productiva" and gr_valor > 45:
+    registrar_error("Mala navegación en reservorio")
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
 # ... resto de tu código
 # --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
@@ -477,6 +480,27 @@ except Exception as e:
 st.sidebar.markdown("---") # Una línea divisoria para separar el logo de los mandos
 # --- SIDEBAR (CONTROLES) ---
 st.sidebar.header("🕹️ Mandos de la Cabina")
+# --- PROGRAMA DE POZO (NUEVO MÓDULO) ---
+st.sidebar.divider()
+st.sidebar.subheader("📋 Programa de Pozo")
+
+programa_pozos = [
+    {"fase": "Superficial", "desde": 0, "hasta": 800, "formacion": "Suelo/Gravas", "objetivo": "Estabilidad inicial"},
+    {"fase": "Intermedio", "desde": 800, "hasta": 2200, "formacion": "Lutitas", "objetivo": "Control de presión"},
+    {"fase": "Producción", "desde": 2200, "hasta": 3500, "formacion": "Arena Productiva", "objetivo": "Reservorio"}
+]
+
+# Detectar fase actual
+fase_actual = "Desconocida"
+for tramo in programa_pozos:
+    if tramo["desde"] <= profundidad_actual <= tramo["hasta"]:
+        fase_actual = tramo
+        break
+
+if isinstance(fase_actual, dict):
+    st.sidebar.success(f"Fase: {fase_actual['fase']}")
+    st.sidebar.write(f"Formación: {fase_actual['formacion']}")
+    st.sidebar.write(f"Objetivo: {fase_actual['objetivo']}")
 densidad = st.sidebar.slider("Densidad del Lodo (ppg)", 8.0, 19.0, 10.5)
 caudal = st.sidebar.slider("Caudal de Bomba (GPM)", 100, 1200, 500)
 presion = st.sidebar.number_input("Presión de Standpipe (PSI)", 500, 5000, 3200)
@@ -1094,7 +1118,49 @@ Para mejorar la limpieza, considere {'aumentar el caudal' if transport_ratio < 0
 # --- MÓDULO DE GEONAVEGACIÓN (GEOSTEERING) ---
 st.divider()
 st.header("🎯 Geonavegación y Control de Trayectoria")
+st.subheader("🪨 Modelo Geológico del Pozo")
 
+prof = np.linspace(0, 3500, 100)
+
+# Capas
+arena = np.where((prof > 2200) & (prof < 3500), 1, 0)
+lutita = np.where((prof > 800) & (prof <= 2200), 1, 0)
+superficie = np.where(prof <= 800, 1, 0)
+
+fig_geo_model = go.Figure()
+
+# Capas geológicas
+fig_geo_model.add_trace(go.Scatter(x=[1]*len(prof), y=prof,
+    fill='tozerox', fillcolor='yellow',
+    mode='none', name='Arena (Reservorio)',
+    visible=True
+))
+
+fig_geo_model.add_trace(go.Scatter(x=[1]*len(prof), y=prof,
+    fill='tozerox', fillcolor='gray',
+    mode='none', name='Lutita',
+    visible=True
+))
+
+# Mecha
+fig_geo_model.add_trace(go.Scatter(
+    x=[1],
+    y=[profundidad_actual],
+    mode='markers+text',
+    marker=dict(size=12, color='red'),
+    text=["🛠️ Mecha"],
+    textposition="right"
+))
+
+fig_geo_model.update_layout(
+    title="Perfil Geológico Vertical",
+    yaxis=dict(autorange="reversed"),
+    xaxis=dict(visible=False),
+    height=500,
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig_geo_model, use_container_width=True)
 col_geo1, col_geo2 = st.columns([1, 2])
 
 with col_geo1:
