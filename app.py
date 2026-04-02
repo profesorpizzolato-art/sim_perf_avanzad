@@ -488,23 +488,32 @@ except Exception as e:
 st.sidebar.markdown("---") # Una línea divisoria para separar el logo de los mandos
 # --- SIDEBAR (CONTROLES) ---
 st.sidebar.header("🕹️ Mandos de la Cabina")
-# --- PROGRAMA DE POZO (NUEVO MÓDULO) ---
-st.sidebar.divider()
-st.sidebar.subheader("📋 Programa de Pozo")
-
+# --- PROGRAMA DE POZO ---
 programa_pozos = [
-    {"fase": "Superficial", "desde": 0, "hasta": 800, "formacion": "Suelo/Gravas", "objetivo": "Estabilidad inicial"},
-    {"fase": "Intermedio", "desde": 800, "hasta": 2200, "formacion": "Lutitas", "objetivo": "Control de presión"},
-    {"fase": "Producción", "desde": 2200, "hasta": 3500, "formacion": "Arena Productiva", "objetivo": "Reservorio"}
+    {"fase": "Superficial", "desde": 0, "hasta": 800, "formacion": "Suelo/Gravas"},
+    {"fase": "Intermedio", "desde": 800, "hasta": 2200, "formacion": "Lutitas"},
+    {"fase": "Producción", "desde": 2200, "hasta": 3500, "formacion": "Arena Productiva"}
 ]
 
-# Detectar fase actual
-fase_actual = "Desconocida"
+# --- ASEGURAR QUE EXISTE PROFUNDIDAD ---
+profundidad_actual = st.session_state.get("profundidad", 1000)
+
+# --- DETECTAR FASE ---
+fase_actual = None
+
 for tramo in programa_pozos:
     if tramo["desde"] <= profundidad_actual <= tramo["hasta"]:
         fase_actual = tramo
         break
 
+# --- AJUSTE DINÁMICO ---
+if isinstance(fase_actual, dict):
+    if fase_actual["fase"] == "Producción":
+        margen_formacion = 2.0
+    elif fase_actual["fase"] == "Intermedio":
+        margen_formacion = 5.0
+    else:
+        margen_formacion = 10.0
 if isinstance(fase_actual, dict):
     st.sidebar.success(f"Fase: {fase_actual['fase']}")
     st.sidebar.write(f"Formación: {fase_actual['formacion']}")
