@@ -82,6 +82,37 @@ if "error_geo_activo" not in st.session_state:
     st.session_state.error_geo_activo = False
 if "error_tanques_activo" not in st.session_state:
     st.session_state.error_tanques_activo = False   
+# --- CONFIGURACIÓN TÉCNICA DEL POZO (WELL PROGRAM) ---
+CONFIG_POZO = {
+    "etapas": [
+        {
+            "nombre": "Tramo Superficial",
+            "rango": (0, 800),
+            "litologia": "Arcillas y Gravas",
+            "densidad_prog": 9.2,
+            "presion_formacion": 1200,
+            "color": "#964B00" # Marrón
+        },
+        {
+            "nombre": "Tramo Intermedio",
+            "rango": (800, 2200),
+            "litologia": "Lutitas y Calizas",
+            "densidad_prog": 10.5,
+            "presion_formacion": 3100,
+            "color": "#808080" # Gris
+        },
+        {
+            "nombre": "Tramo de Producción",
+            "rango": (2200, 3500),
+            "litologia": "Arenas Petrolíferas",
+            "densidad_prog": 12.0,
+            "presion_formacion": 4800,
+            "color": "#FFFF00" # Amarillo (Oro negro)
+        }
+    ]
+}
+
+
 # AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
 # --- DEFINICIÓN DE VARIABLES DE SEGURIDAD (Agregá esto arriba de la línea 87) ---
 
@@ -315,7 +346,11 @@ if pizarra["alarma_activa"]:
     
     # Llamamos a la alarma sonora de tu carpeta assets
     reproducir_alarma_local()
-    
+    with st.expander("📋 Ver Programa de Pozo Oficial (MENFA)"):
+    st.write("Siga los parámetros para evitar penalizaciones en el certificado.")
+    df_prog = pd.DataFrame(CONFIG_POZO["etapas"])
+    # Limpiamos el DF para que se vea lindo
+    st.table(df_prog[["nombre", "rango", "litologia", "densidad_prog"]])
     # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
     if st.button("🔴 CERRAR BOP Y ESTABILIZAR", type="primary", use_container_width=True):
         pizarra["alarma_activa"] = False  # Esto apaga la luz roja para TODOS
@@ -435,7 +470,28 @@ def calcular_presiones_fondo(mw, depth_m, flow_gpm):
     Fórmula: P(psi) = 0.052 * Densidad(ppg) * Profundidad(ft)
     """
     tvd_ft = depth_m * 3.28084  # Conversión de metros a pies
-    
+    # --- DETECTOR DE LITOLOGÍA EN TIEMPO REAL ---
+prof_actual = st.session_state.get('profundidad', 0)
+etapa_actual = None
+
+# Buscamos en qué rango cae la profundidad actual
+for etapa in CONFIG_POZO["etapas"]:
+    inicio, fin = etapa["rango"]
+    if inicio <= prof_actual < fin:
+        etapa_actual = etapa
+        break
+
+# Si encontramos la etapa, activamos la info en pantalla
+if etapa_actual:
+    with st.sidebar:
+        st.markdown(f"### 🌍 Geología Actual")
+        st.info(f"**Formación:** {etapa_actual['litologia']}")
+        st.metric("Presión de Formación", f"{etapa_actual['presion_formacion']} PSI")
+        
+        # Validación de Seguridad Automática
+        dens_al = st.session_state.get('densidad_lodo', 0)
+        if dens_al < etapa_actual['densidad_prog']:
+            st.warning("⚠️ Densidad por debajo del programa de pozo")
     # 1. Presión Hidrostática Estática
     p_hidro = 0.052 * mw * tvd_ft
     
