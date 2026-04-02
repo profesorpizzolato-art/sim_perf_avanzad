@@ -67,27 +67,32 @@ if not st.session_state.autenticado:
     
     # Detenemos la ejecución aquí para que no muestre el simulador si no está logueado
     st.stop()
- if isinstance(fase_actual, dict):
-     if fase_actual["fase"] == "Producción":
+if isinstance(fase_actual, dict):
+    if fase_actual["fase"] == "Producción":
         margen_formacion = 2.0
-     elif fase_actual["fase"] == "Intermedio":
+    elif fase_actual["fase"] == "Intermedio":
         margen_formacion = 5.0
-     else:
+    else:
         margen_formacion = 10.0
+
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
 # ... resto de tu código
+
 # --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario = ""
     st.session_state.rol = None
- # Inicializar banderas de error si no existen
+
+# Inicializar banderas de error si no existen  ✅ (SIN espacio adelante)
 if "error_cierre_activo" not in st.session_state:
     st.session_state.error_cierre_activo = False
+
 if "error_geo_activo" not in st.session_state:
     st.session_state.error_geo_activo = False
+
 if "error_tanques_activo" not in st.session_state:
-    st.session_state.error_tanques_activo = False   
+    st.session_state.error_tanques_activo = False  
 # AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
 # --- DEFINICIÓN DE VARIABLES DE SEGURIDAD (Agregá esto arriba de la línea 87) ---
 
