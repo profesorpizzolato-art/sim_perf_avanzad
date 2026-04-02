@@ -1167,7 +1167,7 @@ if capa_actual:
         color_mecha = "lime"
     elif "Lutita" in capa_actual["nombre"]:
         color_mecha = "orange"
-
+fig_geo_model = go.Figure()
 # Mecha (bit)
 fig_geo_model.add_trace(go.Scatter(
     x=[0.5],
