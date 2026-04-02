@@ -1193,14 +1193,14 @@ fig_geo_model.add_trace(go.Scatter(
 ))
 
 # Layout profesional
-fig_geo_model.update_layout(
-    title="Perfil Geológico Vertical del Pozo",
-    yaxis=dict(autorange="reversed", title="Profundidad (m)"),
-    xaxis=dict(visible=False),
-    height=600,
-    template="plotly_dark",
-    showlegend=True
-)
+fig_geo_model.add_trace(go.Scatter(
+    x=[0.5],
+    y=[profundidad_actual],
+    mode='markers+text',
+    marker=dict(size=16, color=color_mecha, symbol="diamond"),
+    text="🛠️ BIT",  # 👈 string simple (no lista)
+    textposition="middle right"
+))
 
 st.plotly_chart(fig_geo_model, use_container_width=True)
 if capa_actual:
