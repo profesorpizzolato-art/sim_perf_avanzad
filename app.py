@@ -339,7 +339,7 @@ with st.expander("📋 Ver Programa de Pozo Oficial (MENFA)"):
 
 # 3. Sidebar o Info adicional
 st.sidebar.info(f"Operador: {st.session_state.usuario}")
-t.rerun() # Refresca para que deje de sonar la alarma
+st.rerun() # Refresca para que deje de sonar la alarma
 # --- LÓGICA CORREGIDA ---
 if 1500 <= prof_actual <= 1800:
     # Si estamos en la zona de pérdida...
