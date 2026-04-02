@@ -20,7 +20,21 @@ if "autenticado" not in st.session_state:
     st.session_state.rol = None
 if "penalizaciones" not in st.session_state:
     st.session_state.penalizaciones = []
-
+# --- MOTOR DE CÁLCULO (Sincronización de lo que tenías) ---
+if st.session_state.get('btn_perf', False): # Si el switch está en ON
+    # 1. Avance de Profundidad (ROP)
+    factor_avance = (rpm * wob) / 2000
+    st.session_state.profundidad += factor_avance
+    
+    # 2. Lógica de Hidráulica (Bombas)
+    if st.session_state.caudal_bomba > 0:
+        # Si hay pérdida en zona de fractura (1500-1800m)
+        if 1500 <= st.session_state.profundidad <= 1800 and not st.session_state.lcm_activado:
+            st.session_state.nivel_tanques -= 0.5 
+    
+    # 3. Refresco Automático (Loop)
+    time.sleep(0.1)
+    st.rerun()
 # --- 2. CARÁTULA DE INGRESO ---
 if not st.session_state.autenticado:
     # Contenedor para el logo y título principal
@@ -143,6 +157,13 @@ col1, col2, col3 = st.columns(3)
 col1.metric("Profundidad", f"{prof_actual:.1f} m")
 col2.metric("Nivel Tanques", f"{st.session_state.nivel_tanques:.1f} bbl", delta="-2.5" if 1500 <= prof_actual <= 1800 and not st.session_state.lcm_activado else 0)
 col3.metric("Formación", etapa_actual['litologia'])
+# --- BARRA DE PROGRESO HACIA EL OBJETIVO (3500m) ---
+progreso = min(st.session_state.profundidad / 3500, 1.0)
+st.progress(progreso, text=f"Progreso del Pozo: {progreso*100:.1f}%")
+
+if st.session_state.profundidad >= 3500:
+    st.balloons()
+    st.success("¡Objetivo Alcanzado! Pozo terminado con éxito.")
 def generar_certificado_final(nombre, puntaje, nivel, fecha):
     try:
         pdf = FPDF()
