@@ -312,11 +312,11 @@ if pizarra["alarma_activa"]:
     
     # Llamamos a la alarma sonora de tu carpeta assets
     reproducir_alarma_local()
-    with st.expander("📋 Ver Programa de Pozo Oficial (MENFA)"):
-    st.write("Siga los parámetros para evitar penalizaciones en el certificado.")
-    df_prog = pd.DataFrame(CONFIG_POZO["etapas"])
+        with st.expander("📋 Ver Programa de Pozo Oficial (MENFA)"):
+             st.write("Siga los parámetros para evitar penalizaciones en el certificado.")
+             df_prog = pd.DataFrame(CONFIG_POZO["etapas"])
     # Limpiamos el DF para que se vea lindo
-    st.table(df_prog[["nombre", "rango", "litologia", "densidad_prog"]])
+             st.table(df_prog[["nombre", "rango", "litologia", "densidad_prog"]])
     # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
     if st.button("🔴 CERRAR BOP Y ESTABILIZAR", type="primary", use_container_width=True):
         pizarra["alarma_activa"] = False  # Esto apaga la luz roja para TODOS
