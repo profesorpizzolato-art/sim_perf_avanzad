@@ -67,12 +67,12 @@ if not st.session_state.autenticado:
     
     # Detenemos la ejecución aquí para que no muestre el simulador si no está logueado
     st.stop()
-   if isinstance(fase_actual, dict):
-    if fase_actual["fase"] == "Producción":
+ if isinstance(fase_actual, dict):
+     if fase_actual["fase"] == "Producción":
         margen_formacion = 2.0
-    elif fase_actual["fase"] == "Intermedio":
+     elif fase_actual["fase"] == "Intermedio":
         margen_formacion = 5.0
-    else:
+     else:
         margen_formacion = 10.0
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
 # ... resto de tu código
