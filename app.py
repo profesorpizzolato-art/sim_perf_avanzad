@@ -486,15 +486,33 @@ if etapa_actual:
     # Es la densidad que "siente" el pozo debido a la fricción
     ecd = mw + (p_friccion / (0.052 * tvd_ft))
     
+# --- 1. DEFINIMOS LA FUNCIÓN (Asegurate de que empiece con 'def') ---
+def calcular_hidraulica(profundidad, densidad_lodo, perdida_carga_anular):
+    """
+    Calcula la Presión de Fondo (BHP) y la Densidad Equivalente (ECD)
+    """
+    # Presión Hidrostática (PH = 0.052 * Densidad * Profundidad)
+    ph = 0.052 * densidad_lodo * profundidad
+    
+    # BHP = Hidrostática + Pérdidas por fricción en el anular
+    bhp_total = ph + perdida_carga_anular
+    
+    # ECD = BHP / (0.052 * Profundidad)
+    if profundidad > 0:
+        ecd = bhp_total / (0.052 * profundidad)
+    else:
+        ecd = densidad_lodo
+        
+    # AHORA SÍ: El return está DENTRO de la función
     return bhp_total, ecd
-# Configuración de la cabina
-st.set_page_config(page_title="Simulador Perf. Avanzada v3.0", layout="wide")
-# Definir todo lo que falta antes de mostrarlo
-vibracion_axial = (wob / 5) * (rpm_actual / 100) if rpm_actual > 0 else 0.1
-d_exp_norm = (np.log10(rop_actual/(60*rpm_actual)) / np.log10(12*wob/(10**6*5.875))) * (9/densidad_lodo) if rpm_actual > 0 else 0
-temp_fondo = 20 + (0.03 * profundidad_actual)
-# ... cualquier otro cálculo (CCI, ECD) ...
 
+# --- 2. LUEGO LA LLAMAMOS DESDE EL SIMULADOR ---
+# (Esto va en tu bucle principal, fuera de la función)
+presion_fondo, ecd_actual = calcular_hidraulica(
+    st.session_state.profundidad, 
+    st.session_state.get('densidad_lodo', 9.0),
+    200.0 # Valor de ejemplo de fricción
+)
 # --- LÓGICA DE CÁLCULOS ---
 def calcular_metricas(presion, caudal, densidad):
     # Potencia Hidráulica (HHP)
