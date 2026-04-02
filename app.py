@@ -649,6 +649,13 @@ fig_trend.update_layout(template="plotly_dark", height=300)
 st.plotly_chart(fig_trend, use_container_width=True)
 
 st.caption(f"Configuración guardada por @profesorpizzolato-art | {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+
+# --- COMPARACIÓN CON EL PROGRAMA DE POZO ---
+if densidad_act < etapa_actual['densidad_prog']:
+    st.warning(f"⚠️ Alerta: Densidad inferior a la programada ({etapa_actual['densidad_prog']} ppg)")
+    
+if rpm_act > 110:
+    st.error("🚨 Peligro: Exceso de RPM. Riesgo de daño en el trépano.")
 # --- SECCIÓN DE CÁLCULOS AVANZADOS (Hidráulica y Seguridad) ---
 def calcular_hidraulica(p, q, rho):
     # HHP: Potencia Hidráulica
