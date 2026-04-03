@@ -77,6 +77,11 @@ if isinstance(fase_actual, dict):
     else:
         margen_formacion = 10.0
 
+programa_pozos = [
+    {"fase": "Superficial", "desde": 0, "hasta": 800},
+    {"fase": "Intermedio", "desde": 800, "hasta": 2200},
+    {"fase": "Producción", "desde": 2200, "hasta": 3500}
+]
 with st.expander("📋 Programa de Pozos", expanded=False):
     for tramo in programa_pozos:
         st.write(f"🔹 {tramo['fase']} | {tramo['desde']}m - {tramo['hasta']}m")
