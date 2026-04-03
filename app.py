@@ -218,14 +218,15 @@ if abs(desviacion_vertical) > margen_formacion:
     if not st.session_state.error_geo_activo:
         st.session_state.penalizaciones.append({
             "Hora": datetime.now().strftime("%H:%M:%S"),
-            "Infracción": "Error de Geonavegación: Fuera de formación",
+            "Infracción": "Error de Geonavegación: Salida de zona productiva",
             "Gravedad": "CRÍTICA"
         })
         st.session_state.error_geo_activo = True
+
+        st.warning("⚠️ Salida de formación")
 else:
     st.session_state.error_geo_activo = False
-if "penalizaciones" not in st.session_state:
-    st.session_state.penalizaciones = []
+    
 def generar_certificado_final(nombre, puntaje, nivel, fecha):
     try:
         pdf = FPDF()
@@ -290,19 +291,6 @@ def reproducir_alarma_local():
         st.sidebar.error("⚠️ No se encontró 'assets/alarma.mp3'")
 
 # --- 2. EL RESTO DE TU LÓGICA (PIZARRA, LOGIN, ETC.) ---
-@st.cache_resource
-def obtener_pizarra():
-    return {
-        "alarma_activa": False,
-        "presion_base": 2500,
-        "incremento_kick": 0,
-        "mensaje_inst": "Operación Normal"
-    }
-
-pizarra = obtener_pizarra()
-
-# ... (Aquí sigue tu código de Login y la línea 96 que ahora sí va a funcionar)
-# 1. LA PIZARRA (Base de datos compartida en el servidor)
 @st.cache_resource
 def obtener_pizarra():
     return {
@@ -404,20 +392,26 @@ if pizarra["alarma_activa"]:
 st.subheader("🎮 Acciones del Operador")
 
 col1, col2, col3 = st.columns(3)
+if "mw" not in st.session_state:
+    st.session_state.mw = 10.0
 
-with col1:
-    if st.button("⬆️ Subir MW"):
-        mw += 0.5
+mw = st.session_state.mw
+if st.button("⬆️ Subir MW"):
+    st.session_state.mw += 0.5
 
-with col2:
-    if st.button("⬇️ Bajar MW"):
-        mw -= 0.5
+if st.button("⬇️ Bajar MW"):
+    st.session_state.mw -= 0.5
 
 with col3:
     if st.button("🛑 Cerrar BOP"):
         st.session_state["bop_cerrado"] = True
     # Llamamos a la alarma sonora de tu carpeta assets
+    if pizarra["alarma_activa"] and not st.session_state.alarma_activa:
     reproducir_alarma_local()
+    st.session_state.alarma_activa = True
+
+if not pizarra["alarma_activa"]:
+    st.session_state.alarma_activa = False
     
     # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
     if st.button("🔴 CERRAR BOP Y ESTABILIZAR", type="primary", use_container_width=True):
