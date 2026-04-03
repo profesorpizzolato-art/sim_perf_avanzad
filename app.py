@@ -1251,7 +1251,17 @@ capas = [
 ]
 # Inicialización de seguridad
 fig_geo_model = None 
+# Lógica de creación del gráfico
+if fase_actual is not None:
+    fig_geo_model = go.Figure()
+    # ... tus trazas de Plotly (linea_poro, linea_frac, etc.) ...
+    fig_geo_model.update_layout(title="Modelo Geomecánico")
 
+# --- RENDERIZADO SEGURO (Línea 1169 corregida) ---
+if fig_geo_model is not None:
+    st.plotly_chart(fig_geo_model, use_container_width=True)
+else:
+    st.info("Espere... Cargando modelo geológico de la formación.")
 if st.session_state.rol == "instructor":
     # Aquí creas el gráfico
     fig_geo_model = go.Figure(...) 
