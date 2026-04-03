@@ -1160,23 +1160,37 @@ Para mejorar la limpieza, considere {'aumentar el caudal' if transport_ratio < 0
 # --- MÓDULO DE GEONAVEGACIÓN (GEOSTEERING) ---
 st.divider()
 st.header("🎯 Geonavegación y Control de Trayectoria")
-st.subheader("🪨 Modelo Geológico del Pozo (Tiempo Real)")
-col1, col2 = st.columns([2, 1])
+# --- MODELO GEOLÓGICO ---
+capas = [
+    {"nombre": "Superficie", "tope": 0, "base": 800, "color": "#8B4513"},
+    {"nombre": "Lutita", "tope": 800, "base": 2200, "color": "#5c5c5c"},
+    {"nombre": "Arena", "tope": 2200, "base": 3000, "color": "#FFD700"},
+]
 
-with col1:
-    st.subheader("Simulación")
+fig_geo_model = go.Figure()
+
+for capa in capas:
+    fig_geo_model.add_trace(go.Scatter(
+        x=[0, 1, 1, 0],
+        y=[capa["tope"], capa["tope"], capa["base"], capa["base"]],
+        fill="toself",
+        fillcolor=capa["color"],
+        line=dict(color="black"),
+        name=capa["nombre"]
+    ))
+
+# mecha
+fig_geo_model.add_trace(go.Scatter(
+    x=[0.5],
+    y=[profundidad_actual],
+    mode='markers',
+    marker=dict(size=14, color='red')
+))
+col1, col2 = st.columns([2,1])
 
 with col2:
     with st.expander("🪨 Modelo Geológico", expanded=True):
         st.plotly_chart(fig_geo_model, width='stretch')
-# Definición de capas (tipo cuenca real)
-capas = [
-    {"nombre": "Superficie", "tope": 0, "base": 800, "color": "#8B4513"},
-    {"nombre": "Lutita", "tope": 800, "base": 2200, "color": "#5c5c5c"},
-    {"nombre": "Arena Reservorio", "tope": 2200, "base": 3000, "color": "#FFD700"},
-    {"nombre": "Base Compacta", "tope": 3000, "base": 3500, "color": "#2f4f4f"},
-]
-
 # Determinar capa actual
 capa_actual = None
 for capa in capas:
