@@ -18,7 +18,25 @@ presion_formacion = st.session_state.get("presion_global", 2500)
 fase_actual = None
 # --- 0. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA DE ST) ---
 st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
-
+# --- INICIALIZACIÓN UNIFICADA (Colocar después de st.set_page_config) ---
+if "autenticado" not in st.session_state:
+    st.session_state.update({
+        "autenticado": False,
+        "usuario": "",
+        "rol": None,
+        "penalizaciones": [],
+        "profundidad": 2500.0,
+        "mw": 10.0,
+        "bop_cerrado": False,
+        "alarma_activa": False,
+        "sonido_activo": False
+    })
+# Asegurar que estas variables tengan un valor inicial para evitar errores en la primera carga
+profundidad_actual = st.session_state.get('profundidad', 2500.0)
+wob = 15.0
+rpm_actual = 60
+rop_actual = 10.0
+densidad_lodo = st.session_state.get('mw', 10.0)
 # --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -73,14 +91,14 @@ if not st.session_state.autenticado:
     
     # Detenemos la ejecución aquí para que no muestre el simulador si no está logueado
     st.stop()
-if isinstance(fase_actual, dict):
-    if fase_actual["fase"] == "Producción":
-        margen_formacion = 2.0
-    elif fase_actual["fase"] == "Intermedio":
-        margen_formacion = 5.0
-    else:
-        margen_formacion = 10.0
+# --- DETECCIÓN DE FASE Y MARGEN ---
+fase_actual = next((t for t in programa_pozos if t["desde"] <= profundidad_actual <= t["hasta"]), None)
 
+if fase_actual:
+    margenes = {"Producción": 2.0, "Intermedio": 5.0, "Superficial": 10.0}
+    margen_formacion = margenes.get(fase_actual["fase"], 10.0)
+else:
+    margen_formacion = 10.0
 programa_pozos = [
     {"fase": "Superficial", "desde": 0, "hasta": 800},
     {"fase": "Intermedio", "desde": 800, "hasta": 2200},
@@ -2501,33 +2519,6 @@ with col_btn2:
         time.sleep(2)
         st.session_state.autenticado = False
         st.rerun()
-# --- PASO E: SIDEBAR FINAL ---
-st.sidebar.markdown("---")
-st.sidebar.caption(f"ID Sesión: {random.randint(1000, 9999)} | MENFA 3.0")
-for p in st.session_state.get('penalizaciones', []):
-    # Esto busca 'Hora' o 'hora' indistintamente
-    h = p.get('Hora') or p.get('hora') or "S/H"
-    i = p.get('Infracción') or p.get('error') or "Error desconocido"
-    st.write(f"⚠️ {h} - {i}")
-if evento_kick and not st.session_state.alarma_activa:
-    st.error("🚨 KICK DETECTADO")
-    
-    st.audio("asset/alarma.mp3")
-    
-    st.session_state.alarma_activa = True
-
-if not evento_kick:
-    st.session_state.alarma_activa = False
-
-if "ultima_formacion" not in st.session_state:
-    st.session_state.ultima_formacion = None
-
-if capa_actual and capa_actual["nombre"] != st.session_state.ultima_formacion:
-    st.warning(f"📳 Cambio de formación: {capa_actual['nombre']}")
-    
-    st.audio("https://www.soundjay.com/button/beep-09.wav")
-    
-    st.session_state.ultima_formacion = capa_actual["nombre"]
 
 st.subheader("🛢️ Control de Sarta")
 
