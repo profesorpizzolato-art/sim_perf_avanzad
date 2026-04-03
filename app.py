@@ -88,15 +88,13 @@ with st.expander("📋 Programa de Pozos", expanded=False):
     for tramo in programa_pozos:
         st.write(f"🔹 {tramo['fase']} | {tramo['desde']}m - {tramo['hasta']}m")
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
-# ... resto de tu código
+# --- CONFIGURACIÓN INICIAL CLAVE ---
+if "alarma_activa" not in st.session_state:
+    st.session_state.alarma_activa = False
 
-# --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
-    st.session_state.usuario = ""
-    st.session_state.rol = None
+if "penalizaciones" not in st.session_state:
+    st.session_state.penalizaciones = []
 
-# Inicializar banderas de error si no existen  ✅ (SIN espacio adelante)
 if "error_cierre_activo" not in st.session_state:
     st.session_state.error_cierre_activo = False
 
@@ -104,28 +102,95 @@ if "error_geo_activo" not in st.session_state:
     st.session_state.error_geo_activo = False
 
 if "error_tanques_activo" not in st.session_state:
-    st.session_state.error_tanques_activo = False  
-# AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
-# --- DEFINICIÓN DE VARIABLES DE SEGURIDAD (Agregá esto arriba de la línea 87) ---
+    st.session_state.error_tanques_activo = False
 
-# 1. Obtenemos el valor del slider de tanques (asegurate que el nombre coincida)
-ganancia_tanques = st.session_state.get('nivel_tanques', 0.0) 
 
-# 2. Definimos el límite de seguridad (ejemplo: 10 barriles)
-limite_seguridad = 10.0 
+# --- VARIABLES BASE DEL SIMULADOR ---
+profundidad_actual = st.session_state.get('profundidad', 0.0)
+presion_formacion = st.session_state.get("presion_global", 2500)
 
-# 3. Estado del BOP (podes usar un checkbox o un botón)
+
+# --- PROGRAMA DE POZOS (DEFINIDO ANTES DE USAR) ---
+programa_pozos = [
+    {"fase": "Superficial", "desde": 0, "hasta": 800},
+    {"fase": "Intermedio", "desde": 800, "hasta": 2200},
+    {"fase": "Producción", "desde": 2200, "hasta": 3500}
+]
+
+
+# --- DETECCIÓN AUTOMÁTICA DE FASE ---
+fase_actual = None
+
+for tramo in programa_pozos:
+    if tramo["desde"] <= profundidad_actual <= tramo["hasta"]:
+        fase_actual = tramo
+        break
+
+
+# --- MARGEN SEGÚN FORMACIÓN (AHORA SÍ FUNCIONA) ---
+if fase_actual:
+    if fase_actual["fase"] == "Producción":
+        margen_formacion = 2.0
+    elif fase_actual["fase"] == "Intermedio":
+        margen_formacion = 5.0
+    else:
+        margen_formacion = 10.0
+else:
+    margen_formacion = 10.0  # fallback
+
+
+# --- UI: PROGRAMA DE POZOS ---
+with st.expander("📋 Programa de Pozos", expanded=False):
+    for tramo in programa_pozos:
+        if fase_actual and tramo["fase"] == fase_actual["fase"]:
+            st.success(f"➡️ {tramo['fase']} | {tramo['desde']}m - {tramo['hasta']}m")
+        else:
+            st.write(f"🔹 {tramo['fase']} | {tramo['desde']}m - {tramo['hasta']}m")
+
+
+# --- CONTROL DE KICK (TANQUES + BOP) ---
+ganancia_tanques = st.session_state.get('nivel_tanques', 0.0)
+limite_seguridad = 10.0
 bop_cerrado = st.session_state.get('bop_cerrado', False)
 
-# --- AHORA SÍ, TU LÓGICA DE LA LÍNEA 87 NO FALLARÁ ---
-if ganancia_tanques > limite_seguridad and not bop_cerrado:
-    if not st.session_state.get('error_cierre_activo', False):
+evento_kick = ganancia_tanques > limite_seguridad
+
+if evento_kick and not bop_cerrado:
+    if not st.session_state.error_cierre_activo:
         st.session_state.penalizaciones.append({
             "Hora": datetime.now().strftime("%H:%M:%S"),
             "Infracción": "No detectó el cierre de pozo a tiempo (Kick)",
             "Gravedad": "CRÍTICA"
         })
         st.session_state.error_cierre_activo = True
+
+        # 🔊 ALARMA (una sola vez)
+        if not st.session_state.alarma_activa:
+            st.error("🚨 KICK DETECTADO")
+            st.audio("https://www.soundjay.com/button/beep-07.wav")
+            st.session_state.alarma_activa = True
+else:
+    st.session_state.error_cierre_activo = False
+    st.session_state.alarma_activa = False
+
+
+# --- GEONAVEGACIÓN ---
+profundidad_objetivo = 2500.0
+desviacion_vertical = profundidad_actual - profundidad_objetivo
+
+if abs(desviacion_vertical) > margen_formacion:
+    if not st.session_state.error_geo_activo:
+        st.session_state.penalizaciones.append({
+            "Hora": datetime.now().strftime("%H:%M:%S"),
+            "Infracción": "Error de Geonavegación: Salida de zona productiva",
+            "Gravedad": "CRÍTICA"
+        })
+        st.session_state.error_geo_activo = True
+
+        st.warning("⚠️ Salida de formación")
+else:
+    st.session_state.error_geo_activo = False
+
 # --- VARIABLES DE TRAYECTORIA (Agregá esto arriba de la línea 107) ---
 # 1. Calculamos la desviación (ejemplo: diferencia entre profundidad real y objetivo)
 # Si tenés un slider de profundidad, usalo aquí:
