@@ -10,6 +10,8 @@ from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
 
+if "sonido_activo" not in st.session_state:
+    st.session_state.sonido_activo = False
 if "alarma_activa" not in st.session_state:
     st.session_state.alarma_activa = False
 presion_formacion = st.session_state.get("presion_global", 2500)
@@ -426,9 +428,9 @@ if not pizarra["alarma_activa"]:
 
 # Lógica de incremento si hay Kick
 if pizarra["alarma_activa"]:
-    pizarra["incremento_kick"] += 10 # La presión sube sola mientras no se libere
-
-presion_total = pizarra["presion_base"] + pizarra["incremento_kick"]
+    st.session_state.sonido_activo = True
+    st.error(f"🔥 {pizarra['mensaje_inst']}")
+    reproducir_alarma_local()
 
 col1, col2 = st.columns(2)
 col1.metric("SIDP (Tubería)", f"{presion_total} PSI", delta=f"+{pizarra['incremento_kick']}" if pizarra["alarma_activa"] else None)
@@ -440,30 +442,33 @@ if pizarra["alarma_activa"]:
 else:
     st.success("✅ Sistema Estable - Esperando parámetros del Instructor")
 
-
+if st.button("🔴 CERRAR BOP Y ESTABILIZAR"):
+    pizarra["alarma_activa"] = False
+    st.session_state.sonido_activo = False
+    pizarra["mensaje_inst"] = "Pozo controlado"
+    st.success("Pozo estabilizado")
+    st.rerun()
 import base64
 import os
 
 # 1. FUNCIÓN PARA LEER EL ARCHIVO LOCAL Y GENERAR EL AUDIO
 def reproducir_alarma_local():
+    if not st.session_state.get("sonido_activo", False):
+        return
+
     archivo_audio = "assets/alarma.mp3"
     
     if os.path.exists(archivo_audio):
         with open(archivo_audio, "rb") as f:
             data = f.read()
-            # Convertimos el audio a base64 para que Streamlit lo "inyecte" en el navegador
             base64_audio = base64.b64encode(data).decode()
             
             html_audio = f"""
-                <audio autoplay loop>
+                <audio autoplay>
                     <source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3">
                 </audio>
             """
             st.components.v1.html(html_audio, height=0)
-    else:
-        # Si el archivo no está, te avisa en la consola de Streamlit para que no explote
-        st.error("Archivo 'assets/alarma.mp3' no encontrado en GitHub.")
-
 # 2. APLICACIÓN EN LA VISTA DEL ALUMNO
 # Buscá la parte donde el alumno reacciona al Kick:
 
@@ -547,9 +552,7 @@ def calcular_presiones_fondo(mw, depth_m, flow_gpm):
     ecd = mw + (p_friccion / (0.052 * tvd_ft))
     
     return bhp_total, ecd
-# Configuración de la cabina
-st.set_page_config(page_title="Simulador Perf. Avanzada v3.0", layout="wide")
-# Definir todo lo que falta antes de mostrarlo
+Definir todo lo que falta antes de mostrarlo
 vibracion_axial = (wob / 5) * (rpm_actual / 100) if rpm_actual > 0 else 0.1
 d_exp_norm = (np.log10(rop_actual/(60*rpm_actual)) / np.log10(12*wob/(10**6*5.875))) * (9/densidad_lodo) if rpm_actual > 0 else 0
 temp_fondo = 20 + (0.03 * profundidad_actual)
