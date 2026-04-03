@@ -1249,7 +1249,16 @@ capas = [
     {"nombre": "Lutita", "tope": 800, "base": 2200, "color": "#5c5c5c"},
     {"nombre": "Arena", "tope": 2200, "base": 3000, "color": "#FFD700"},
 ]
+# Inicialización de seguridad
+fig_geo_model = None 
 
+if st.session_state.rol == "instructor":
+    # Aquí creas el gráfico
+    fig_geo_model = go.Figure(...) 
+
+# Antes de dibujar, verificamos que exista
+if fig_geo_model is not None:
+    st.plotly_chart(fig_geo_model, use_container_width=True)
 fig_geo_model = go.Figure()
 
 for capa in capas:
