@@ -9,34 +9,16 @@ import os
 from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
+# --- PROGRAMA DE POZOS OFICIAL ---
+programa_pozos = [
+    {"fase": "Superficial", "desde": 0, "hasta": 800, "formacion": "Post-Cuyo", "objetivo": "Aislar acuíferos"},
+    {"fase": "Intermedio", "desde": 800, "hasta": 2200, "formacion": "Potrerillos", "objetivo": "Presión intermedia"},
+    {"fase": "Producción", "desde": 2200, "hasta": 3500, "formacion": "Cacheuta", "objetivo": "Zona de Pago (Oil/Gas)"}
+]
 
-if "sonido_activo" not in st.session_state:
-    st.session_state.sonido_activo = False
-if "alarma_activa" not in st.session_state:
-    st.session_state.alarma_activa = False
-presion_formacion = st.session_state.get("presion_global", 2500)
-fase_actual = None
 # --- 0. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA DE ST) ---
 st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
-# --- INICIALIZACIÓN UNIFICADA (Colocar después de st.set_page_config) ---
-if "autenticado" not in st.session_state:
-    st.session_state.update({
-        "autenticado": False,
-        "usuario": "",
-        "rol": None,
-        "penalizaciones": [],
-        "profundidad": 2500.0,
-        "mw": 10.0,
-        "bop_cerrado": False,
-        "alarma_activa": False,
-        "sonido_activo": False
-    })
-# Asegurar que estas variables tengan un valor inicial para evitar errores en la primera carga
-profundidad_actual = st.session_state.get('profundidad', 2500.0)
-wob = 15.0
-rpm_actual = 60
-rop_actual = 10.0
-densidad_lodo = st.session_state.get('mw', 10.0)
+
 # --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -91,126 +73,42 @@ if not st.session_state.autenticado:
     
     # Detenemos la ejecución aquí para que no muestre el simulador si no está logueado
     st.stop()
-# --- DETECCIÓN DE FASE Y MARGEN ---
-fase_actual = next((t for t in programa_pozos if t["desde"] <= profundidad_actual <= t["hasta"]), None)
 
-if fase_actual:
-    margenes = {"Producción": 2.0, "Intermedio": 5.0, "Superficial": 10.0}
-    margen_formacion = margenes.get(fase_actual["fase"], 10.0)
-else:
-    margen_formacion = 10.0
-programa_pozos = [
-    {"fase": "Superficial", "desde": 0, "hasta": 800},
-    {"fase": "Intermedio", "desde": 800, "hasta": 2200},
-    {"fase": "Producción", "desde": 2200, "hasta": 3500}
-]
-with st.expander("📋 Programa de Pozos", expanded=False):
-    for tramo in programa_pozos:
-        st.write(f"🔹 {tramo['fase']} | {tramo['desde']}m - {tramo['hasta']}m")
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
-# --- CONFIGURACIÓN INICIAL CLAVE ---
-if "alarma_activa" not in st.session_state:
-    st.session_state.alarma_activa = False
-
-if "penalizaciones" not in st.session_state:
-    st.session_state.penalizaciones = []
-
+# ... resto de tu código
+# --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+    st.session_state.usuario = ""
+    st.session_state.rol = None
+ # Inicializar banderas de error si no existen
 if "error_cierre_activo" not in st.session_state:
     st.session_state.error_cierre_activo = False
-
 if "error_geo_activo" not in st.session_state:
     st.session_state.error_geo_activo = False
-
 if "error_tanques_activo" not in st.session_state:
-    st.session_state.error_tanques_activo = False
+    st.session_state.error_tanques_activo = False   
+# AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
+# --- DEFINICIÓN DE VARIABLES DE SEGURIDAD (Agregá esto arriba de la línea 87) ---
 
+# 1. Obtenemos el valor del slider de tanques (asegurate que el nombre coincida)
+ganancia_tanques = st.session_state.get('nivel_tanques', 0.0) 
 
-# --- VARIABLES BASE DEL SIMULADOR ---
-profundidad_actual = st.session_state.get('profundidad', 0.0)
-presion_formacion = st.session_state.get("presion_global", 2500)
+# 2. Definimos el límite de seguridad (ejemplo: 10 barriles)
+limite_seguridad = 10.0 
 
-
-# --- PROGRAMA DE POZOS (DEFINIDO ANTES DE USAR) ---
-programa_pozos = [
-    {"fase": "Superficial", "desde": 0, "hasta": 800},
-    {"fase": "Intermedio", "desde": 800, "hasta": 2200},
-    {"fase": "Producción", "desde": 2200, "hasta": 3500}
-]
-
-
-# --- DETECCIÓN AUTOMÁTICA DE FASE ---
-fase_actual = None
-
-for tramo in programa_pozos:
-    if tramo["desde"] <= profundidad_actual <= tramo["hasta"]:
-        fase_actual = tramo
-        break
-
-
-# --- MARGEN SEGÚN FORMACIÓN (AHORA SÍ FUNCIONA) ---
-if fase_actual:
-    if fase_actual["fase"] == "Producción":
-        margen_formacion = 2.0
-    elif fase_actual["fase"] == "Intermedio":
-        margen_formacion = 5.0
-    else:
-        margen_formacion = 10.0
-else:
-    margen_formacion = 10.0  # fallback
-
-
-# --- UI: PROGRAMA DE POZOS ---
-with st.expander("📋 Programa de Pozos", expanded=False):
-    for tramo in programa_pozos:
-        if fase_actual and tramo["fase"] == fase_actual["fase"]:
-            st.success(f"➡️ {tramo['fase']} | {tramo['desde']}m - {tramo['hasta']}m")
-        else:
-            st.write(f"🔹 {tramo['fase']} | {tramo['desde']}m - {tramo['hasta']}m")
-
-
-# --- CONTROL DE KICK (TANQUES + BOP) ---
-ganancia_tanques = st.session_state.get('nivel_tanques', 0.0)
-limite_seguridad = 10.0
+# 3. Estado del BOP (podes usar un checkbox o un botón)
 bop_cerrado = st.session_state.get('bop_cerrado', False)
 
-evento_kick = ganancia_tanques > limite_seguridad
-
-if evento_kick and not bop_cerrado:
-    if not st.session_state.error_cierre_activo:
+# --- AHORA SÍ, TU LÓGICA DE LA LÍNEA 87 NO FALLARÁ ---
+if ganancia_tanques > limite_seguridad and not bop_cerrado:
+    if not st.session_state.get('error_cierre_activo', False):
         st.session_state.penalizaciones.append({
             "Hora": datetime.now().strftime("%H:%M:%S"),
             "Infracción": "No detectó el cierre de pozo a tiempo (Kick)",
             "Gravedad": "CRÍTICA"
         })
         st.session_state.error_cierre_activo = True
-
-        # 🔊 ALARMA (una sola vez)
-        if not st.session_state.alarma_activa:
-            st.error("🚨 KICK DETECTADO")
-            st.audio("https://www.soundjay.com/button/beep-07.wav")
-            st.session_state.alarma_activa = True
-else:
-    st.session_state.error_cierre_activo = False
-    st.session_state.alarma_activa = False
-
-
-# --- GEONAVEGACIÓN ---
-profundidad_objetivo = 2500.0
-desviacion_vertical = profundidad_actual - profundidad_objetivo
-
-if abs(desviacion_vertical) > margen_formacion:
-    if not st.session_state.error_geo_activo:
-        st.session_state.penalizaciones.append({
-            "Hora": datetime.now().strftime("%H:%M:%S"),
-            "Infracción": "Error de Geonavegación: Salida de zona productiva",
-            "Gravedad": "CRÍTICA"
-        })
-        st.session_state.error_geo_activo = True
-
-        st.warning("⚠️ Salida de formación")
-else:
-    st.session_state.error_geo_activo = False
-
 # --- VARIABLES DE TRAYECTORIA (Agregá esto arriba de la línea 107) ---
 # 1. Calculamos la desviación (ejemplo: diferencia entre profundidad real y objetivo)
 # Si tenés un slider de profundidad, usalo aquí:
@@ -238,15 +136,14 @@ if abs(desviacion_vertical) > margen_formacion:
     if not st.session_state.error_geo_activo:
         st.session_state.penalizaciones.append({
             "Hora": datetime.now().strftime("%H:%M:%S"),
-            "Infracción": "Error de Geonavegación: Salida de zona productiva",
+            "Infracción": "Error de Geonavegación: Fuera de formación",
             "Gravedad": "CRÍTICA"
         })
         st.session_state.error_geo_activo = True
-
-        st.warning("⚠️ Salida de formación")
 else:
     st.session_state.error_geo_activo = False
-    
+if "penalizaciones" not in st.session_state:
+    st.session_state.penalizaciones = []
 def generar_certificado_final(nombre, puntaje, nivel, fecha):
     try:
         pdf = FPDF()
@@ -311,6 +208,19 @@ def reproducir_alarma_local():
         st.sidebar.error("⚠️ No se encontró 'assets/alarma.mp3'")
 
 # --- 2. EL RESTO DE TU LÓGICA (PIZARRA, LOGIN, ETC.) ---
+@st.cache_resource
+def obtener_pizarra():
+    return {
+        "alarma_activa": False,
+        "presion_base": 2500,
+        "incremento_kick": 0,
+        "mensaje_inst": "Operación Normal"
+    }
+
+pizarra = obtener_pizarra()
+
+# ... (Aquí sigue tu código de Login y la línea 96 que ahora sí va a funcionar)
+# 1. LA PIZARRA (Base de datos compartida en el servidor)
 @st.cache_resource
 def obtener_pizarra():
     return {
@@ -387,14 +297,23 @@ st_autorefresh(interval=1000, key="latido_menfa")
 st.sidebar.title(f"Sesión: {st.session_state.usuario}")
 st.sidebar.write(f"Rol: **{st.session_state.rol.upper()}**")
 
-# PANEL DEL INSTRUCTOR (Solo Fabricio puede modificar datos)
-if st.session_state.rol == "instructor":
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🎮 PANEL DE MODIFICACIÓN")
-    
-    # Modificar presión base del alumno en tiempo real
-    pizarra["presion_base"] = st.sidebar.number_input("Presión Base (PSI)", value=pizarra["presion_base"], step=100)
-    
+# --- SECCIÓN SIDEBAR: PRIVACIDAD ---
+# --- EN LA SECCIÓN DEL SIDEBAR ---
+with st.sidebar:
+    st.image("logo_menfa.png", use_container_width=True)
+    st.title(f"Sesión: {st.session_state.usuario}")
+
+    # AQUÍ UBICÁS EL FILTRO DE ROL
+    if st.session_state.rol == "instructor":
+        st.markdown("---")
+        st.subheader("👨‍🏫 PANEL MAESTRO")
+        # Aquí van tus number_input y botones de "LANZAR KICK"
+        pizarra["presion_base"] = st.number_input("Presión Base", value=pizarra.get("presion_base", 2500))
+        if st.button("🚨 LANZAR KICK"):
+            pizarra["alarma_activa"] = True
+            st.rerun()
+    else:
+        st.info("🎓 Modo Estudiante Activo")
     # Liberar o Activar Alertas
     if not pizarra["alarma_activa"]:
         if st.sidebar.button("🚨 LANZAR ALERTA", type="primary"):
@@ -408,30 +327,9 @@ if st.session_state.rol == "instructor":
 # --- DENTRO DE LA VISTA DEL ALUMNO ---
 if pizarra["alarma_activa"]:
     st.error(f"🔥 {pizarra['mensaje_inst']}")
-
-st.subheader("🎮 Acciones del Operador")
-
-col1, col2, col3 = st.columns(3)
-if "mw" not in st.session_state:
-    st.session_state.mw = 10.0
-
-mw = st.session_state.mw
-if st.button("⬆️ Subir MW"):
-    st.session_state.mw += 0.5
-
-if st.button("⬇️ Bajar MW"):
-    st.session_state.mw -= 0.5
-
-with col3:
-    if st.button("🛑 Cerrar BOP"):
-        st.session_state["bop_cerrado"] = True
+    
     # Llamamos a la alarma sonora de tu carpeta assets
-    if pizarra["alarma_activa"] and not st.session_state.alarma_activa:
     reproducir_alarma_local()
-    st.session_state.alarma_activa = True
-
-if not pizarra["alarma_activa"]:
-    st.session_state.alarma_activa = False
     
     # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
     if st.button("🔴 CERRAR BOP Y ESTABILIZAR", type="primary", use_container_width=True):
@@ -446,9 +344,9 @@ if not pizarra["alarma_activa"]:
 
 # Lógica de incremento si hay Kick
 if pizarra["alarma_activa"]:
-    st.session_state.sonido_activo = True
-    st.error(f"🔥 {pizarra['mensaje_inst']}")
-    reproducir_alarma_local()
+    pizarra["incremento_kick"] += 10 # La presión sube sola mientras no se libere
+
+presion_total = pizarra["presion_base"] + pizarra["incremento_kick"]
 
 col1, col2 = st.columns(2)
 col1.metric("SIDP (Tubería)", f"{presion_total} PSI", delta=f"+{pizarra['incremento_kick']}" if pizarra["alarma_activa"] else None)
@@ -460,33 +358,30 @@ if pizarra["alarma_activa"]:
 else:
     st.success("✅ Sistema Estable - Esperando parámetros del Instructor")
 
-if st.button("🔴 CERRAR BOP Y ESTABILIZAR"):
-    pizarra["alarma_activa"] = False
-    st.session_state.sonido_activo = False
-    pizarra["mensaje_inst"] = "Pozo controlado"
-    st.success("Pozo estabilizado")
-    st.rerun()
+
 import base64
 import os
 
 # 1. FUNCIÓN PARA LEER EL ARCHIVO LOCAL Y GENERAR EL AUDIO
 def reproducir_alarma_local():
-    if not st.session_state.get("sonido_activo", False):
-        return
-
     archivo_audio = "assets/alarma.mp3"
     
     if os.path.exists(archivo_audio):
         with open(archivo_audio, "rb") as f:
             data = f.read()
+            # Convertimos el audio a base64 para que Streamlit lo "inyecte" en el navegador
             base64_audio = base64.b64encode(data).decode()
             
             html_audio = f"""
-                <audio autoplay>
+                <audio autoplay loop>
                     <source src="data:audio/mp3;base64,{base64_audio}" type="audio/mp3">
                 </audio>
             """
             st.components.v1.html(html_audio, height=0)
+    else:
+        # Si el archivo no está, te avisa en la consola de Streamlit para que no explote
+        st.error("Archivo 'assets/alarma.mp3' no encontrado en GitHub.")
+
 # 2. APLICACIÓN EN LA VISTA DEL ALUMNO
 # Buscá la parte donde el alumno reacciona al Kick:
 
@@ -570,7 +465,9 @@ def calcular_presiones_fondo(mw, depth_m, flow_gpm):
     ecd = mw + (p_friccion / (0.052 * tvd_ft))
     
     return bhp_total, ecd
-Definir todo lo que falta antes de mostrarlo
+# Configuración de la cabina
+st.set_page_config(page_title="Simulador Perf. Avanzada v3.0", layout="wide")
+# Definir todo lo que falta antes de mostrarlo
 vibracion_axial = (wob / 5) * (rpm_actual / 100) if rpm_actual > 0 else 0.1
 d_exp_norm = (np.log10(rop_actual/(60*rpm_actual)) / np.log10(12*wob/(10**6*5.875))) * (9/densidad_lodo) if rpm_actual > 0 else 0
 temp_fondo = 20 + (0.03 * profundidad_actual)
@@ -595,38 +492,6 @@ except Exception as e:
 st.sidebar.markdown("---") # Una línea divisoria para separar el logo de los mandos
 # --- SIDEBAR (CONTROLES) ---
 st.sidebar.header("🕹️ Mandos de la Cabina")
-programa_pozos = [
-    {"fase": "Superficial", "desde": 0, "hasta": 800},
-    {"fase": "Intermedio", "desde": 800, "hasta": 2200},
-    {"fase": "Producción", "desde": 2200, "hasta": 3500}
-]
-
-# Detectar fase
-for tramo in programa_pozos:
-    if tramo["desde"] <= profundidad_actual <= tramo["hasta"]:
-        fase_actual = tramo
-        break
-if isinstance(fase_actual, dict):
-    if fase_actual["fase"] == "Producción":
-        margen_formacion = 2.0
-    elif fase_actual["fase"] == "Intermedio":
-        margen_formacion = 5.0
-    else:
-        margen_formacion = 10.0        
-# --- DETECTAR FASE ---
-fase_actual = None
-# --- AJUSTE DINÁMICO ---
-if isinstance(fase_actual, dict):
-    if fase_actual["fase"] == "Producción":
-        margen_formacion = 2.0
-    elif fase_actual["fase"] == "Intermedio":
-        margen_formacion = 5.0
-    else:
-        margen_formacion = 10.0
-if isinstance(fase_actual, dict):
-    st.sidebar.success(f"Fase: {fase_actual['fase']}")
-    st.sidebar.write(f"Formación: {fase_actual['formacion']}")
-    st.sidebar.write(f"Objetivo: {fase_actual['objetivo']}")
 densidad = st.sidebar.slider("Densidad del Lodo (ppg)", 8.0, 19.0, 10.5)
 caudal = st.sidebar.slider("Caudal de Bomba (GPM)", 100, 1200, 500)
 presion = st.sidebar.number_input("Presión de Standpipe (PSI)", 500, 5000, 3200)
@@ -757,17 +622,14 @@ else:
 st.divider()
 col_rep1, col_rep2 = st.columns([3, 1])
 
-# --- REGISTRO DE OPERACIONES CORREGIDO ---
 with col_rep1:
     st.write("### 📝 Registro de Operaciones")
-    # Tomamos el último valor de la tendencia de ROP para el reporte
-    rop_final = round(rop[-1], 2) if isinstance(rop, np.ndarray) else rop
-    
     data_log = pd.DataFrame({
-        "Parámetro": ["WOB Máximo", "RPM Promedio", "HHP Final", "ROP Actual"],
-        "Valor": ["25 Tons", "95", f"{hhp_actual} hp", f"{rop_final} m/h"]
+        "Parámetro": ["WOB Máximo", "RPM Promedio", "HHP Final", "Impact Force"],
+        "Valor": [f"25 Tons", f"95", f"{hhp_actual} hp", f"{if_actual} lbs"]
     })
     st.table(data_log)
+
 with col_rep2:
     st.write("### Acciones")
     if st.button("📥 Descargar Reporte"):
@@ -925,6 +787,7 @@ st.write("") # Espaciado
 # --- SECCIÓN: INGENIERÍA DE DETALLE (MSE & REOLOGÍA) ---
 st.divider()
 st.header("🔬 Análisis de Eficiencia y Reología")
+
 col_tec1, col_tec2 = st.columns(2)
 
 with col_tec1:
@@ -1019,10 +882,10 @@ with st.expander("Abrir Procedimiento de Control de Pozos"):
     )
     st.plotly_chart(fig_kill, use_container_width=True)
 # --- SECCIÓN: SISTEMA DE TANQUES (PVT - Pit Volume Totalizer) ---
-
 st.divider()
-
 st.header("🛢️ Sistema de Tanques y Volumen (PVT)")
+
+# Simulación de volumen total
 volumen_inicial = 1200 # Barriles (bbl)
 if 'volumen_actual' not in st.session_state:
     st.session_state.volumen_actual = volumen_inicial
@@ -1084,6 +947,9 @@ st.header("🏆 Evaluación de Control de Pozos (Estándar IADC)")
 st.sidebar.subheader("🏗️ Integridad del Pozo")
 zapata_tvd = st.sidebar.number_input("Profundidad de Zapata (m)", value=1500)
 gradiente_leak_off = st.sidebar.slider("LOT (Leak-off Test) [ppg]", 13.0, 18.0, 15.5)
+
+# Cálculo del MAASP (Maximum Allowable Annular Surface Pressure)
+# Presión máxima que puede aguantar el pozo en superficie sin romper la zapata
 maasp = (gradiente_leak_off - densidad_lodo) * 0.1703 * zapata_tvd
 
 st.sidebar.metric("MAASP (Límite de Presión)", f"{round(maasp, 0)} PSI")
@@ -1243,94 +1109,10 @@ Para mejorar la limpieza, considere {'aumentar el caudal' if transport_ratio < 0
 # --- MÓDULO DE GEONAVEGACIÓN (GEOSTEERING) ---
 st.divider()
 st.header("🎯 Geonavegación y Control de Trayectoria")
-# --- MODELO GEOLÓGICO ---
-capas = [
-    {"nombre": "Superficie", "tope": 0, "base": 800, "color": "#8B4513"},
-    {"nombre": "Lutita", "tope": 800, "base": 2200, "color": "#5c5c5c"},
-    {"nombre": "Arena", "tope": 2200, "base": 3000, "color": "#FFD700"},
-]
-# Inicialización de seguridad
-fig_geo_model = None 
-# Lógica de creación del gráfico
-if fase_actual is not None:
-    fig_geo_model = go.Figure()
-    # ... tus trazas de Plotly (linea_poro, linea_frac, etc.) ...
-    fig_geo_model.update_layout(title="Modelo Geomecánico")
 
-# --- RENDERIZADO SEGURO (Línea 1169 corregida) ---
-if fig_geo_model is not None:
-    st.plotly_chart(fig_geo_model, use_container_width=True)
-else:
-    st.info("Espere... Cargando modelo geológico de la formación.")
-if st.session_state.rol == "instructor":
-    # Aquí creas el gráfico
-    fig_geo_model = go.Figure(...) 
+col_geo1, col_geo2 = st.columns([1, 2])
 
-# Antes de dibujar, verificamos que exista
-if fig_geo_model is not None:
-    st.plotly_chart(fig_geo_model, use_container_width=True)
-fig_geo_model = go.Figure()
-
-for capa in capas:
-    fig_geo_model.add_trace(go.Scatter(
-        x=[0, 1, 1, 0],
-        y=[capa["tope"], capa["tope"], capa["base"], capa["base"]],
-        fill="toself",
-        fillcolor=capa["color"],
-        line=dict(color="black"),
-        name=capa["nombre"]
-    ))
-
-# mecha
-fig_geo_model.add_trace(go.Scatter(
-    x=[0.5],
-    y=[profundidad_actual],
-    mode='markers',
-    marker=dict(size=14, color='red')
-))
-col1, col2 = st.columns([2,1])
-
-with col2:
-    with st.expander("🪨 Modelo Geológico", expanded=True):
-        st.plotly_chart(fig_geo_model, width='stretch')
-# Determinar capa actual
-capa_actual = None
-for capa in capas:
-    if capa["tope"] <= profundidad_actual <= capa["base"]:
-        capa_actual = capa
-        break
-
-# Color dinámico de la mecha
-color_mecha = "red"
-if capa_actual:
-    if "Arena" in capa_actual["nombre"]:
-        color_mecha = "lime"
-    elif "Lutita" in capa_actual["nombre"]:
-        color_mecha = "orange"
-fig_geo_model = go.Figure()
-# Mecha (bit)
-fig_geo_model.add_trace(go.Scatter(
-    x=[0.5],
-    y=[profundidad_actual],
-    mode='markers+text',
-    marker=dict(size=16, color=color_mecha, symbol="diamond"),
-    text=["🛠️ BIT"],
-    textposition="middle right"
-))
-
-# Layout profesional
-fig_geo_model.add_trace(go.Scatter(
-    x=[0.5],
-    y=[profundidad_actual],
-    mode='markers+text',
-    marker=dict(size=16, color=color_mecha, symbol="diamond"),
-    text="🛠️ BIT",  # 👈 string simple (no lista)
-    textposition="middle right"
-))
-
-st.plotly_chart(fig_geo_model, width='stretch')
-if capa_actual:
-    st.info(f"📍 Perforando en: {capa_actual['nombre']}")
+with col_geo1:
     st.subheader("📡 Sensores LWD")
     # Simulación de Rayos Gamma (Gamma Ray)
     gr_valor = 30 + 10 * np.sin(profundidad_actual / 10) + random.uniform(-5, 5)
@@ -1344,7 +1126,7 @@ if capa_actual:
 
     st.subheader("🕹️ Control de Dirección")
     inc_deseada = st.slider("Ajustar Inclinación (deg)", 80.0, 100.0, 90.0)
-    st.info(f"Objetivo: Mantener GR < 40 API") 
+    st.info(f"Objetivo: Mantener GR < 40 API")
 
 with col_geo2:
     # Gráfico de Geosteering (Sección Lateral)
@@ -1460,6 +1242,7 @@ if dls > 2.5 and wob > 20:
     st.metric("Densidad Real en Fondo", f"{round(densidad_fondo_real, 2)} ppg", 
               delta=f"-{round(reduccion_densidad, 3)} por expansión térmica", delta_color="inverse")
 
+# --- GRÁFICA DE ESFUERZOS ACUMULADOS ---
 st.subheader("📊 Gráfico de Cargas Críticas")
 depth_array = np.linspace(0, profundidad_actual, 50)
 carga_limite = 200 - (depth_array * 0.01) # Límite de tensión de la tubería
@@ -1665,6 +1448,9 @@ with kpi_col4:
 with kpi_col5:
     st.metric("Stick-Slip", f"{round(variacion_torque, 2)}", delta="Inestable" if variacion_torque > 1.5 else "Estable", delta_color="inverse")
     st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
+# --- CÁLCULO DE TEMPERATURA DE FONDO (Gradiente Geotérmico) ---
+# Supuestos para Mendoza/Cuenca Cuyana: 
+# Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
 temp_superficie = 20 
 gradiente_geotermico = 0.03 # °C/metro
 # 2. La lógica de alerta (PEGAR AQUÍ)
@@ -1726,7 +1512,9 @@ with col_phys1:
     diametro_interior = 3.0 # in
     # Frecuencia crítica en RPM
     rpm_critica_1 = 60 * ( (10.2 / longitud_bha**2) * np.sqrt( (29e6 * (diametro_mecha**4 - diametro_interior**4)) / 490) )
+    
     st.write(f"**1ra Velocidad Crítica Teórica:** {round(rpm_critica_1, 1)} RPM")
+    
     # Proximidad a la resonancia
     proximidad = abs(rpm_actual - rpm_critica_1) / rpm_critica_1
     
@@ -1803,6 +1591,10 @@ if cci < 1.0:
     > **Ingeniería Menfa:** El CCI actual de **{round(cci,2)}** indica que el lodo no tiene suficiente 'capacidad de transporte'. 
     > Aumente el **Yield Point (YP)** o incremente el **Caudal** para evitar el enterramiento de la sarta.
     """)
+
+
+
+
 # --- PANEL DE TELEMETRÍA MAESTRA (KPI CONSOLIDATED VIEW) ---
 st.divider()
 st.header("📡 Centro de Control y Telemetría de Alta Fidelidad")
@@ -1866,6 +1658,7 @@ import streamlit as st
 from fpdf import FPDF
 from datetime import datetime
 
+# --- FUNCION UNICA Y LIMPIA ---
 # =========================================================
 # 📄 SECCIÓN FINAL: EXPORTACIÓN Y CERTIFICADO (PEGAR AL FINAL)
 # =========================================================
@@ -1894,7 +1687,7 @@ if st.sidebar.button("🛠️ Generar Reporte Técnico"):
             file_name="Reporte_Menfa_Simulador.pdf",
             mime="application/pdf"
         )
-    
+        
         # 2. Generamos el Certificado de Alumno automáticamente debajo
         nombre_alumno = st.session_state.get('nombre_alumno', 'Alumno Menfa')
         dni_alumno = st.session_state.get('dni_alumno', '00.000.000')
@@ -1999,12 +1792,43 @@ if st.session_state.rol == "instructor":
             pizarra["velocidad_presion"] = 50 
         else:
             pizarra["velocidad_presion"] = 10
-if st.session_state.get("rol") == "instructor":
-    st.sidebar.subheader("🎛️ Panel Instructor")
+with st.expander("📊 Ver Modelo Geológico y Ventana de Lodos", expanded=False):
+    fig_geo_model = None  
+    try:
+        # Lógica de la gráfica
+        z_plot = np.linspace(0, 4000, 100)
+        linea_poro = 8.5 + (z_plot/4000) * 2
+        linea_frac = 14 + (z_plot/4000) * 3
+        
+        fig_geo_model = go.Figure()
+        fig_geo_model.add_trace(go.Scatter(x=linea_poro, y=z_plot, name="P. Poro", line=dict(color='red', dash='dash')))
+        fig_geo_model.add_trace(go.Scatter(x=linea_frac, y=z_plot, name="P. Fractura", line=dict(color='orange')))
+        
+        # BIT actual (asegúrate de que estas variables existan arriba)
+        prof_actual = st.session_state.get('profundidad', 0)
+        dens_actual = st.session_state.get('mw', 10.5)
+        
+        fig_geo_model.add_trace(go.Scatter(
+            x=[dens_actual], y=[prof_actual], 
+            mode="markers+text", name="BIT",
+            text=["📍"], textposition="top center",
+            marker=dict(color='lime', size=15)
+        ))
 
-    presion_global = st.sidebar.slider("Presión Formación", 1000, 5000, 2500)
+        fig_geo_model.update_layout(
+            template="plotly_dark", height=500,
+            yaxis=dict(autorange="reversed", title="Profundidad (m)"),
+            xaxis=dict(title="Densidad (ppg)")
+        )
+        
+        if fig_geo_model:
+            st.plotly_chart(fig_geo_model, use_container_width=True)
+    except Exception as e:
+        st.error(f"Error en visualización geológica: {e}")
 
-    st.session_state["presion_global"] = presion_global
+# --- SECCIÓN SIGUIENTE (Ya la tienes en tu código) ---
+col_btn1, col_btn2 = st.columns(2) 
+# ... sigue la lógica del certificado ...
 import plotly.graph_objects as go
 
 def graficar_geologia_y_pozo(profundidad):
@@ -2178,7 +2002,6 @@ if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="btn_bop_final"):
 
 if st.button("🔔 Probar Audio de Assets"):
     reproducir_audio_local("alarma.mp3")
-    
 def generar_reporte_menfa_v3(nombre_alumno, tiempo, formacion):
     pdf = FPDF()
     pdf.add_page()
@@ -2302,7 +2125,6 @@ try:
 
 except Exception as e:
     st.sidebar.error(f"❌ Error al compilar el libro: {e}")
-    
 def mostrar_evaluacion(puntos):
     st.markdown("---")
     st.header("🧾 Planilla de Evaluación Final")
@@ -2381,25 +2203,10 @@ def generar_certificado(nombre, nota):
     return pdf.output(dest='S').encode('latin-1')
 
 # Botón de descarga en la pestaña de evaluación
-if st.session_state.get("puntaje", 0) >= 70:
-    st.success("🎓 Certificación MENFA Aprobada")
+if st.button("🎓 Descargar Certificado de Competencia"):
+    pdf_bytes = generar_certificado(st.session_state.usuario, score)
+    st.download_button("Click aquí para guardar PDF", data=pdf_bytes, file_name="certificado_menfa.pdf")
 
-    nombre = st.session_state.get("usuario", "Alumno")
-
-    certificado = f"""
-    CERTIFICADO DE APROBACIÓN
-
-    Se certifica que {nombre}
-    ha completado el simulador de perforación
-    con éxito.
-    """
-
-    st.download_button(
-        "📄 Descargar Certificado",
-        certificado,
-        file_name="certificado.txt"
-    )
-   
 # ==========================================
 # --- MÓDULO FINAL: CIERRE DE OPERACIONES ---
 # ==========================================
@@ -2542,29 +2349,11 @@ with col_btn2:
         st.session_state.autenticado = False
         st.rerun()
 
-st.subheader("🛢️ Control de Sarta")
-
-peso_sarta = st.slider("Peso sobre la mecha (WOB)", 0, 50, 20)
-rpm = st.slider("RPM", 0, 200, 80)
-caudal = st.slider("Caudal (GPM)", 100, 1000, 400)
-
-presion_bomba = peso_sarta * 10 + caudal * 0.5
-
-st.metric("Presión de Bomba", f"{presion_bomba:.0f} psi")
-
-evento_kick = False
-
-if capa_actual:
-    if "Arena" in capa_actual["nombre"] and mw < 9:
-        evento_kick = True
-
-    if "Base" in capa_actual["nombre"] and presion_bomba > 3000:
-        st.warning("⚠️ Riesgo de pérdida de circulación")
-
-import pandas as pd
-
-def guardar_resultado(nombre, puntaje):
-    df = pd.DataFrame([[nombre, puntaje]], columns=["Nombre", "Puntaje"])
-    df.to_csv("resultados.csv", mode="a", header=False, index=False)
-
-guardar_resultado(nombre, puntaje)
+# --- PASO E: SIDEBAR FINAL ---
+st.sidebar.markdown("---")
+st.sidebar.caption(f"ID Sesión: {random.randint(1000, 9999)} | MENFA 3.0")
+for p in st.session_state.get('penalizaciones', []):
+    # Esto busca 'Hora' o 'hora' indistintamente
+    h = p.get('Hora') or p.get('hora') or "S/H"
+    i = p.get('Infracción') or p.get('error') or "Error desconocido"
+    st.write(f"⚠️ {h} - {i}")
