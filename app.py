@@ -757,14 +757,17 @@ else:
 st.divider()
 col_rep1, col_rep2 = st.columns([3, 1])
 
+# --- REGISTRO DE OPERACIONES CORREGIDO ---
 with col_rep1:
     st.write("### 📝 Registro de Operaciones")
+    # Tomamos el último valor de la tendencia de ROP para el reporte
+    rop_final = round(rop[-1], 2) if isinstance(rop, np.ndarray) else rop
+    
     data_log = pd.DataFrame({
-        "Parámetro": ["WOB Máximo", "RPM Promedio", "HHP Final", "Impact Force"],
-        "Valor": [f"25 Tons", f"95", f"{hhp_actual} hp", f"{if_actual} lbs"]
+        "Parámetro": ["WOB Máximo", "RPM Promedio", "HHP Final", "ROP Actual"],
+        "Valor": ["25 Tons", "95", f"{hhp_actual} hp", f"{rop_final} m/h"]
     })
     st.table(data_log)
-
 with col_rep2:
     st.write("### Acciones")
     if st.button("📥 Descargar Reporte"):
