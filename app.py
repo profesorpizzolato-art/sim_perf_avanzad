@@ -9,12 +9,6 @@ import os
 from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
-# --- PROGRAMA DE POZOS OFICIAL ---
-programa_pozos = [
-    {"fase": "Superficial", "desde": 0, "hasta": 800, "formacion": "Post-Cuyo", "objetivo": "Aislar acuíferos"},
-    {"fase": "Intermedio", "desde": 800, "hasta": 2200, "formacion": "Potrerillos", "objetivo": "Presión intermedia"},
-    {"fase": "Producción", "desde": 2200, "hasta": 3500, "formacion": "Cacheuta", "objetivo": "Zona de Pago (Oil/Gas)"}
-]
 
 # --- 0. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA DE ST) ---
 st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
@@ -297,23 +291,14 @@ st_autorefresh(interval=1000, key="latido_menfa")
 st.sidebar.title(f"Sesión: {st.session_state.usuario}")
 st.sidebar.write(f"Rol: **{st.session_state.rol.upper()}**")
 
-# --- SECCIÓN SIDEBAR: PRIVACIDAD ---
-# --- EN LA SECCIÓN DEL SIDEBAR ---
-with st.sidebar:
-    st.image("logo_menfa.png", use_container_width=True)
-    st.title(f"Sesión: {st.session_state.usuario}")
-
-    # AQUÍ UBICÁS EL FILTRO DE ROL
-    if st.session_state.rol == "instructor":
-        st.markdown("---")
-        st.subheader("👨‍🏫 PANEL MAESTRO")
-        # Aquí van tus number_input y botones de "LANZAR KICK"
-        pizarra["presion_base"] = st.number_input("Presión Base", value=pizarra.get("presion_base", 2500))
-        if st.button("🚨 LANZAR KICK"):
-            pizarra["alarma_activa"] = True
-            st.rerun()
-    else:
-        st.info("🎓 Modo Estudiante Activo")
+# PANEL DEL INSTRUCTOR (Solo Fabricio puede modificar datos)
+if st.session_state.rol == "instructor":
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🎮 PANEL DE MODIFICACIÓN")
+    
+    # Modificar presión base del alumno en tiempo real
+    pizarra["presion_base"] = st.sidebar.number_input("Presión Base (PSI)", value=pizarra["presion_base"], step=100)
+    
     # Liberar o Activar Alertas
     if not pizarra["alarma_activa"]:
         if st.sidebar.button("🚨 LANZAR ALERTA", type="primary"):
@@ -1792,43 +1777,7 @@ if st.session_state.rol == "instructor":
             pizarra["velocidad_presion"] = 50 
         else:
             pizarra["velocidad_presion"] = 10
-with st.expander("📊 Ver Modelo Geológico y Ventana de Lodos", expanded=False):
-    fig_geo_model = None  
-    try:
-        # Lógica de la gráfica
-        z_plot = np.linspace(0, 4000, 100)
-        linea_poro = 8.5 + (z_plot/4000) * 2
-        linea_frac = 14 + (z_plot/4000) * 3
-        
-        fig_geo_model = go.Figure()
-        fig_geo_model.add_trace(go.Scatter(x=linea_poro, y=z_plot, name="P. Poro", line=dict(color='red', dash='dash')))
-        fig_geo_model.add_trace(go.Scatter(x=linea_frac, y=z_plot, name="P. Fractura", line=dict(color='orange')))
-        
-        # BIT actual (asegúrate de que estas variables existan arriba)
-        prof_actual = st.session_state.get('profundidad', 0)
-        dens_actual = st.session_state.get('mw', 10.5)
-        
-        fig_geo_model.add_trace(go.Scatter(
-            x=[dens_actual], y=[prof_actual], 
-            mode="markers+text", name="BIT",
-            text=["📍"], textposition="top center",
-            marker=dict(color='lime', size=15)
-        ))
 
-        fig_geo_model.update_layout(
-            template="plotly_dark", height=500,
-            yaxis=dict(autorange="reversed", title="Profundidad (m)"),
-            xaxis=dict(title="Densidad (ppg)")
-        )
-        
-        if fig_geo_model:
-            st.plotly_chart(fig_geo_model, use_container_width=True)
-    except Exception as e:
-        st.error(f"Error en visualización geológica: {e}")
-
-# --- SECCIÓN SIGUIENTE (Ya la tienes en tu código) ---
-col_btn1, col_btn2 = st.columns(2) 
-# ... sigue la lógica del certificado ...
 import plotly.graph_objects as go
 
 def graficar_geologia_y_pozo(profundidad):
