@@ -10,6 +10,7 @@ from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
 
+presion_formacion = st.session_state.get("presion_global", 2500)
 fase_actual = None
 # --- 0. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA DE ST) ---
 st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
@@ -76,6 +77,9 @@ if isinstance(fase_actual, dict):
     else:
         margen_formacion = 10.0
 
+with st.expander("📋 Programa de Pozos", expanded=False):
+    for tramo in programa_pozos:
+        st.write(f"🔹 {tramo['fase']} | {tramo['desde']}m - {tramo['hasta']}m")
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
 # ... resto de tu código
 
@@ -324,7 +328,22 @@ if st.session_state.rol == "instructor":
 # --- DENTRO DE LA VISTA DEL ALUMNO ---
 if pizarra["alarma_activa"]:
     st.error(f"🔥 {pizarra['mensaje_inst']}")
-    
+
+st.subheader("🎮 Acciones del Operador")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    if st.button("⬆️ Subir MW"):
+        mw += 0.5
+
+with col2:
+    if st.button("⬇️ Bajar MW"):
+        mw -= 0.5
+
+with col3:
+    if st.button("🛑 Cerrar BOP"):
+        st.session_state["bop_cerrado"] = True
     # Llamamos a la alarma sonora de tu carpeta assets
     reproducir_alarma_local()
     
@@ -489,8 +508,6 @@ except Exception as e:
 st.sidebar.markdown("---") # Una línea divisoria para separar el logo de los mandos
 # --- SIDEBAR (CONTROLES) ---
 st.sidebar.header("🕹️ Mandos de la Cabina")
-# --- PROGRAMA DE POZO ---
-# --- PROGRAMA DE POZO ---
 programa_pozos = [
     {"fase": "Superficial", "desde": 0, "hasta": 800},
     {"fase": "Intermedio", "desde": 800, "hasta": 2200},
@@ -818,7 +835,6 @@ st.write("") # Espaciado
 # --- SECCIÓN: INGENIERÍA DE DETALLE (MSE & REOLOGÍA) ---
 st.divider()
 st.header("🔬 Análisis de Eficiencia y Reología")
-
 col_tec1, col_tec2 = st.columns(2)
 
 with col_tec1:
@@ -913,10 +929,10 @@ with st.expander("Abrir Procedimiento de Control de Pozos"):
     )
     st.plotly_chart(fig_kill, use_container_width=True)
 # --- SECCIÓN: SISTEMA DE TANQUES (PVT - Pit Volume Totalizer) ---
-st.divider()
-st.header("🛢️ Sistema de Tanques y Volumen (PVT)")
 
-# Simulación de volumen total
+st.divider()
+
+st.header("🛢️ Sistema de Tanques y Volumen (PVT)")
 volumen_inicial = 1200 # Barriles (bbl)
 if 'volumen_actual' not in st.session_state:
     st.session_state.volumen_actual = volumen_inicial
@@ -978,9 +994,6 @@ st.header("🏆 Evaluación de Control de Pozos (Estándar IADC)")
 st.sidebar.subheader("🏗️ Integridad del Pozo")
 zapata_tvd = st.sidebar.number_input("Profundidad de Zapata (m)", value=1500)
 gradiente_leak_off = st.sidebar.slider("LOT (Leak-off Test) [ppg]", 13.0, 18.0, 15.5)
-
-# Cálculo del MAASP (Maximum Allowable Annular Surface Pressure)
-# Presión máxima que puede aguantar el pozo en superficie sin romper la zapata
 maasp = (gradiente_leak_off - densidad_lodo) * 0.1703 * zapata_tvd
 
 st.sidebar.metric("MAASP (Límite de Presión)", f"{round(maasp, 0)} PSI")
@@ -1140,11 +1153,15 @@ Para mejorar la limpieza, considere {'aumentar el caudal' if transport_ratio < 0
 # --- MÓDULO DE GEONAVEGACIÓN (GEOSTEERING) ---
 st.divider()
 st.header("🎯 Geonavegación y Control de Trayectoria")
-st.subheader("🪨 Modelo Geológico del Pozo")
-
-# --- MODELO GEOLÓGICO AVANZADO ---
 st.subheader("🪨 Modelo Geológico del Pozo (Tiempo Real)")
+col1, col2 = st.columns([2, 1])
 
+with col1:
+    st.subheader("Simulación")
+
+with col2:
+    with st.expander("🪨 Modelo Geológico", expanded=True):
+        st.plotly_chart(fig_geo_model, width='stretch')
 # Definición de capas (tipo cuenca real)
 capas = [
     {"nombre": "Superficie", "tope": 0, "base": 800, "color": "#8B4513"},
@@ -1204,7 +1221,7 @@ if capa_actual:
 
     st.subheader("🕹️ Control de Dirección")
     inc_deseada = st.slider("Ajustar Inclinación (deg)", 80.0, 100.0, 90.0)
-    st.info(f"Objetivo: Mantener GR < 40 API")
+    st.info(f"Objetivo: Mantener GR < 40 API") 
 
 with col_geo2:
     # Gráfico de Geosteering (Sección Lateral)
@@ -1320,7 +1337,6 @@ if dls > 2.5 and wob > 20:
     st.metric("Densidad Real en Fondo", f"{round(densidad_fondo_real, 2)} ppg", 
               delta=f"-{round(reduccion_densidad, 3)} por expansión térmica", delta_color="inverse")
 
-# --- GRÁFICA DE ESFUERZOS ACUMULADOS ---
 st.subheader("📊 Gráfico de Cargas Críticas")
 depth_array = np.linspace(0, profundidad_actual, 50)
 carga_limite = 200 - (depth_array * 0.01) # Límite de tensión de la tubería
@@ -1526,9 +1542,6 @@ with kpi_col4:
 with kpi_col5:
     st.metric("Stick-Slip", f"{round(variacion_torque, 2)}", delta="Inestable" if variacion_torque > 1.5 else "Estable", delta_color="inverse")
     st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
-# --- CÁLCULO DE TEMPERATURA DE FONDO (Gradiente Geotérmico) ---
-# Supuestos para Mendoza/Cuenca Cuyana: 
-# Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
 temp_superficie = 20 
 gradiente_geotermico = 0.03 # °C/metro
 # 2. La lógica de alerta (PEGAR AQUÍ)
@@ -1590,9 +1603,7 @@ with col_phys1:
     diametro_interior = 3.0 # in
     # Frecuencia crítica en RPM
     rpm_critica_1 = 60 * ( (10.2 / longitud_bha**2) * np.sqrt( (29e6 * (diametro_mecha**4 - diametro_interior**4)) / 490) )
-    
     st.write(f"**1ra Velocidad Crítica Teórica:** {round(rpm_critica_1, 1)} RPM")
-    
     # Proximidad a la resonancia
     proximidad = abs(rpm_actual - rpm_critica_1) / rpm_critica_1
     
@@ -1669,10 +1680,6 @@ if cci < 1.0:
     > **Ingeniería Menfa:** El CCI actual de **{round(cci,2)}** indica que el lodo no tiene suficiente 'capacidad de transporte'. 
     > Aumente el **Yield Point (YP)** o incremente el **Caudal** para evitar el enterramiento de la sarta.
     """)
-
-
-
-
 # --- PANEL DE TELEMETRÍA MAESTRA (KPI CONSOLIDATED VIEW) ---
 st.divider()
 st.header("📡 Centro de Control y Telemetría de Alta Fidelidad")
@@ -1736,7 +1743,6 @@ import streamlit as st
 from fpdf import FPDF
 from datetime import datetime
 
-# --- FUNCION UNICA Y LIMPIA ---
 # =========================================================
 # 📄 SECCIÓN FINAL: EXPORTACIÓN Y CERTIFICADO (PEGAR AL FINAL)
 # =========================================================
@@ -1765,7 +1771,7 @@ if st.sidebar.button("🛠️ Generar Reporte Técnico"):
             file_name="Reporte_Menfa_Simulador.pdf",
             mime="application/pdf"
         )
-        
+    
         # 2. Generamos el Certificado de Alumno automáticamente debajo
         nombre_alumno = st.session_state.get('nombre_alumno', 'Alumno Menfa')
         dni_alumno = st.session_state.get('dni_alumno', '00.000.000')
@@ -1870,7 +1876,12 @@ if st.session_state.rol == "instructor":
             pizarra["velocidad_presion"] = 50 
         else:
             pizarra["velocidad_presion"] = 10
+if st.session_state.get("rol") == "instructor":
+    st.sidebar.subheader("🎛️ Panel Instructor")
 
+    presion_global = st.sidebar.slider("Presión Formación", 1000, 5000, 2500)
+
+    st.session_state["presion_global"] = presion_global
 import plotly.graph_objects as go
 
 def graficar_geologia_y_pozo(profundidad):
@@ -2044,6 +2055,7 @@ if st.sidebar.button("🔒 CERRAR BOP (Shut-in)", key="btn_bop_final"):
 
 if st.button("🔔 Probar Audio de Assets"):
     reproducir_audio_local("alarma.mp3")
+    
 def generar_reporte_menfa_v3(nombre_alumno, tiempo, formacion):
     pdf = FPDF()
     pdf.add_page()
@@ -2167,6 +2179,7 @@ try:
 
 except Exception as e:
     st.sidebar.error(f"❌ Error al compilar el libro: {e}")
+    
 def mostrar_evaluacion(puntos):
     st.markdown("---")
     st.header("🧾 Planilla de Evaluación Final")
@@ -2245,10 +2258,25 @@ def generar_certificado(nombre, nota):
     return pdf.output(dest='S').encode('latin-1')
 
 # Botón de descarga en la pestaña de evaluación
-if st.button("🎓 Descargar Certificado de Competencia"):
-    pdf_bytes = generar_certificado(st.session_state.usuario, score)
-    st.download_button("Click aquí para guardar PDF", data=pdf_bytes, file_name="certificado_menfa.pdf")
+if st.session_state.get("puntaje", 0) >= 70:
+    st.success("🎓 Certificación MENFA Aprobada")
 
+    nombre = st.session_state.get("usuario", "Alumno")
+
+    certificado = f"""
+    CERTIFICADO DE APROBACIÓN
+
+    Se certifica que {nombre}
+    ha completado el simulador de perforación
+    con éxito.
+    """
+
+    st.download_button(
+        "📄 Descargar Certificado",
+        certificado,
+        file_name="certificado.txt"
+    )
+   
 # ==========================================
 # --- MÓDULO FINAL: CIERRE DE OPERACIONES ---
 # ==========================================
@@ -2390,7 +2418,6 @@ with col_btn2:
         time.sleep(2)
         st.session_state.autenticado = False
         st.rerun()
-
 # --- PASO E: SIDEBAR FINAL ---
 st.sidebar.markdown("---")
 st.sidebar.caption(f"ID Sesión: {random.randint(1000, 9999)} | MENFA 3.0")
@@ -2399,3 +2426,44 @@ for p in st.session_state.get('penalizaciones', []):
     h = p.get('Hora') or p.get('hora') or "S/H"
     i = p.get('Infracción') or p.get('error') or "Error desconocido"
     st.write(f"⚠️ {h} - {i}")
+if evento_kick:
+    st.error("🚨 KICK DETECTADO")
+
+    st.audio("asest/alarma.mp3")
+
+if "ultima_formacion" not in st.session_state:
+    st.session_state.ultima_formacion = None
+
+if capa_actual and capa_actual["nombre"] != st.session_state.ultima_formacion:
+    st.warning(f"📳 Cambio de formación: {capa_actual['nombre']}")
+    
+    st.audio("https://www.soundjay.com/button/beep-09.wav")
+    
+    st.session_state.ultima_formacion = capa_actual["nombre"]
+
+st.subheader("🛢️ Control de Sarta")
+
+peso_sarta = st.slider("Peso sobre la mecha (WOB)", 0, 50, 20)
+rpm = st.slider("RPM", 0, 200, 80)
+caudal = st.slider("Caudal (GPM)", 100, 1000, 400)
+
+presion_bomba = peso_sarta * 10 + caudal * 0.5
+
+st.metric("Presión de Bomba", f"{presion_bomba:.0f} psi")
+
+evento_kick = False
+
+if capa_actual:
+    if "Arena" in capa_actual["nombre"] and mw < 9:
+        evento_kick = True
+
+    if "Base" in capa_actual["nombre"] and presion_bomba > 3000:
+        st.warning("⚠️ Riesgo de pérdida de circulación")
+
+import pandas as pd
+
+def guardar_resultado(nombre, puntaje):
+    df = pd.DataFrame([[nombre, puntaje]], columns=["Nombre", "Puntaje"])
+    df.to_csv("resultados.csv", mode="a", header=False, index=False)
+
+guardar_resultado(nombre, puntaje)
