@@ -10,6 +10,8 @@ from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
 
+if "alarma_activa" not in st.session_state:
+    st.session_state.alarma_activa = False
 presion_formacion = st.session_state.get("presion_global", 2500)
 fase_actual = None
 # --- 0. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA DE ST) ---
@@ -2431,10 +2433,15 @@ for p in st.session_state.get('penalizaciones', []):
     h = p.get('Hora') or p.get('hora') or "S/H"
     i = p.get('Infracción') or p.get('error') or "Error desconocido"
     st.write(f"⚠️ {h} - {i}")
-if evento_kick:
+if evento_kick and not st.session_state.alarma_activa:
     st.error("🚨 KICK DETECTADO")
+    
+    st.audio("asset/alarma.mp3")
+    
+    st.session_state.alarma_activa = True
 
-    st.audio("asest/alarma.mp3")
+if not evento_kick:
+    st.session_state.alarma_activa = False
 
 if "ultima_formacion" not in st.session_state:
     st.session_state.ultima_formacion = None
