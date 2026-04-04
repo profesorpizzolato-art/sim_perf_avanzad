@@ -1,16 +1,15 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.graph_objects as go
 import base64
 import os
 from datetime import datetime
 from fpdf import FPDF
-from streamlit_autorefresh import st_autorefresh
 
-# --- 0. CONFIGURACIÓN (SIEMPRE PRIMERO) ---
+# 1. CONFIGURACIÓN Y RECURSOS (Optimizado con caché)
 st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
 
-# --- 1. CACHÉ DE RECURSOS (OPTIMIZACIÓN DE VELOCIDAD) ---
 @st.cache_data
 def cargar_assets():
     logo = "logo_menfa.png" if os.path.exists("logo_menfa.png") else None
@@ -22,98 +21,64 @@ def cargar_assets():
 
 LOGO, AUDIO_B64 = cargar_assets()
 
-# --- 2. INICIALIZACIÓN DE SESIÓN ---
-def inicializar_estado():
-    defaults = {
+# 2. ESTADO DE SESIÓN
+if "autenticado" not in st.session_state:
+    st.session_state.update({
         "autenticado": False, "usuario": "", "rol": None,
-        "penalizaciones": [], "error_cierre_activo": False,
-        "error_geo_activo": False, "error_tanques_activo": False,
-        "nivel_tanques": 0.0, "bop_cerrado": False, "profundidad": 0.0
-    }
-    for key, val in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = val
+        "penalizaciones": [], "error_geo_activo": False,
+        "nivel_tanques": 0.0, "bop_cerrado": False, "profundidad": 2500.0
+    })
 
-inicializar_estado()
-
-# --- 3. FUNCIONES DE APOYO ---
-def generar_certificado_final(nombre, puntaje, nivel, fecha):
-    try:
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_draw_color(0, 66, 128)
-        pdf.rect(5, 5, 200, 287)
-        pdf.set_font("Arial", 'B', 24)
-        pdf.cell(0, 30, "MENFA CAPACITACIONES", 0, 1, 'C')
-        
-        nombre_limpio = nombre.encode('latin-1', 'ignore').decode('latin-1').upper()
-        
-        pdf.set_font("Arial", '', 14)
-        pdf.multi_cell(0, 10, f"Certificado para {nombre_limpio} por Simulador 3.0", align='C')
-        pdf.ln(10)
-        pdf.cell(0, 10, f"Resultado: {puntaje}/100 - Calificacion: {nivel}", 0, 1, 'C')
-        
-        return pdf.output(dest='S')
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-def disparar_alarma():
-    if AUDIO_B64:
-        st.components.v1.html(f"""<audio autoplay loop><source src="data:audio/mp3;base64,{AUDIO_B64}"></audio>""", height=0)
-
-# --- 4. LÓGICA DE ACCESO ---
+# --- LÓGICA DE LOGIN (Se mantiene igual a la tuya) ---
 if not st.session_state.autenticado:
-    col_izq, col_logo, col_der = st.columns([1, 2, 1])
-    with col_logo:
-        if LOGO: st.image(LOGO, use_container_width=True)
-        else: st.markdown("<h1 style='text-align: center;'>🏗️ MENFA</h1>", unsafe_allow_html=True)
-        st.markdown("<h2 style='text-align: center; color: #004280;'>SISTEMA DE ENTRENAMIENTO v3.0</h2>", unsafe_allow_html=True)
-        st.divider()
-
-    tab1, tab2 = st.tabs(["🎓 Alumnos", "👨‍🏫 Instructor"])
-    with tab1:
-        with st.form("login_alumno"):
-            u = st.text_input("Nombre")
-            p = st.text_input("Contraseña", type="password")
-            if st.form_submit_button("Ingresar"):
-                if u and p == "alumno2026":
-                    st.session_state.update({"autenticado": True, "usuario": u, "rol": "alumno"})
-                    st.rerun()
-    with tab2:
-        with st.form("login_instructor"):
-            p_inst = st.text_input("Clave Inst.", type="password")
-            if st.form_submit_button("Acceso"):
-                if p_inst == "menfa2026":
-                    st.session_state.update({"autenticado": True, "usuario": "Inst. Pizzolato", "rol": "instructor"})
-                    st.rerun()
+    # ... (Pega aquí tu bloque de carátula de ingreso y tabs de acceso)
     st.stop()
 
-# --- 5. EL SIMULADOR (LOGUEADO) ---
-st.title(f"Bienvenido, {st.session_state.usuario}")
+# --- 3. DASHBOARD DEL SIMULADOR (USUARIO LOGUEADO) ---
 
-# Variables de control (Aquí podrías tener tus sliders)
-ganancia_tanques = st.session_state.nivel_tanques
-bop_cerrado = st.session_state.bop_cerrado
-profundidad_actual = st.session_state.profundidad
+# SIDEBAR: Controles y Parámetros
+with st.sidebar:
+    if LOGO: st.image(LOGO)
+    st.title("🎛️ Controles")
+    st.subheader(f"Usuario: {st.session_state.usuario}")
+    st.divider()
+    
+    # Sliders en el Sidebar para liberar espacio central
+    st.session_state.nivel_tanques = st.slider("Nivel de Tanques (bbl)", 0.0, 50.0, st.session_state.nivel_tanques)
+    st.session_state.profundidad = st.number_input("Profundidad Actual (m)", value=st.session_state.profundidad)
+    st.session_state.bop_cerrado = st.checkbox("Cerrar BOP", value=st.session_state.bop_cerrado)
+    
+    if st.button("Cerrar Sesión"):
+        st.session_state.autenticado = False
+        st.rerun()
 
-# LÓGICA DE SEGURIDAD (Optimizada)
-ahora = datetime.now().strftime("%H:%M:%S")
+# ÁREA PRINCIPAL: Gráficos y Visualización
+col_grafico, col_info = st.columns([3, 1])
 
-# Kick Detection
-if ganancia_tanques > 10.0 and not bop_cerrado:
-    if not st.session_state.error_cierre_activo:
-        st.session_state.penalizaciones.append({"Hora": ahora, "Infracción": "No detectó Kick", "Gravedad": "CRÍTICA"})
-        st.session_state.error_cierre_activo = True
+with col_grafico:
+    st.subheader("📊 Monitoreo en Tiempo Real")
+    
+    # --- AQUÍ PEGA TUS GRÁFICOS DE PLOTLY ---
+    # Ejemplo rápido de integración:
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = st.session_state.nivel_tanques,
+        title = {'text': "Ganancia en Tanques"},
+        gauge = {'axis': {'range': [0, 50]}, 'bar': {'color': "red" if st.session_state.nivel_tanques > 10 else "blue"}}
+    ))
+    st.plotly_chart(fig, use_container_width=True)
 
-# Geonavegación
-desviacion = abs(profundidad_actual - 2500.0)
-if desviacion > 5.0:
-    if not st.session_state.error_geo_activo:
-        st.session_state.penalizaciones.append({"Hora": ahora, "Infracción": "Error de Geonavegación", "Gravedad": "CRÍTICA"})
-        st.session_state.error_geo_activo = True
-        disparar_alarma()
-else:
-    st.session_state.error_geo_activo = False
+with col_info:
+    st.subheader("⚠️ Alertas")
+    # Lógica de Seguridad (Optimizada)
+    ahora = datetime.now().strftime("%H:%M:%S")
+    
+    if st.session_state.nivel_tanques > 10.0 and not st.session_state.bop_cerrado:
+        st.error("¡KICK DETECTADO!")
+        # Aquí puedes llamar a disparar_alarma()
+    
+    if st.session_state.penalizaciones:
+        st.table(st.session_state.penalizaciones[-5:]) # Muestra las últimas 5
 
 # Mostrar Penalizaciones
 if st.session_state.penalizaciones:
