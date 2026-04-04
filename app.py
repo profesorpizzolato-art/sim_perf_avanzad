@@ -1,72 +1,125 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import time
-import random
-import plotly.graph_objects as go
 import base64
 import os
 from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
 
-# --- 0. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA DE ST) ---
+# --- 0. CONFIGURACIÓN (SIEMPRE PRIMERO) ---
 st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
 
-# --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
-    st.session_state.usuario = ""
-    st.session_state.rol = None
-if "penalizaciones" not in st.session_state:
-    st.session_state.penalizaciones = []
+# --- 1. CACHÉ DE RECURSOS (OPTIMIZACIÓN DE VELOCIDAD) ---
+@st.cache_data
+def cargar_assets():
+    logo = "logo_menfa.png" if os.path.exists("logo_menfa.png") else None
+    audio_b64 = None
+    if os.path.exists("assets/alarma.mp3"):
+        with open("assets/alarma.mp3", "rb") as f:
+            audio_b64 = base64.b64encode(f.read()).decode()
+    return logo, audio_b64
 
-# --- 2. CARÁTULA DE INGRESO ---
-if not st.session_state.autenticado:
-    # Contenedor para el logo y título principal
-    col_izq, col_logo, col_der = st.columns([1, 2, 1])
-    
-    with col_logo:
-        # LÓGICA DEL LOGO:
-        if os.path.exists("logo_menfa.png"):
-            st.image("logo_menfa.png", use_container_width=True)
-        else:
-            # Si no está el archivo, mostramos un título grande
-            st.markdown("<h1 style='text-align: center;'>🏗️ MENFA</h1>", unsafe_allow_html=True)
+LOGO, AUDIO_B64 = cargar_assets()
+
+# --- 2. INICIALIZACIÓN DE SESIÓN ---
+def inicializar_estado():
+    defaults = {
+        "autenticado": False, "usuario": "", "rol": None,
+        "penalizaciones": [], "error_cierre_activo": False,
+        "error_geo_activo": False, "error_tanques_activo": False,
+        "nivel_tanques": 0.0, "bop_cerrado": False, "profundidad": 0.0
+    }
+    for key, val in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
+
+inicializar_estado()
+
+# --- 3. FUNCIONES DE APOYO ---
+def generar_certificado_final(nombre, puntaje, nivel, fecha):
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_draw_color(0, 66, 128)
+        pdf.rect(5, 5, 200, 287)
+        pdf.set_font("Arial", 'B', 24)
+        pdf.cell(0, 30, "MENFA CAPACITACIONES", 0, 1, 'C')
         
+        nombre_limpio = nombre.encode('latin-1', 'ignore').decode('latin-1').upper()
+        
+        pdf.set_font("Arial", '', 14)
+        pdf.multi_cell(0, 10, f"Certificado para {nombre_limpio} por Simulador 3.0", align='C')
+        pdf.ln(10)
+        pdf.cell(0, 10, f"Resultado: {puntaje}/100 - Calificacion: {nivel}", 0, 1, 'C')
+        
+        return pdf.output(dest='S')
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def disparar_alarma():
+    if AUDIO_B64:
+        st.components.v1.html(f"""<audio autoplay loop><source src="data:audio/mp3;base64,{AUDIO_B64}"></audio>""", height=0)
+
+# --- 4. LÓGICA DE ACCESO ---
+if not st.session_state.autenticado:
+    col_izq, col_logo, col_der = st.columns([1, 2, 1])
+    with col_logo:
+        if LOGO: st.image(LOGO, use_container_width=True)
+        else: st.markdown("<h1 style='text-align: center;'>🏗️ MENFA</h1>", unsafe_allow_html=True)
         st.markdown("<h2 style='text-align: center; color: #004280;'>SISTEMA DE ENTRENAMIENTO v3.0</h2>", unsafe_allow_html=True)
         st.divider()
 
-    # Tabs de acceso
-    tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
-    
+    tab1, tab2 = st.tabs(["🎓 Alumnos", "👨‍🏫 Instructor"])
     with tab1:
         with st.form("login_alumno"):
-            nombre_alumno = st.text_input("Nombre y Apellido")
-            clave_alumno = st.text_input("Contraseña de Curso", type="password")
-            if st.form_submit_button("Ingresar al Simulador", use_container_width=True):
-                if nombre_alumno and clave_alumno == "alumno2026":
-                    st.session_state.autenticado = True
-                    st.session_state.usuario = nombre_alumno
-                    st.session_state.rol = "alumno"
+            u = st.text_input("Nombre")
+            p = st.text_input("Contraseña", type="password")
+            if st.form_submit_button("Ingresar"):
+                if u and p == "alumno2026":
+                    st.session_state.update({"autenticado": True, "usuario": u, "rol": "alumno"})
                     st.rerun()
-                else:
-                    st.error("Datos incorrectos")
-
     with tab2:
         with st.form("login_instructor"):
-            clave_inst = st.text_input("Clave de Instructor", type="password")
-            if st.form_submit_button("Acceso Administrativo", use_container_width=True):
-                if clave_inst == "menfa2026":
-                    st.session_state.autenticado = True
-                    st.session_state.usuario = "Inst. Fabricio Pizzolato"
-                    st.session_state.rol = "instructor"
+            p_inst = st.text_input("Clave Inst.", type="password")
+            if st.form_submit_button("Acceso"):
+                if p_inst == "menfa2026":
+                    st.session_state.update({"autenticado": True, "usuario": "Inst. Pizzolato", "rol": "instructor"})
                     st.rerun()
-                else:
-                    st.error("Clave incorrecta")
-    
-    # Detenemos la ejecución aquí para que no muestre el simulador si no está logueado
     st.stop()
+
+# --- 5. EL SIMULADOR (LOGUEADO) ---
+st.title(f"Bienvenido, {st.session_state.usuario}")
+
+# Variables de control (Aquí podrías tener tus sliders)
+ganancia_tanques = st.session_state.nivel_tanques
+bop_cerrado = st.session_state.bop_cerrado
+profundidad_actual = st.session_state.profundidad
+
+# LÓGICA DE SEGURIDAD (Optimizada)
+ahora = datetime.now().strftime("%H:%M:%S")
+
+# Kick Detection
+if ganancia_tanques > 10.0 and not bop_cerrado:
+    if not st.session_state.error_cierre_activo:
+        st.session_state.penalizaciones.append({"Hora": ahora, "Infracción": "No detectó Kick", "Gravedad": "CRÍTICA"})
+        st.session_state.error_cierre_activo = True
+
+# Geonavegación
+desviacion = abs(profundidad_actual - 2500.0)
+if desviacion > 5.0:
+    if not st.session_state.error_geo_activo:
+        st.session_state.penalizaciones.append({"Hora": ahora, "Infracción": "Error de Geonavegación", "Gravedad": "CRÍTICA"})
+        st.session_state.error_geo_activo = True
+        disparar_alarma()
+else:
+    st.session_state.error_geo_activo = False
+
+# Mostrar Penalizaciones
+if st.session_state.penalizaciones:
+    st.warning("⚠️ Penalizaciones detectadas")
+    st.table(st.session_state.penalizaciones)
+
 
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
 # ... resto de tu código
