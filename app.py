@@ -9,7 +9,44 @@ import os
 from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
+# --- OPTIMIZACIONES DE RENDIMIENTO ---
 
+@st.cache_data
+def obtener_logo_base64(ruta_logo):
+    """Carga el logo una sola vez para no leer el disco en cada refresh"""
+    if os.path.exists(ruta_logo):
+        with open(ruta_logo, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
+
+@st.cache_data
+def calcular_hidraulica_opt(caudal, presion, densidad):
+    """Cálculos matemáticos con caché"""
+    hhp = (presion * caudal) / 1714
+    if_force = (densidad * caudal * 0.05) * (caudal / 100)
+    return round(hhp, 2), round(if_force, 2)
+
+@st.fragment
+def renderizar_monitores_principales(p_fondo, p_anular, t_retorno):
+    """Solo esta sección se refresca con los sensores, sin recargar toda la página"""
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Presión Fondo (psi)", f"{p_fondo:,.0f}", delta="Normal")
+    col2.metric("Presión Anular (psi)", f"{p_anular:,.0f}", delta="-2%", delta_color="inverse")
+    col3.metric("Temp. Retorno (°C)", f"{t_retorno:,.1f}")
+
+@st.fragment
+def mostrar_graficos_interactivos(densidad, profundidad, p_poro, p_frac):
+    """Fragmento para que mover los sliders de la ventana de lodo sea instantáneo"""
+    z = np.linspace(0, 5000, 100)
+    presion_hidrostatica = 0.052 * densidad * z
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=presion_hidrostatica, y=z, name="Hidrostática", line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=[p_poro]*len(z), y=z, name="Presión Poro", line=dict(color='red', dash='dash')))
+    fig.add_trace(go.Scatter(x=[p_frac]*len(z), y=z, name="Presión Fractura", line=dict(color='green', dash='dot')))
+    
+    fig.update_layout(title="Ventana de Lodo Operativa", yaxis_autorange="reversed", height=400)
+    st.plotly_chart(fig, use_container_width=True)
 # --- 0. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA DE ST) ---
 st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
 
@@ -28,8 +65,8 @@ if not st.session_state.autenticado:
     
     with col_logo:
         # LÓGICA DEL LOGO:
-        if os.path.exists("logo_menfa.png"):
-            st.image("logo_menfa.png", use_container_width=True)
+        if os.path.exists("logo.menfa.png"):
+            st.image("logo.menfa.png", use_container_width=True)
         else:
             # Si no está el archivo, mostramos un título grande
             st.markdown("<h1 style='text-align: center;'>🏗️ MENFA</h1>", unsafe_allow_html=True)
@@ -2139,7 +2176,11 @@ with tab_eval:
         st.write("**Infracciones Detectadas:**")
         for p in st.session_state.penalizaciones:
             st.write(f"- {p.get('Hora', '00:00:00')}: {p.get('Infracción', 'Error no especificado')}")
-
+@st.cache_data  # <--- AGREGA ESTO JUSTO ARRIBA DE LA FUNCIÓN
+def generar_certificado_final(nombre, puntaje, nivel, fecha):
+    pdf = FPDF()
+    # ... todo tu código actual del PDF ...
+    return pdf.output(dest='S').encode('latin-1')
 def generar_certificado(nombre, nota):
     pdf = FPDF()
     pdf.add_page()
