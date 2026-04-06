@@ -124,7 +124,7 @@ if st.sidebar.button("✅ Normalizar Pozo"):
 pizarra["caudal_maestro"] = nuevo_caudal
 pizarra["wob_maestro"] = nuevo_wob
 pizarra["rpm_maestro"] = nuevo_rpm
-    st.sidebar.divider()
+st.sidebar.divider()
 
     if not pizarra["alarma_activa"]:
         if st.sidebar.button("🚨 ACTIVAR KICK / SURGENCIA", type="primary", use_container_width=True):
