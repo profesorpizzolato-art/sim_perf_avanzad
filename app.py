@@ -1303,7 +1303,7 @@ col_tor1, col_tor2 = st.columns([1, 2])
 
 with col_tor1:
     st.subheader("📐 Parámetros de Curvatura")
-    Simulación de cambio de inclinación entre estaciones
+   # Simulación de cambio de inclinación entre estaciones
     inc_anterior = 89.5 
     delta_inc = abs(inc_deseada - inc_anterior)
     distancia_estacion = 30 # metros estándar
