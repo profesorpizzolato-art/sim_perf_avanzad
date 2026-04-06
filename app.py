@@ -126,7 +126,7 @@ pizarra["wob_maestro"] = nuevo_wob
 pizarra["rpm_maestro"] = nuevo_rpm
 st.sidebar.divider()
 
-    if not pizarra["alarma_activa"]:
+if not pizarra["alarma_activa"]:
         if st.sidebar.button("🚨 ACTIVAR KICK / SURGENCIA", type="primary", use_container_width=True):
             pizarra["alarma_activa"] = True
             pizarra["bop_cerrado"] = False
