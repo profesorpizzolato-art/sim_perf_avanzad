@@ -4,146 +4,23 @@ import numpy as np
 import time
 import random
 import plotly.graph_objects as go
-import base64 
-import os 
+import base64
+import os
 from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
-import json
 
-# --- CONFIGURACIÓN DE PÁGINA (PRIMERA LÍNEA) ---
+# --- 0. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA DE ST) ---
 st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
-
-CONFIG_FILE = "params_simulador.json"
-
-# --- FUNCIONES DE PERSISTENCIA (INSTRUCTOR -> ALUMNOS) ---
-def guardar_config_maestra(datos):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(datos, f)
-
-def leer_config_maestra():
-    if not os.path.exists(CONFIG_FILE):
-        return {"presion": 3000, "wob": 10, "rpm": 60, "caudal": 400}
-    with open(CONFIG_FILE, "r") as f:
-        return json.load(f)
-
-# --- OPTIMIZACIÓN DE RECURSOS ---
-@st.cache_resource
-def cargar_logo_eficiente():
-    if os.path.exists("logo.menfa.png"):
-        return "logo.menfa.png"
-    return None
-
-logo_path = cargar_logo_eficiente()
-
-# --- FRAGMENTOS DE ALTO RENDIMIENTO (SIN LATENCIA) ---
-@st.fragment
-def monitor_datos_constantes(intervalo_ms=2000):
-    """Refresca solo las métricas críticas cada 2 segundos"""
-    st_autorefresh(interval=intervalo_ms, key="refresh_datos_sensores")
-    
-    config = leer_config_maestra()
-    p_fondo = config["presion"] + random.uniform(-2, 2)
-    caudal = config["caudal"]
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Presión Fondo", f"{p_fondo:.1f} psi")
-    c2.metric("Caudal Actual", f"{caudal:.0f} gpm")
-    c3.metric("WOB Maestro", f"{config['wob']} klbs")
-
-    # Gráfico liviano nativo de Streamlit (Evita Plotly aquí por latencia)
-    st.line_chart(np.random.randn(20), height=150)
 
 # --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario = ""
     st.session_state.rol = None
+if "penalizaciones" not in st.session_state:
+    st.session_state.penalizaciones = []
 
-# --- 2. CARÁTULA DE INGRESO ---
-if not st.session_state.autenticado:
-    col_izq, col_logo, col_der = st.columns([1, 2, 1])
-    with col_logo:
-        if logo_path:
-            st.image(logo_path, use_container_width=True)
-        else:
-            st.markdown("<h1 style='text-align: center;'>🏗️ MENFA</h1>", unsafe_allow_html=True)
-        
-        st.markdown("<h2 style='text-align: center; color: #004280;'>SISTEMA DE ENTRENAMIENTO v3.0</h2>", unsafe_allow_html=True)
-
-    tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
-    with tab1:
-        with st.form("login_alumno"):
-            nombre = st.text_input("Nombre y Apellido")
-            if st.form_submit_button("Ingresar", use_container_width=True):
-                if nombre:
-                    st.session_state.autenticado = True
-                    st.session_state.usuario = nombre
-                    st.session_state.rol = "alumno"
-                    st.rerun()
-    with tab2:
-        with st.form("login_instructor"):
-            clave = st.text_input("Clave Instructor", type="password")
-            if st.form_submit_button("Acceso Administrativo"):
-                if clave == "menfa2026":
-                    st.session_state.autenticado = True
-                    st.session_state.usuario = "Inst. Fabricio Pizzolato"
-                    st.session_state.rol = "instructor"
-                    st.rerun()
-    st.stop()
-
-# --- 3. PANEL PRINCIPAL ---
-st.title(f"📟 Panel Integral - {st.session_state.usuario}")
-
-if st.session_state.rol == "instructor":
-    with st.expander("🎮 PANEL DE CONTROL MAESTRO", expanded=True):
-        actual = leer_config_maestra()
-        col_i1, col_i2 = st.columns(2)
-        with col_i1:
-            p_m = st.slider("Presión Base", 0, 5000, actual["presion"])
-            w_m = st.slider("WOB Base", 0, 50, actual["wob"])
-        with col_i2:
-            r_m = st.slider("RPM Base", 0, 200, actual["rpm"])
-            c_m = st.slider("Caudal Base", 0, 1000, actual["caudal"])
-        
-        if st.button("🚀 Sincronizar con Alumnos", type="primary"):
-            guardar_config_maestra({"presion": p_m, "wob": w_m, "rpm": r_m, "caudal": c_m})
-            st.success("Configuración enviada.")
-
-else: # VISTA ALUMNO
-    monitor_datos_constantes()
-
-"""
-NOTAS TÉCNICAS Y FÓRMULAS (PARA REFERENCIA DEL INSTRUCTOR):
-- Cálculo de DLS (°/30m)
-- Gráfico de Geosteering (Sección Lateral)
-- temp_superficie = 20 °C | Gradiente: 3°C por cada 100m
-- velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) ft/s
-- 1. Intentamos generar el reporte principal
-- Creamos la figura explícitamente
-"""
-
-@st.fragment
-def monitor_datos_constantes(intervalo_ms=2000):
-    """
-    Fragmento de alto rendimiento. 
-    Mantenlo aquí arriba para que el sistema lo reconozca.
-    """
-    st_autorefresh(interval=intervalo_ms, key="refresh_datos_sensores")
-    
-    # Aquí dentro va la lógica de los números que cambian
-    col1, col2, col3 = st.columns(3)
-    
-    # Ejemplo con tus variables de presión (ajusta los nombres a los tuyos)
-    p_fondo = st.session_state.get('presion_fondo', 3500) + random.uniform(-2, 2)
-    caudal = st.session_state.get('caudal_actual', 500)
-    
-    col1.metric("Presión Fondo", f"{p_fondo:.1f} psi")
-    col2.metric("Caudal", f"{caudal:.0f} gpm")
-    col3.metric("Estado", "Operando", delta="OK")
-
-    # Gráfico lineal liviano en lugar de Plotly pesado
-    st.line_chart(np.random.randn(20), height=150)
 # --- 2. CARÁTULA DE INGRESO ---
 if not st.session_state.autenticado:
     # Contenedor para el logo y título principal
@@ -151,8 +28,8 @@ if not st.session_state.autenticado:
     
     with col_logo:
         # LÓGICA DEL LOGO:
-        if os.path.exists("logo.menfa.png"):
-            st.image("logo.menfa.png", use_container_width=True)
+        if os.path.exists("logo_menfa.png"):
+            st.image("logo_menfa.png", use_container_width=True)
         else:
             # Si no está el archivo, mostramos un título grande
             st.markdown("<h1 style='text-align: center;'>🏗️ MENFA</h1>", unsafe_allow_html=True)
@@ -192,6 +69,7 @@ if not st.session_state.autenticado:
     st.stop()
 
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
+# ... resto de tu código
 # --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -204,14 +82,9 @@ if "error_geo_activo" not in st.session_state:
     st.session_state.error_geo_activo = False
 if "error_tanques_activo" not in st.session_state:
     st.session_state.error_tanques_activo = False   
-# --- INICIALIZACIÓN DE PARÁMETROS MAESTROS (Solo una vez) ---
-if "params_instructor" not in st.session_state:
-    st.session_state.params_instructor = {
-        "presion": 3500.0,
-        "wob": 15.0,
-        "rpm": 80,
-        "caudal": 500.0
-    }
+# AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
+# --- DEFINICIÓN DE VARIABLES DE SEGURIDAD (Agregá esto arriba de la línea 87) ---
+
 # 1. Obtenemos el valor del slider de tanques (asegurate que el nombre coincida)
 ganancia_tanques = st.session_state.get('nivel_tanques', 0.0) 
 
@@ -419,20 +292,7 @@ st.sidebar.title(f"Sesión: {st.session_state.usuario}")
 st.sidebar.write(f"Rol: **{st.session_state.rol.upper()}**")
 
 # PANEL DEL INSTRUCTOR (Solo Fabricio puede modificar datos)
-if st.session_state.rol == "Instructor":
-    st.title("🎮 Panel de Control Maestro")
-    
-    with st.expander("Configurar Parámetros Iniciales", expanded=True):
-        actual = leer_config_maestra()
-        nueva_p = st.slider("Presión", 0, 5000, actual["presion"])
-        st.session_state.params_instructor["wob"] = st.slider(
-            "WOB (klbs)", 0, 50, st.session_state.params_instructor["wob"]
-        )
-        st.session_state.params_instructor["rpm"] = st.slider(
-            "RPM", 0, 200, st.session_state.params_instructor["rpm"]
-        )
-        
-    st.success("Parámetros actualizados para la sesión.")
+if st.session_state.rol == "instructor":
     st.sidebar.markdown("---")
     st.sidebar.subheader("🎮 PANEL DE MODIFICACIÓN")
     
@@ -449,35 +309,11 @@ if st.session_state.rol == "Instructor":
             pizarra["alarma_activa"] = False
             pizarra["incremento_kick"] = 0
             pizarra["mensaje_inst"] = "Operación Normal"
-if st.session_state.rol == "Instructor":
-    st.title("🎮 Panel de Control Maestro (MENFA)")
-    
-    # Cargar valores actuales para los sliders
-    actual = leer_config_maestra()
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        nueva_p = st.slider("Presion Inicial (psi)", 0, 5000, actual["presion"])
-        nueva_wob = st.slider("WOB Inicial (klbs)", 0, 50, actual["wob"])
-    with col2:
-        nueva_rpm = st.slider("RPM Inicial", 0, 150, actual["rpm"])
-        nuevo_caudal = st.slider("Caudal Inicial (gpm)", 0, 1000, actual["caudal"])
-    
-    # Botón para "Lanzar" a todos los alumnos
-    if st.button("🚀 Sincronizar parámetros a todos los alumnos"):
-        datos_nuevos = {
-            "presion": nueva_p, 
-            "wob": nueva_wob, 
-            "rpm": nueva_rpm, 
-            "caudal": nuevo_caudal
-        }
-        guardar_config_maestra(datos_nuevos)
-        st.success("¡Parámetros enviados!")
-
 # --- DENTRO DE LA VISTA DEL ALUMNO ---
 if pizarra["alarma_activa"]:
     st.error(f"🔥 {pizarra['mensaje_inst']}")
-       # Llamamos a la alarma sonora de tu carpeta assets
+    
+    # Llamamos a la alarma sonora de tu carpeta assets
     reproducir_alarma_local()
     
     # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
@@ -490,58 +326,24 @@ if pizarra["alarma_activa"]:
     else:
        st.success(f"✅ Estado: {pizarra['mensaje_inst']}")
        st.title("Simulador de Perforación en Tiempo Real")
-@st.fragment
-def monitor_datos_constantes(intervalo_ms=2000):
-    st_autorefresh(interval=intervalo_ms, key="refresh_alumno")
-    
-    # IMPORTANTE: El alumno lee el archivo que escribió el instructor
-    config = leer_config_maestra()
-    
-    # Ahora usamos esos valores para los cálculos o visualización
-    p_base = config["presion"]
-    wob_base = config["wob"]
-    
-    # Simular pequeña fluctuación sobre el valor del instructor
-    p_final = p_base + random.uniform(-5, 5)
-    
-    c1, c2 = st.columns(2)
-    c1.metric("Presión de Fondo (Set by Inst.)", f"{p_final:.1f} psi")
-    c2.metric("WOB Actual", f"{wob_base} klbs")
+
 # Lógica de incremento si hay Kick
 if pizarra["alarma_activa"]:
     pizarra["incremento_kick"] += 10 # La presión sube sola mientras no se libere
 
 presion_total = pizarra["presion_base"] + pizarra["incremento_kick"]
+
 col1, col2 = st.columns(2)
 col1.metric("SIDP (Tubería)", f"{presion_total} PSI", delta=f"+{pizarra['incremento_kick']}" if pizarra["alarma_activa"] else None)
 col2.metric("SICP (Anular)", f"{presion_total + 200} PSI")
 
 if pizarra["alarma_activa"]:
     st.error(f"⚠️ {pizarra['mensaje_inst']}")
+    # Aquí puedes agregar el código de la sirena que vimos antes
 else:
     st.success("✅ Sistema Estable - Esperando parámetros del Instructor")
-if st.session_state.rol == "Alumno":
-     # --- BLOQUE DE DEFINICIONES DE SEGURIDAD ---
-    fuerza_senal = 100.0  # Valor inicial
-    presion_fondo = 3500.0
-    # ... otras variables ...
 
-    # --- LUEGO EL RESTO DEL CÓDIGO ---
-    # (Aquí ya puedes usar fuerza_senal en la línea 1423 sin errores)
-    # Leemos los valores que dejó el instructor
-    p_inicial = st.session_state.params_instructor["presion"]
-    wob_inicial = st.session_state.params_instructor["wob"]
-    rpm_inicial = st.session_state.params_instructor["rpm"]
 
-    # Mostramos los monitores usando esos valores
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Presión", f"{p_inicial} psi")
-    col2.metric("WOB", f"{wob_inicial} klbs")
-    col3.metric("RPM", f"{rpm_inicial}")
-    
-    # Si el alumno tiene sliders para "operar", su valor inicial (value) 
-    # debe ser el del instructor
-    wob_alumno = st.slider("Ajustar WOB", 0, 50, value=wob_inicial)
 import base64
 import os
 
@@ -1312,21 +1114,21 @@ with col_geo1:
     st.info(f"Objetivo: Mantener GR < 40 API")
 
 with col_geo2:
-   # Gráfico de Geosteering (Sección Lateral)
+    # Gráfico de Geosteering (Sección Lateral)
     distancia = np.linspace(0, 500, 50)
-   # Perfil _del_reservorio (Ondulado)
+    # Perfil del reservorio (Ondulado)
     techo_res = 2500 + 15 * np.sin(distancia / 100)
     piso_res = techo_res + 10 # Espesor de 10 metros
     
-    # Trayectoria_del_ pozo basada en la inclinación
+    # Trayectoria del pozo basada en la inclinación
     trayectoria = 2505 + (distancia * np.tan(np.radians(90 - inc_deseada)))
 
     fig_geo = go.Figure()
-    #Dibujar Reservorio
+    # Dibujar Reservorio
     fig_geo.add_trace(go.Scatter(x=distancia, y=techo_res, name="Techo Reservorio", line=dict(color='gray', dash='dash')))
     fig_geo.add_trace(go.Scatter(x=distancia, y=piso_res, name="Piso Reservorio", fill='tonexty', fillcolor='rgba(255, 255, 0, 0.2)', line=dict(color='gray')))
     
-   # Dibujar Pozo
+    # Dibujar Pozo
     fig_geo.add_trace(go.Scatter(x=distancia, y=trayectoria, name="Trayectoria Pozo", line=dict(color='lime', width=4)))
 
     fig_geo.update_layout(
@@ -1353,7 +1155,7 @@ col_tor1, col_tor2 = st.columns([1, 2])
 
 with col_tor1:
     st.subheader("📐 Parámetros de Curvatura")
-   # Simulación de cambio de inclinación entre estaciones
+    # Simulación de cambio de inclinación entre estaciones
     inc_anterior = 89.5 
     delta_inc = abs(inc_deseada - inc_anterior)
     distancia_estacion = 30 # metros estándar
@@ -1373,7 +1175,7 @@ with col_tor1:
 
 with col_tor2:
     st.subheader("📈 Mapa de Tortuosidad Acumulada")
-  #  Generar una trayectoria con "ruido" para visualizar tortuosidad
+    # Generar una trayectoria con "ruido" para visualizar tortuosidad
     puntos = np.linspace(0, 100, 20)
     ideal = 90 + 0 * puntos
     real = ideal + (dls * np.sin(puntos/5) * 0.5) # Simula la sinuosidad
@@ -1391,38 +1193,41 @@ with col_tor2:
     )
     st.plotly_chart(fig_tor, use_container_width=True)
 
- #--- CÁLCULO DE CARGA EN EL GANCHO (HOOK LOAD) ---
+# --- CÁLCULO DE CARGA EN EL GANCHO (HOOK LOAD) ---
 
 # 1. Recuperamos el WOB del estado de la sesión o del slider
 # (Usamos .get para que si no existe, devuelva 0 y no explote)
 wob_valor = st.session_state.get('wob', 0.0) 
 
-# Variables de fricción (asegurate que estén definidas arriba)
+# 2. Variables de fricción (asegurate que estén definidas arriba)
 hook_load_estatico = s.get('peso_sarta', 150.0) # Valor base en klbs
 drag_friccion = s.get('drag', 5.0)
+
+# 3. Cálculo corregido (Línea 779)
 hook_load_real = hook_load_estatico - drag_friccion - (wob_valor * 0.8)
 
-#--- ANÁLISIS DE RIESGO DIRECCIONAL ---
+# --- ANÁLISIS DE RIESGO DIRECCIONAL ---
 dls = s.get('dls_actual', 0.0)
 wob = s.get('wob', 0.0)
 
+# Asegurate de que no haya espacios extra al inicio de este 'if'
 if dls > 2.5 and wob > 20:
     st.error("⚠️ RIESGO DE FATIGA: DLS excesivo con alto WOB.")
     st.warning("Reduzca el peso sobre el trépano para evitar rotura de sarta.")
     st.subheader("🌡️ Efecto Térmico en el Lodo")
-    # temp_superficie = 20 °C
-    # gradiente_termico = 0.03 °C/m
-    # temp_fondo = temp_superficie + (gradiente_termico * profundidad_actual)
+    temp_superficie = 20 # °C
+    gradiente_termico = 0.03 # °C/m
+    temp_fondo = temp_superficie + (gradiente_termico * profundidad_actual)
     
     # La densidad cae aprox 0.01 ppg por cada 15°C de aumento
-    # reduccion_densidad = (temp_fondo - 20) / 15 * 0.01
-   # densidad_fondo_real = densidad_lodo - reduccion_densidad
+    reduccion_densidad = (temp_fondo - 20) / 15 * 0.01
+    densidad_fondo_real = densidad_lodo - reduccion_densidad
 
     st.write(f"**Temperatura de Fondo:** {round(temp_fondo, 1)} °C")
     st.metric("Densidad Real en Fondo", f"{round(densidad_fondo_real, 2)} ppg", 
               delta=f"-{round(reduccion_densidad, 3)} por expansión térmica", delta_color="inverse")
 
-#--- GRÁFICA DE ESFUERZOS ACUMULADOS ---
+# --- GRÁFICA DE ESFUERZOS ACUMULADOS ---
 st.subheader("📊 Gráfico de Cargas Críticas")
 depth_array = np.linspace(0, profundidad_actual, 50)
 carga_limite = 200 - (depth_array * 0.01) # Límite de tensión de la tubería
@@ -1434,19 +1239,20 @@ fig_esf.add_trace(go.Scatter(x=depth_array, y=carga_actual, name="Carga en la Sa
 fig_esf.update_layout(title="Margen de Tensión (Overpull Capability)", template="plotly_dark", height=300)
 st.plotly_chart(fig_esf, use_container_width=True)
 
-#--- MÓDULO DE REOLOGÍA AVANZADA Y TELEMETRÍA ---
+# --- MÓDULO DE REOLOGÍA AVANZADA Y TELEMETRÍA ---
 st.divider()
 st.header("🧬 Física de Fluidos y Telemetría MWD")
+
 col_adv_t1, col_adv_t2 = st.columns(2)
 
 with col_adv_t1:
     st.subheader("🧪 Modelo de Herschel-Bulkley")
-#    Entradas de laboratorio (Fann 35)
+    # Entradas de laboratorio (Fann 35)
     r600 = st.number_input("Lectura 600 RPM", value=50)
     r300 = st.number_input("Lectura 300 RPM", value=30)
     r3 = st.number_input("Lectura 3 RPM (Gel)", value=5)
     
- #   Cálculo de índices n, k y Tau0
+    # Cálculo de índices n, k y Tau0
     n_index = 3.32 * np.log10(r600 / r300)
     k_index = (0.511 * r300) / (511**n_index)
     tau0 = r3 # Aproximación simple del Yield Stress real
@@ -1459,14 +1265,14 @@ with col_adv_t1:
 
 with col_adv_t2:
     st.subheader("📡 Calidad de Señal MWD")
-    
-    # --- CÁLCULOS TÉCNICOS (Comentados para evitar errores) ---
     # La compresibilidad del lodo afecta la velocidad del pulso
     # v = sqrt(K / rho)
-    # modulo_bulk = 220000 
+    modulo_bulk = 220000 # PSI aprox para lodo base agua
+    velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) # ft/s
     
-    # Definición de seguridad (Alineada con el subheader)
-    fuerza_senal = 85.0  
+    # Atenuación (Simplificada: aumenta con profundidad y viscosidad)
+    atenuacion = (profundidad_actual * 0.01) + (pv * 0.5)
+    fuerza_senal = max(0, 100 - atenuacion)
     
     fig_signal = go.Figure(go.Indicator(
         mode = "gauge+number",
@@ -1478,10 +1284,10 @@ with col_adv_t2:
             'steps': [{'range': [0, 30], 'color': "rgba(255, 0, 0, 0.3)"}]
         }
     ))
-    
     fig_signal.update_layout(height=280, paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_signal, use_container_width=True)
- # --- DIAGNÓSTICO DE PRECISIÓN ---
+
+# --- DIAGNÓSTICO DE PRECISIÓN ---
 if fuerza_senal < 20:
     st.error("🚨 PERDIDA DE TELEMETRÍA: La viscosidad o profundidad impiden recibir datos LWD. ¡Geonavegación a ciegas!")
 # --- MÓDULO DE DINÁMICA DE TRANSITORIOS (SURGE/SWAB & STICK-SLIP) ---
@@ -1529,13 +1335,14 @@ else:
 
 # 3. Otros KPIs que podrías necesitar (MAASP, CCI, etc.)
 # ... (asegurate que todos se calculen aquí) ...
-#SIMULACIÓN DE DINÁMICA DE ROTACIÓN 
+# --- SIMULACIÓN DE DINÁMICA DE ROTACIÓN ---
+
 # 1. Recuperamos las RPM del slider (asegurate que el key coincida)
-#rpm_actual = s.get('rpm', 0.0) 
+rpm_actual = s.get('rpm', 0.0) 
 
 # 2. Factor de variación (esto simula vibraciones torsionales)
 # Si no tenés 'variacion_torque' definida, usamos un valor base de 1.0
-#variacion_torque = s.get('var_torque', 1.0)
+variacion_torque = s.get('var_torque', 1.0)
 
 # 3. Cálculo corregido (Línea 887)
 rpm_bit_real = rpm_actual * variacion_torque
@@ -1556,13 +1363,14 @@ if variacion_torque < 0.8:
 
 
 # --- CÁLCULO DE LIMPIEZA DE POZO (CCI) ---
+
 # 1. Recuperamos las variables del estado de la sesión (usando 's')
 # Asegurate de que 'caudal_gpm', 'id_hoyo' y 'od_dp' estén definidos arriba
-#caudal = s.get('caudal_gpm', 0.0)
-#diam_hoyo = 8.5   # Pulgadas
-#diam_dp = 5.0     # Pulgadas (Drill Pipe)
-#densidad_lodo = s.get('mw', 10.0)
-#k_index = s.get('k_index', 0.5) # Índice de consistencia del lodo
+caudal = s.get('caudal_gpm', 0.0)
+diam_hoyo = 8.5   # Pulgadas
+diam_dp = 5.0     # Pulgadas (Drill Pipe)
+densidad_lodo = s.get('mw', 10.0)
+k_index = s.get('k_index', 0.5) # Índice de consistencia del lodo
 
 # 2. Calculamos la Velocidad Anular (v_actual_anular) en ft/min
 # Fórmula: GPM / (Capacidad Anular en bbl/ft * 42) o simplificada:
@@ -1570,6 +1378,8 @@ if (diam_hoyo**2 - diam_dp**2) > 0:
     v_actual_anular = (24.5 * caudal) / (diam_hoyo**2 - diam_dp**2)
 else:
     v_actual_anular = 0
+
+# 3. Cálculo corregido del CCI (Línea 937)
 if v_actual_anular > 0:
     cci = (k_index * densidad_lodo * v_actual_anular) / 400000
 else:
@@ -1591,7 +1401,9 @@ if cci < 1.0:
 # --- PANEL DE TELEMETRÍA MAESTRA (KPI CONSOLIDATED VIEW) ---
 st.divider()
 st.header("📡 Centro de Control y Telemetría de Alta Fidelidad")
-
+# --- CÁLCULO DE VIBRACIONES (Pegar antes de la línea 960) ---
+# Simulamos la vibración axial (Bit Bounce) basada en WOB y RPM
+# Si no hay rotación o peso, la vibración es mínima (0.1)
 if rpm_actual > 0 and wob > 0:
     vibracion_axial = (wob / 5) * (rpm_actual / 100) * random.uniform(0.8, 1.2)
 else:
@@ -1623,23 +1435,25 @@ with kpi_col5:
     st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
 # --- CÁLCULO DE TEMPERATURA DE FONDO (Gradiente Geotérmico) ---
 # Supuestos para Mendoza/Cuenca Cuyana: 
-#Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
-#temp_superficie = 20 
-#gradiente_geotermico = 0.03 °C/metro
-#La lógica de alerta (PEGAR AQUÍ)
+# Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
+temp_superficie = 20 
+gradiente_geotermico = 0.03 # °C/metro
+# 2. La lógica de alerta (PEGAR AQUÍ)
 if temp_fondo > 120:
     st.sidebar.error(f"🌡️ ALTA TEMPERATURA: {round(temp_fondo, 1)}°C")
     st.sidebar.caption("⚠️ Riesgo de falla en sellos de motor de fondo y telemetría MWD.")
 elif temp_fondo > 100:
     st.sidebar.warning(f"💡 Temperatura elevada: {round(temp_fondo, 1)}°C")
-#Cálculo dinámico
-#temp_fondo = temp_superficie + (gradiente_geotermico * profundidad_actual)
+# Cálculo dinámico
+temp_fondo = temp_superficie + (gradiente_geotermico * profundidad_actual)
+
+# Ahora la línea 1019 funcionará correctamente
 st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
 # --- GRÁFICO RADAR DE PERFORMANCE TÉCNICA ---
 st.subheader("🕸️ Análisis Multivariable de Operación")
 
 categories = ['Limpieza', 'Estabilidad', 'Eficiencia ROP', 'Integridad Zapata', 'Mecánica Sarta']
-#Normalización de valores para el radar (0 a 1)
+# Normalización de valores para el radar (0 a 1)
 values = [
     min(cci, 1.5)/1.5, 
     1 - (abs(ecd_dinamico - (presion_poro + 0.5)) / 2), 
@@ -1671,23 +1485,23 @@ st.caption(f"© 2026 Menfa Capacitaciones - Mendoza, Argentina. Sistema de Simul
 
 # --- MÓDULO DE RESONANCIA ESTRUCTURAL Y RIGIDEZ (Advanced Physics) ---
 st.divider()
-st.header("Análisis de Resonancia y Rigidez de Sarta")
+st.header("🎻 Análisis de Resonancia y Rigidez de Sarta")
 
 col_phys1, col_phys2 = st.columns(2)
 
 with col_phys1:
-    st.subheader("Frecuencias Críticas (RPM)")
-    #Cálculo simplificado de la primera frecuencia natural BHA
-    #f = (1 / 2pi) * sqrt(E*I / m*L^4)
-    #longitud_bha = 120  metros
-    #diametro_interior = 3.0  inch
-    #Frecuencia crítica en RPM
-    #rpm_critica_1 = 60 * ( (10.2 / longitud_bha**2) * np.sqrt( (29e6 * (diametro_mecha**4 - diametro_interior**4)) / 490) )
+    st.subheader("🎵 Frecuencias Críticas (RPM)")
+    # Cálculo simplificado de la primera frecuencia natural del BHA
+    # f = (1 / 2pi) * sqrt(E*I / m*L^4)
+    longitud_bha = 120 # metros
+    diametro_interior = 3.0 # in
+    # Frecuencia crítica en RPM
+    rpm_critica_1 = 60 * ( (10.2 / longitud_bha**2) * np.sqrt( (29e6 * (diametro_mecha**4 - diametro_interior**4)) / 490) )
     
     st.write(f"**1ra Velocidad Crítica Teórica:** {round(rpm_critica_1, 1)} RPM")
     
-    #Proximidad a la resonancia
-    # proximidad = abs(rpm_actual - rpm_critica_1) / rpm_critica_1
+    # Proximidad a la resonancia
+    proximidad = abs(rpm_actual - rpm_critica_1) / rpm_critica_1
     
     if proximidad < 0.1:
         st.error(f"🚨 RESONANCIA DETECTADA: Operando al {round((1-proximidad)*100,1)}% de la frecuencia crítica. ¡Cambie RPM inmediatamente!")
@@ -1696,17 +1510,17 @@ with col_phys1:
 
 with col_phys2:
     st.subheader("🦾 Rigidez a la Flexión (Stiff-String)")
-    #Momento de Inercia de la tubería (I)
-    #i_moment = (np.pi / 64) * (diametro_mecha**4 - diametro_interior**4)
-    #Esfuerzo de flexión inducido por el DLS
+    # Momento de Inercia de la tubería (I)
+    i_moment = (np.pi / 64) * (diametro_mecha**4 - diametro_interior**4)
+    # Esfuerzo de flexión inducido por el DLS
     # Sigma = (E * d/2) / Radio_curvatura
-   # radio_curvatura = 1718 / max(dls, 0.01) # pies
-   # esfuerzo_flexion = (29e6 * (diametro_mecha / 2)) / (radio_curvatura * 12)
+    radio_curvatura = 1718 / max(dls, 0.01) # pies
+    esfuerzo_flexion = (29e6 * (diametro_mecha / 2)) / (radio_curvatura * 12)
     
     st.metric("Esfuerzo de Flexión", f"{round(esfuerzo_flexion / 1000, 1)} ksi")
     
-    #Límite de Fatiga (Aproximación para Acero Grado S-135)
-   # limite_fatiga = 45 # ksi
+    # Límite de Fatiga (Aproximación para Acero Grado S-135)
+    limite_fatiga = 45 # ksi
     st.progress(min(esfuerzo_flexion / (limite_fatiga * 1000), 1.0), 
                 text=f"Consumo de Vida Útil por Ciclo: {round((esfuerzo_flexion/(limite_fatiga*1000))*100, 2)}%")
 
@@ -1719,7 +1533,7 @@ col_kin1, col_kin2 = st.columns(2)
 with col_kin1:
     st.subheader("⚡ Dinámica Axial (Bit Bounce)")
     # Simulación de aceleración G en la mecha
-   # vibracion_axial = (wob / 5) * (rpm_actual / 100) * 1.5 # Valor base simulado
+    vibracion_axial = (wob / 5) * (rpm_actual / 100) * 1.5 # Valor base simulado
     
     st.metric("Vibración Axial (G-RMS)", f"{round(vibracion_axial, 2)} G")
     
@@ -1730,11 +1544,11 @@ with col_kin1:
 
 with col_kin2:
     st.subheader("🧪 Eficiencia de Acarreo (CCI - Cuttings Carrying Index)")
-    #El CCI es el estándar para asegurar que el pozo esté limpio
-    #CCI = (K * Densidad * Caudal) / (577 * Diametro)
-    #k_index es el Consistency Index de Herschel-Bulkley calculado previamente
+    # El CCI es el estándar para asegurar que el pozo esté limpio
+    # CCI = (K * Densidad * Caudal) / (577 * Diametro)
+    # k_index es el Consistency Index de Herschel-Bulkley calculado previamente
     
-    # cci = (k_index * densidad_lodo * v_actual_anular) / 400000 # Simplificación de campo
+    cci = (k_index * densidad_lodo * v_actual_anular) / 400000 # Simplificación de campo
     
     fig_cci = go.Figure(go.Indicator(
         mode = "gauge+number",
@@ -1762,6 +1576,9 @@ if cci < 1.0:
     > **Ingeniería Menfa:** El CCI actual de **{round(cci,2)}** indica que el lodo no tiene suficiente 'capacidad de transporte'. 
     > Aumente el **Yield Point (YP)** o incremente el **Caudal** para evitar el enterramiento de la sarta.
     """)
+
+
+
 
 # --- PANEL DE TELEMETRÍA MAESTRA (KPI CONSOLIDATED VIEW) ---
 st.divider()
@@ -1856,6 +1673,7 @@ if st.sidebar.button("🛠️ Generar Reporte Técnico"):
             mime="application/pdf"
         )
         
+        # 2. Generamos el Certificado de Alumno automáticamente debajo
         nombre_alumno = st.session_state.get('nombre_alumno', 'Alumno Menfa')
         dni_alumno = st.session_state.get('dni_alumno', '00.000.000')
         curso_tipo = "Perforación y Control de Pozos"
@@ -1965,10 +1783,10 @@ import plotly.graph_objects as go
 def graficar_geologia_y_pozo(profundidad):
     import plotly.graph_objects as go
     
-   # Creamos la figura explícitamente
+    # 1. Creamos la figura explícitamente
     fig = go.Figure()
 
-    #Dibujamos las capas geológicas (usando tus topes de Mendoza/Neuquén)
+    # 2. Dibujamos las capas geológicas (usando tus topes de Mendoza/Neuquén)
     for capa in topes_reales:
         fig.add_shape(
             type="rect", x0=0, x1=1, y0=capa["top"], y1=capa["base"],
@@ -1980,6 +1798,7 @@ def graficar_geologia_y_pozo(profundidad):
             text=capa["nombre"], showarrow=False, font=dict(color="white")
         )
 
+    # 3. Dibujamos el pozo (una línea que baja con la profundidad actual)
     fig.add_trace(go.Scatter(
         x=[0.5, 0.5], y=[0, profundidad],
         mode="lines+markers",
@@ -1987,6 +1806,7 @@ def graficar_geologia_y_pozo(profundidad):
         name="Pozo en Perforación"
     ))
 
+    # 4. Configuramos los ejes (AQUÍ ESTABA EL ERROR)
     fig.update_layout(
         title="Perfil Geológico y Estado del Pozo",
         xaxis=dict(showticklabels=False, range=[0, 1]),
@@ -1998,6 +1818,8 @@ def graficar_geologia_y_pozo(profundidad):
     return fig
 # --- Aseguramos la existencia de la variable ---
 profundidad_actual = st.session_state.get('profundidad', 0)
+
+# 1. Definimos la lista (asegurando el nombre que usa la función)
 formaciones = [
     {"nombre": "Grupo Neuquén", "top": 0, "base": 1200, "fp": 1.2, "color": "#f1c40f"},
     {"nombre": "Fm. Quintuco", "top": 1200, "base": 2100, "fp": 0.9, "color": "#bdc3c7"},
@@ -2038,8 +1860,11 @@ rpm = st.session_state.get('rpm_actual', 0)
 # Buscamos el diámetro; si no existe en la UI, usamos 8.5 por defecto
 diam_m = st.session_state.get('diam_mecha', st.session_state.get('diametro_mecha', 8.5))
 
+# --- CÁLCULO DE ROP ---
 rop_base = (wob * rpm) / (diam_m ** 2) if diam_m > 0 else 0
 rop_final = rop_base * factor_dureza
+
+# Aplicar desgaste de mecha si existe el evento
 if st.session_state.get('mecha_gastada', False):
     rop_final *= 0.6
 
@@ -2086,6 +1911,10 @@ fig_bombeo = go.Figure(go.Indicator(
 ))
 fig_bombeo.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20))
 st.plotly_chart(fig_bombeo, use_container_width=True)
+
+import base64
+
+# Función para cargar audio y convertirlo a base64 (para que no falle el navegador)
 import base64
 import os
 
@@ -2310,11 +2139,7 @@ with tab_eval:
         st.write("**Infracciones Detectadas:**")
         for p in st.session_state.penalizaciones:
             st.write(f"- {p.get('Hora', '00:00:00')}: {p.get('Infracción', 'Error no especificado')}")
-@st.cache_data  # <--- AGREGA ESTO JUSTO ARRIBA DE LA FUNCIÓN
-def generar_certificado_final(nombre, puntaje, nivel, fecha):
-    pdf = FPDF()
-    # ... todo tu código actual del PDF ...
-    return pdf.output(dest='S').encode('latin-1')
+
 def generar_certificado(nombre, nota):
     pdf = FPDF()
     pdf.add_page()
@@ -2386,6 +2211,22 @@ else:
 # ==========================================
 # --- 10. CIERRE DE SESIÓN Y EVALUACIÓN ---
 # ==========================================
+
+# --- PASO A: REGISTRO VISUAL ---
+st.write("### 📸 Registro Visual de la Jornada")
+img_col1, img_col2, img_col3 = st.columns(3)
+
+with img_col1:
+    if os.path.exists("Imagen generada por Gemini_dn7zasdn7zasdn7z.png"):
+        st.image("Imagen generada por Gemini_dn7zasdn7zasdn7z.png", caption="Análisis de Formación", use_container_width=True)
+with img_col2:
+    if os.path.exists("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png"):
+        st.image("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png", caption="Estado del Trépano", use_container_width=True)
+with img_col3:
+    if os.path.exists("Imagen generada por Gemini_jl30d0jl30d0jl30.png"):
+        st.image("Imagen generada por Gemini_jl30d0jl30d0jl30.png", caption="Perfil del Pozo", use_container_width=True)
+
+st.write("---")
 
 # --- PASO B: EVALUACIÓN FINAL DE SEGURIDAD ---
 try:
