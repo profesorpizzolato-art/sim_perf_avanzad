@@ -114,22 +114,7 @@ if st.session_state.rol == "instructor":
 
 else: # VISTA ALUMNO
     monitor_datos_constantes()
-    
-    # --- ELIMINACIÓN DE LATENCIA (LOG DE AUDITORÍA REDUCIDO) ---
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📋 Estado de Auditoría")
-    num_alertas = len(st.session_state.penalizaciones)
-    st.sidebar.metric("Alertas IADC", num_alertas)
-    
-    if st.sidebar.button("💾 Finalizar y Generar Reporte"):
-        # Solo procesamos la tabla pesada al final, no en tiempo real
-        if num_alertas > 0:
-            st.write("### Detalle de Evaluación Final")
-            st.table(pd.DataFrame(st.session_state.penalizaciones))
-        st.balloons()
 
-# --- BLOQUE FINAL DE SEGURIDAD (LIMPIEZA DE SINTAXIS) ---
-# Usamos comillas triples para que todas tus notas técnicas no den error.
 """
 NOTAS TÉCNICAS Y FÓRMULAS (PARA REFERENCIA DEL INSTRUCTOR):
 - Cálculo de DLS (°/30m)
