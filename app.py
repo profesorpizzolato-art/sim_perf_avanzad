@@ -83,7 +83,14 @@ if not st.session_state.autenticado:
                         st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, "Inst. Fabricio Pizzolato", "instructor"
                         st.rerun()
     st.stop()
-
+with st.sidebar:
+    st.title("👨‍🏫 Panel del Instructor")
+    st.write(f"Profundidad: {pizarra['profundidad_actual']:.2f} m")
+    
+    if st.button("🔄 Resetear Eventos"):
+        st.session_state.tipo_evento = None
+        pizarra["alarma_activa"] = False
+        st.rerun()
 # --- 5. INTERFAZ PRINCIPAL ---
 
 # SIDEBAR COMÚN
@@ -418,3 +425,34 @@ pizarra = obtener_pizarra()
 
 # --- 3. AL FINAL LA LÓGICA QUE LLAMA A LAS FUNCIONES ---
 # Aquí es donde usas st.plotly_chart(crear_manometro(...))
+# --- SISTEMA DE EVENTOS CRÍTICOS ---
+
+# 1. Lógica de Surgencia (Kick)
+if st.sidebar.button("🚨 ACTIVAR KICK (SURGENCIA)"):
+    pizarra["alarma_activa"] = True
+    st.session_state.tipo_evento = "KICK"
+
+if st.session_state.get("tipo_evento") == "KICK":
+    # La presión sube 5 psi por segundo si no cierran el BOP
+    if not pizarra["bop_cerrado"]:
+        pizarra["presion_base"] += 5
+        st.error("⚠️ ¡AUMENTO DE PRESIÓN EN TUBING! ¡CERRAR BOP!")
+    else:
+        st.success("✅ POZO CERRADO. CALCULAR KILL MUD WEIGHT.")
+
+# 2. Lógica de Pérdida de Circulación
+if st.sidebar.button("📉 ACTIVAR PÉRDIDA DE RETORNO"):
+    st.session_state.tipo_evento = "PERDIDA"
+
+if st.session_state.get("tipo_evento") == "PERDIDA":
+    res["AV"] = res["AV"] * 0.4 # Cae la velocidad anular
+    st.warning("📉 PÉRDIDA DE CIRCULACIÓN DETECTADA EN FORMACIÓN")
+
+# 3. Lógica de Falla de Bomba
+if st.sidebar.button("⚙️ FALLA BOMBA 1"):
+    st.session_state.tipo_evento = "FALLA_BOMBA"
+
+if st.session_state.get("tipo_evento") == "FALLA_BOMBA":
+    pizarra["caudal_maestro"] = pizarra["caudal_maestro"] * 0.5
+    st.error("💥 FALLA EN VÁLVULA DE BOMBA 1. CAUDAL REDUCIDO AL 50%")
+
