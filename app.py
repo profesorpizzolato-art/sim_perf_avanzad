@@ -10,8 +10,15 @@ from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
 # --- OPTIMIZACIONES DE RENDIMIENTO ---
+# --- OPTIMIZACIÓN DE RECURSOS ESTÁTICOS ---
+@st.cache_resource
+def cargar_logo_eficiente():
+    """Carga el logo una sola vez y lo mantiene en memoria RAM."""
+    if os.path.exists("logo.menfa.png"):
+        return "logo.menfa.png"
+    return None
 
-@st.cache_data
+logo_path = cargar_logo_eficiente()
 def obtener_logo_base64(ruta_logo):
     """Carga el logo una sola vez para no leer el disco en cada refresh"""
     if os.path.exists(ruta_logo):
@@ -57,7 +64,29 @@ if "autenticado" not in st.session_state:
     st.session_state.rol = None
 if "penalizaciones" not in st.session_state:
     st.session_state.penalizaciones = []
+# --- COLOCAR AQUÍ (Cerca del principio, tras los imports) ---
 
+@st.fragment
+def monitor_datos_constantes(intervalo_ms=2000):
+    """
+    Fragmento de alto rendimiento. 
+    Mantenlo aquí arriba para que el sistema lo reconozca.
+    """
+    st_autorefresh(interval=intervalo_ms, key="refresh_datos_sensores")
+    
+    # Aquí dentro va la lógica de los números que cambian
+    col1, col2, col3 = st.columns(3)
+    
+    # Ejemplo con tus variables de presión (ajusta los nombres a los tuyos)
+    p_fondo = st.session_state.get('presion_fondo', 3500) + random.uniform(-2, 2)
+    caudal = st.session_state.get('caudal_actual', 500)
+    
+    col1.metric("Presión Fondo", f"{p_fondo:.1f} psi")
+    col2.metric("Caudal", f"{caudal:.0f} gpm")
+    col3.metric("Estado", "Operando", delta="OK")
+
+    # Gráfico lineal liviano en lugar de Plotly pesado
+    st.line_chart(np.random.randn(20), height=150)
 # --- 2. CARÁTULA DE INGRESO ---
 if not st.session_state.autenticado:
     # Contenedor para el logo y título principal
