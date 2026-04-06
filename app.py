@@ -96,13 +96,28 @@ with st.sidebar:
 st.sidebar.image("logo.menfa.png", use_container_width=True)
 st.sidebar.title(f"Usuario: {st.session_state.usuario}")
 
-# --- MODO INSTRUCTOR (TÚ MANEJAS LAS VARIABLES) ---
-if st.session_state.rol == "instructor":
-    st.sidebar.markdown("### 🎮 PANEL DE CONTROL MAESTRO")
+# --- PANEL DEL INSTRUCTOR (Aproximadamente línea 100) ---
+st.sidebar.title("👨‍🏫 Panel del Instructor")
+
+# Asegurate de que estas líneas NO tengan espacios extra al principio
 nuevo_caudal = st.sidebar.slider("Caudal (GPM)", 0, 1200, float(pizarra["caudal_maestro"]))
 nuevo_wob = st.sidebar.slider("WOB (klbs)", 0, 100, float(pizarra["wob_maestro"]))
 nuevo_rpm = st.sidebar.slider("RPM", 0, 200, float(pizarra["rpm_maestro"]))
 
+# El divisor debe estar ALINEADO con los sliders de arriba
+st.sidebar.divider() 
+
+# --- SISTEMA DE 3 EVENTOS CRÍTICOS ---
+st.sidebar.subheader("🕹️ Inyectar Fallas")
+
+if st.sidebar.button("🚨 Provocar Kick"):
+    st.session_state.evento_activo = "KICK"
+    
+if st.sidebar.button("📉 Provocar Pérdida"):
+    st.session_state.evento_activo = "PERDIDA"
+    
+if st.sidebar.button("⚙️ Falla Bomba 1"):
+    st.session_state.evento_activo = "FALLA_BOMBA"
 # Luego actualizamos la pizarra con esos nuevos valores
 pizarra["caudal_maestro"] = nuevo_caudal
 pizarra["wob_maestro"] = nuevo_wob
