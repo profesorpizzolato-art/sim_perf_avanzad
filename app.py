@@ -483,7 +483,6 @@ presion = st.sidebar.number_input("Presión de Standpipe (PSI)", 500, 5000, 3200
 rpm_actual = st.sidebar.slider("Velocidad de Rotación (RPM)", 0, 150, 60)
 wob = st.sidebar.slider("Peso sobre la Mecha (WOB - klbs)", 0, 50, 15)
 rop_actual = st.sidebar.slider("Tasa de Penetración (ROP - m/h)", 0, 40, 10)
-densidad_lodo = st.sidebar.number_input("Densidad del Lodo (ppg)", 8.33, 18.0, 9.5)
 
 hhp_val, if_val = calcular_metricas(presion, caudal, densidad)
 
