@@ -361,7 +361,13 @@ def crear_manometro(valor, titulo, unidad, max_val, color_linea):
     return fig
 
 import plotly.graph_objects as go
+import streamlit as st
+import plotly.graph_objects as go  # <-- IMPORTANTE
+# ... otros imports ...
 
+# --- 1. PRIMERO LAS FUNCIONES ---
+def crear_manometro(valor, titulo, unidad, max_val, color_linea):
+    # (Aquí va el código que te pasé antes)
 def crear_manometro(valor, titulo, unidad, max_val, color_linea):
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
@@ -393,4 +399,21 @@ def crear_manometro(valor, titulo, unidad, max_val, color_linea):
         font={'color': "white", 'family': "Arial"}
     )
     return fig
-    
+
+# --- 2. DESPUÉS LA PIZARRA ---
+@st.cache_resource
+def obtener_pizarra():
+    return {
+        "wob_maestro": 0.0,
+        "rpm_maestro": 0.0,
+        "torque_maestro": 0.0,
+        "caudal_maestro": 500.0,
+        "profundidad_actual": 2500.0,
+        "alarma_activa": False,
+        "bop_cerrado": False
+    }
+
+pizarra = obtener_pizarra()
+
+# --- 3. AL FINAL LA LÓGICA QUE LLAMA A LAS FUNCIONES ---
+# Aquí es donde usas st.plotly_chart(crear_manometro(...))
