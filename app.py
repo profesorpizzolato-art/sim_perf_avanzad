@@ -1410,9 +1410,9 @@ with col_adv_t1:
 with col_adv_t2:
     st.subheader("📡 Calidad de Señal MWD")
   #  La compresibilidad_del lodo afecta la velocidad _del pulso
-    v = sqrt(K / rho)
-    modulo_bulk = 220000 # PSI aprox para lodo base agua
-    velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) ft/s
+  #  v = sqrt(K / rho)
+   # modulo_bulk = 220000 # PSI aprox para lodo base agua
+   # velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) ft/s
     
    # Atenuación (Simplificada: aumenta con profundidad y viscosidad)
     #atenuacion = (profundidad_actual * 0.01) + (pv * 0.5)
