@@ -262,7 +262,52 @@ res = motor.calcular_fisica_perforacion(
     profundidad=pizarra["profundidad_actual"],
     flow_rate=pizarra["caudal_maestro"]
 )
+# --- 1. CÁLCULOS (Esto ya lo tenés) ---
+res = motor.calcular_fisica_perforacion(
+    wob=pizarra["wob_maestro"],
+    rpm=pizarra["rpm_maestro"],
+    torque=pizarra["torque_maestro"],
+    profundidad=pizarra["profundidad_actual"],
+    flow_rate=pizarra["caudal_maestro"]
+)
 
+# --- 2. DEFINICIÓN DE PESTAÑAS (Aquí va el código nuevo) ---
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🎮 Consola Principal", 
+    "🛡️ BOP & Control", 
+    "🧪 Lodos y Tanques", 
+    "🛰️ Geonavegación"
+])
+
+# --- 3. CONTENIDO DE CADA PESTAÑA ---
+
+with tab1:
+    st.subheader("Tablero de Perforación en Tiempo Real")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.plotly_chart(crear_manometro(res["ROP"], "Velocidad ROP", "m/hr", 60, "lime"), use_container_width=True)
+    with col2:
+        st.plotly_chart(crear_manometro(res["MSE"], "Eficiencia MSE", "kpsi", 100, "orange"), use_container_width=True)
+    with col3:
+        st.plotly_chart(crear_manometro(res["HOOK_LOAD"], "Peso en Gancho", "klbs", 600, "white"), use_container_width=True)
+
+with tab2:
+    import bop_panel as bop # Importamos tu módulo de BOP
+    st.header("🛡️ Sistema de Seguridad de Pozo")
+    # Aquí podés llamar a una función de tu archivo bop_panel.py
+    bop.mostrar_interfaz_bop(pizarra) 
+
+with tab3:
+    import gestion_perdidas as gp
+    st.header("🧪 Control de Piletas y Lodos")
+    # Aquí graficaremos los niveles de los tanques
+    gp.render_tanques(pizarra)
+
+with tab4:
+    import geonavegacion_pro as geo
+    st.header("🛰️ Trayectoria en Vaca Muerta")
+    fig_geo = geo.generar_grafico_trayectoria(pizarra["profundidad_actual"])
+    st.plotly_chart(fig_geo, use_container_width=True)
 # 2. Dibujamos los manómetros usando tu nueva función
 col1, col2, col3 = st.columns(3)
 
