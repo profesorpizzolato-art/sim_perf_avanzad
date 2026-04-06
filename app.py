@@ -107,22 +107,25 @@ nuevo_rpm = st.sidebar.slider("RPM", 0, 200, float(pizarra["rpm_maestro"]))
 # El divisor debe estar ALINEADO con los sliders de arriba
 st.sidebar.divider() 
 
-# --- SISTEMA DE 3 EVENTOS CRÍTICOS ---
-st.sidebar.subheader("🕹️ Inyectar Fallas")
+st.sidebar.subheader("🕹️ Simulación de Fallas")
 
 if st.sidebar.button("🚨 Provocar Kick"):
     st.session_state.evento_activo = "KICK"
     
 if st.sidebar.button("📉 Provocar Pérdida"):
     st.session_state.evento_activo = "PERDIDA"
-    
-if st.sidebar.button("⚙️ Falla Bomba 1"):
-    st.session_state.evento_activo = "FALLA_BOMBA"
+
+st.sidebar.divider()
+
+if st.sidebar.button("✅ Normalizar Pozo"):
+    st.session_state.evento_activo = None
+    st.rerun()
 # Luego actualizamos la pizarra con esos nuevos valores
 pizarra["caudal_maestro"] = nuevo_caudal
 pizarra["wob_maestro"] = nuevo_wob
 pizarra["rpm_maestro"] = nuevo_rpm
     st.sidebar.divider()
+
     if not pizarra["alarma_activa"]:
         if st.sidebar.button("🚨 ACTIVAR KICK / SURGENCIA", type="primary", use_container_width=True):
             pizarra["alarma_activa"] = True
