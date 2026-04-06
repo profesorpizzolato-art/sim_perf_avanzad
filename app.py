@@ -1915,7 +1915,7 @@ import plotly.graph_objects as go
 def graficar_geologia_y_pozo(profundidad):
     import plotly.graph_objects as go
     
-    Creamos la figura explícitamente
+   # Creamos la figura explícitamente
     fig = go.Figure()
 
     Dibujamos las capas geológicas (usando tus topes de Mendoza/Neuquén)
