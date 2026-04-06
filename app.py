@@ -11,65 +11,48 @@ from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
 import json
 
+# --- CONFIGURACIÓN DE PÁGINA (PRIMERA LÍNEA) ---
+st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
+
 CONFIG_FILE = "params_simulador.json"
 
+# --- FUNCIONES DE PERSISTENCIA (INSTRUCTOR -> ALUMNOS) ---
 def guardar_config_maestra(datos):
     with open(CONFIG_FILE, "w") as f:
         json.dump(datos, f)
 
 def leer_config_maestra():
     if not os.path.exists(CONFIG_FILE):
-        # Valores por defecto si el archivo no existe
         return {"presion": 3000, "wob": 10, "rpm": 60, "caudal": 400}
     with open(CONFIG_FILE, "r") as f:
         return json.load(f)
-# --- OPTIMIZACIONES DE RENDIMIENTO ---
-# --- OPTIMIZACIÓN DE RECURSOS ESTÁTICOS ---
+
+# --- OPTIMIZACIÓN DE RECURSOS ---
 @st.cache_resource
 def cargar_logo_eficiente():
-    """Carga el logo una sola vez y lo mantiene en memoria RAM."""
-    if os.path.exists("logo.menfa.png"):
-        return "logo.menfa.png"
+    if os.path.exists("logo_menfa.png"):
+        return "logo_menfa.png"
     return None
 
 logo_path = cargar_logo_eficiente()
-def obtener_logo_base64(ruta_logo):
-    """Carga el logo una sola vez para no leer el disco en cada refresh"""
-    if os.path.exists(ruta_logo):
-        with open(ruta_logo, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    return None
 
-@st.cache_data
-def calcular_hidraulica_opt(caudal, presion, densidad):
-    """Cálculos matemáticos con caché"""
-    hhp = (presion * caudal) / 1714
-    if_force = (densidad * caudal * 0.05) * (caudal / 100)
-    return round(hhp, 2), round(if_force, 2)
-
+# --- FRAGMENTOS DE ALTO RENDIMIENTO (SIN LATENCIA) ---
 @st.fragment
-def renderizar_monitores_principales(p_fondo, p_anular, t_retorno):
-    """Solo esta sección se refresca con los sensores, sin recargar toda la página"""
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Presión Fondo (psi)", f"{p_fondo:,.0f}", delta="Normal")
-    col2.metric("Presión Anular (psi)", f"{p_anular:,.0f}", delta="-2%", delta_color="inverse")
-    col3.metric("Temp. Retorno (°C)", f"{t_retorno:,.1f}")
+def monitor_datos_constantes(intervalo_ms=2000):
+    """Refresca solo las métricas críticas cada 2 segundos"""
+    st_autorefresh(interval=intervalo_ms, key="refresh_datos_sensores")
+    
+    config = leer_config_maestra()
+    p_fondo = config["presion"] + random.uniform(-2, 2)
+    caudal = config["caudal"]
+    
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Presión Fondo", f"{p_fondo:.1f} psi")
+    c2.metric("Caudal Actual", f"{caudal:.0f} gpm")
+    c3.metric("WOB Maestro", f"{config['wob']} klbs")
 
-@st.fragment
-def mostrar_graficos_interactivos(densidad, profundidad, p_poro, p_frac):
-    """Fragmento para que mover los sliders de la ventana de lodo sea instantáneo"""
-    z = np.linspace(0, 5000, 100)
-    presion_hidrostatica = 0.052 * densidad * z
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=presion_hidrostatica, y=z, name="Hidrostática", line=dict(color='blue')))
-    fig.add_trace(go.Scatter(x=[p_poro]*len(z), y=z, name="Presión Poro", line=dict(color='red', dash='dash')))
-    fig.add_trace(go.Scatter(x=[p_frac]*len(z), y=z, name="Presión Fractura", line=dict(color='green', dash='dot')))
-    
-    fig.update_layout(title="Ventana de Lodo Operativa", yaxis_autorange="reversed", height=400)
-    st.plotly_chart(fig, use_container_width=True)
-# --- 0. CONFIGURACIÓN DE PÁGINA (DEBE SER LA PRIMERA LÍNEA DE ST) ---
-st.set_page_config(page_title="MENFA 3.0 - Simulador", layout="wide", page_icon="🏗️")
+    # Gráfico liviano nativo de Streamlit (Evita Plotly aquí por latencia)
+    st.line_chart(np.random.randn(20), height=150)
 
 # --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
 if "autenticado" not in st.session_state:
@@ -78,7 +61,84 @@ if "autenticado" not in st.session_state:
     st.session_state.rol = None
 if "penalizaciones" not in st.session_state:
     st.session_state.penalizaciones = []
-# --- COLOCAR AQUÍ (Cerca del principio, tras los imports) ---
+
+# --- 2. CARÁTULA DE INGRESO ---
+if not st.session_state.autenticado:
+    col_izq, col_logo, col_der = st.columns([1, 2, 1])
+    with col_logo:
+        if logo_path:
+            st.image(logo_path, use_container_width=True)
+        else:
+            st.markdown("<h1 style='text-align: center;'>🏗️ MENFA</h1>", unsafe_allow_html=True)
+        
+        st.markdown("<h2 style='text-align: center; color: #004280;'>SISTEMA DE ENTRENAMIENTO v3.0</h2>", unsafe_allow_html=True)
+
+    tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Acceso Instructor"])
+    with tab1:
+        with st.form("login_alumno"):
+            nombre = st.text_input("Nombre y Apellido")
+            if st.form_submit_button("Ingresar", use_container_width=True):
+                if nombre:
+                    st.session_state.autenticado = True
+                    st.session_state.usuario = nombre
+                    st.session_state.rol = "alumno"
+                    st.rerun()
+    with tab2:
+        with st.form("login_instructor"):
+            clave = st.text_input("Clave Instructor", type="password")
+            if st.form_submit_button("Acceso Administrativo"):
+                if clave == "menfa2026":
+                    st.session_state.autenticado = True
+                    st.session_state.usuario = "Inst. Fabricio Pizzolato"
+                    st.session_state.rol = "instructor"
+                    st.rerun()
+    st.stop()
+
+# --- 3. PANEL PRINCIPAL ---
+st.title(f"📟 Panel Integral - {st.session_state.usuario}")
+
+if st.session_state.rol == "instructor":
+    with st.expander("🎮 PANEL DE CONTROL MAESTRO", expanded=True):
+        actual = leer_config_maestra()
+        col_i1, col_i2 = st.columns(2)
+        with col_i1:
+            p_m = st.slider("Presión Base", 0, 5000, actual["presion"])
+            w_m = st.slider("WOB Base", 0, 50, actual["wob"])
+        with col_i2:
+            r_m = st.slider("RPM Base", 0, 200, actual["rpm"])
+            c_m = st.slider("Caudal Base", 0, 1000, actual["caudal"])
+        
+        if st.button("🚀 Sincronizar con Alumnos", type="primary"):
+            guardar_config_maestra({"presion": p_m, "wob": w_m, "rpm": r_m, "caudal": c_m})
+            st.success("Configuración enviada.")
+
+else: # VISTA ALUMNO
+    monitor_datos_constantes()
+    
+    # --- ELIMINACIÓN DE LATENCIA (LOG DE AUDITORÍA REDUCIDO) ---
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📋 Estado de Auditoría")
+    num_alertas = len(st.session_state.penalizaciones)
+    st.sidebar.metric("Alertas IADC", num_alertas)
+    
+    if st.sidebar.button("💾 Finalizar y Generar Reporte"):
+        # Solo procesamos la tabla pesada al final, no en tiempo real
+        if num_alertas > 0:
+            st.write("### Detalle de Evaluación Final")
+            st.table(pd.DataFrame(st.session_state.penalizaciones))
+        st.balloons()
+
+# --- BLOQUE FINAL DE SEGURIDAD (LIMPIEZA DE SINTAXIS) ---
+# Usamos comillas triples para que todas tus notas técnicas no den error.
+"""
+NOTAS TÉCNICAS Y FÓRMULAS (PARA REFERENCIA DEL INSTRUCTOR):
+- Cálculo de DLS (°/30m)
+- Gráfico de Geosteering (Sección Lateral)
+- temp_superficie = 20 °C | Gradiente: 3°C por cada 100m
+- velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) ft/s
+- 1. Intentamos generar el reporte principal
+- Creamos la figura explícitamente
+"""
 
 @st.fragment
 def monitor_datos_constantes(intervalo_ms=2000):
