@@ -134,17 +134,25 @@ if pizarra["alarma_activa"]:
 col1, col2, col3 = st.columns(3)
 
 # Datos calculados por tus otros archivos .py
-hhp, if_force = motor.calcular_metricas(pizarra["presion_base"], pizarra["caudal_maestro"], pizarra["densidad_maestra"])
+# 1. Llamamos a la función real del motor con sus 5 parámetros requeridos
+res_fisica = motor.calcular_fisica_perforacion(
+    wob=pizarra["wob_maestro"],
+    rpm=pizarra["rpm_maestro"],
+    torque=pizarra["torque_maestro"],
+    profundidad=pizarra["profundidad_actual"],
+    flow_rate=pizarra["caudal_maestro"]
+)
 
-with col1:
-    st.metric("WOB (Peso)", f"{pizarra['wob_maestro']} klbs")
-    st.metric("RPM", f"{pizarra['rpm_maestro']}")
-with col2:
-    st.metric("Presión SPP", f"{pizarra['presion_base']} PSI")
-    st.metric("Caudal", f"{pizarra['caudal_maestro']} GPM")
-with col3:
-    st.metric("Potencia HHP", f"{hhp}")
-    st.metric("Impact Force", f"{if_force} lbs")
+# 2. Extraemos los valores del diccionario para los manómetros
+rop_actual = res_fisica["ROP"]
+mse_actual = res_fisica["MSE"]
+hk_actual = res_fisica["HOOK_LOAD"]
+av_actual = res_fisica["AV"]
+kmw_actual = res_fisica["KMW"]
+
+# 3. (Opcional) Si necesitas HHP e Impact Force para otros gráficos:
+hhp = (pizarra["presion_base"] * pizarra["caudal_maestro"]) / 1714
+if_force = 0.0182 * pizarra["caudal_maestro"] * (pizarra["presion_base"] * pizarra["densidad_maestra"])**0.5
 
 # --- GRÁFICOS DINÁMICOS DE TUS ARCHIVOS ---
 st.divider()
