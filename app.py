@@ -1391,7 +1391,7 @@ col_adv_t1, col_adv_t2 = st.columns(2)
 
 with col_adv_t1:
     st.subheader("🧪 Modelo de Herschel-Bulkley")
-    Entradas de laboratorio (Fann 35)
+#    Entradas de laboratorio (Fann 35)
     r600 = st.number_input("Lectura 600 RPM", value=50)
     r300 = st.number_input("Lectura 300 RPM", value=30)
     r3 = st.number_input("Lectura 3 RPM (Gel)", value=5)
