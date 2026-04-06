@@ -14,7 +14,6 @@ import geonavegacion_pro as geo
 import torque_and_drag as td
 import bombas_de_lodo as bombas
 import sartas_perforacion as sartas
-
 import sys
 import os
 
@@ -100,12 +99,14 @@ st.sidebar.title(f"Usuario: {st.session_state.usuario}")
 # --- MODO INSTRUCTOR (TÚ MANEJAS LAS VARIABLES) ---
 if st.session_state.rol == "instructor":
     st.sidebar.markdown("### 🎮 PANEL DE CONTROL MAESTRO")
-    pizarra["presion_base"] = st.sidebar.number_input("Presión Standpipe (PSI)", value=pizarra["presion_base"])
-    pizarra["caudal_maestro"] = st.sidebar.slider("Caudal (GPM)", 0, 1200, pizarra["caudal_maestro"])
-    pizarra["densidad_maestra"] = st.sidebar.number_input("Densidad Lodo (ppg)", 8.0, 19.0, pizarra["densidad_maestra"])
-    pizarra["wob_maestro"] = st.sidebar.slider("WOB (klbs)", 0, 50, pizarra["wob_maestro"])
-    pizarra["rpm_maestro"] = st.sidebar.slider("RPM", 0, 180, pizarra["rpm_maestro"])
+nuevo_caudal = st.sidebar.slider("Caudal (GPM)", 0, 1200, float(pizarra["caudal_maestro"]))
+nuevo_wob = st.sidebar.slider("WOB (klbs)", 0, 100, float(pizarra["wob_maestro"]))
+nuevo_rpm = st.sidebar.slider("RPM", 0, 200, float(pizarra["rpm_maestro"]))
 
+# Luego actualizamos la pizarra con esos nuevos valores
+pizarra["caudal_maestro"] = nuevo_caudal
+pizarra["wob_maestro"] = nuevo_wob
+pizarra["rpm_maestro"] = nuevo_rpm
     st.sidebar.divider()
     if not pizarra["alarma_activa"]:
         if st.sidebar.button("🚨 ACTIVAR KICK / SURGENCIA", type="primary", use_container_width=True):
