@@ -1308,7 +1308,7 @@ with col_tor1:
     delta_inc = abs(inc_deseada - inc_anterior)
     distancia_estacion = 30 # metros estándar
     
-    Cálculo de DLS (°/30m)
+    # Cálculo de DLS (°/30m)
     dls = (delta_inc / distancia_estacion) * 30
     
     st.metric("Dogleg Severity (DLS)", f"{round(dls, 2)} °/30m")
