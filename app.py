@@ -1323,7 +1323,7 @@ with col_tor1:
 
 with col_tor2:
     st.subheader("📈 Mapa de Tortuosidad Acumulada")
-    Generar una trayectoria con "ruido" para visualizar tortuosidad
+  #  Generar una trayectoria con "ruido" para visualizar tortuosidad
     puntos = np.linspace(0, 100, 20)
     ideal = 90 + 0 * puntos
     real = ideal + (dls * np.sin(puntos/5) * 0.5) # Simula la sinuosidad
@@ -1341,18 +1341,18 @@ with col_tor2:
     )
     st.plotly_chart(fig_tor, use_container_width=True)
 
- --- CÁLCULO DE CARGA EN EL GANCHO (HOOK LOAD) ---
+ #--- CÁLCULO DE CARGA EN EL GANCHO (HOOK LOAD) ---
 
 # 1. Recuperamos el WOB del estado de la sesión o del slider
 # (Usamos .get para que si no existe, devuelva 0 y no explote)
 wob_valor = st.session_state.get('wob', 0.0) 
 
-Variables de fricción (asegurate que estén definidas arriba)
+# Variables de fricción (asegurate que estén definidas arriba)
 hook_load_estatico = s.get('peso_sarta', 150.0) # Valor base en klbs
 drag_friccion = s.get('drag', 5.0)
 hook_load_real = hook_load_estatico - drag_friccion - (wob_valor * 0.8)
 
---- ANÁLISIS DE RIESGO DIRECCIONAL ---
+#--- ANÁLISIS DE RIESGO DIRECCIONAL ---
 dls = s.get('dls_actual', 0.0)
 wob = s.get('wob', 0.0)
 
@@ -1364,15 +1364,15 @@ if dls > 2.5 and wob > 20:
     gradiente_termico = 0.03 °C/m
     temp_fondo = temp_superficie + (gradiente_termico * profundidad_actual)
     
-    La densidad cae aprox 0.01 ppg por cada 15°C de aumento
-    reduccion_densidad = (temp_fondo - 20) / 15 * 0.01
-    densidad_fondo_real = densidad_lodo - reduccion_densidad
+    # La densidad cae aprox 0.01 ppg por cada 15°C de aumento
+    # reduccion_densidad = (temp_fondo - 20) / 15 * 0.01
+   # densidad_fondo_real = densidad_lodo - reduccion_densidad
 
     st.write(f"**Temperatura de Fondo:** {round(temp_fondo, 1)} °C")
     st.metric("Densidad Real en Fondo", f"{round(densidad_fondo_real, 2)} ppg", 
               delta=f"-{round(reduccion_densidad, 3)} por expansión térmica", delta_color="inverse")
 
---- GRÁFICA DE ESFUERZOS ACUMULADOS ---
+#--- GRÁFICA DE ESFUERZOS ACUMULADOS ---
 st.subheader("📊 Gráfico de Cargas Críticas")
 depth_array = np.linspace(0, profundidad_actual, 50)
 carga_limite = 200 - (depth_array * 0.01) # Límite de tensión de la tubería
@@ -1384,7 +1384,7 @@ fig_esf.add_trace(go.Scatter(x=depth_array, y=carga_actual, name="Carga en la Sa
 fig_esf.update_layout(title="Margen de Tensión (Overpull Capability)", template="plotly_dark", height=300)
 st.plotly_chart(fig_esf, use_container_width=True)
 
---- MÓDULO DE REOLOGÍA AVANZADA Y TELEMETRÍA ---
+#--- MÓDULO DE REOLOGÍA AVANZADA Y TELEMETRÍA ---
 st.divider()
 st.header("🧬 Física de Fluidos y Telemetría MWD")
 col_adv_t1, col_adv_t2 = st.columns(2)
@@ -1396,7 +1396,7 @@ with col_adv_t1:
     r300 = st.number_input("Lectura 300 RPM", value=30)
     r3 = st.number_input("Lectura 3 RPM (Gel)", value=5)
     
-    Cálculo de índices n, k y Tau0
+ #   Cálculo de índices n, k y Tau0
     n_index = 3.32 * np.log10(r600 / r300)
     k_index = (0.511 * r300) / (511**n_index)
     tau0 = r3 # Aproximación simple del Yield Stress real
@@ -1409,14 +1409,14 @@ with col_adv_t1:
 
 with col_adv_t2:
     st.subheader("📡 Calidad de Señal MWD")
-    La compresibilidad_del lodo afecta la velocidad _del pulso
+  #  La compresibilidad_del lodo afecta la velocidad _del pulso
     v = sqrt(K / rho)
     modulo_bulk = 220000 # PSI aprox para lodo base agua
     velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) ft/s
     
-    Atenuación (Simplificada: aumenta con profundidad y viscosidad)
-    atenuacion = (profundidad_actual * 0.01) + (pv * 0.5)
-    fuerza_senal = max(0, 100 - atenuacion)
+   # Atenuación (Simplificada: aumenta con profundidad y viscosidad)
+    #atenuacion = (profundidad_actual * 0.01) + (pv * 0.5)
+    #fuerza_senal = max(0, 100 - atenuacion)
     
     fig_signal = go.Figure(go.Indicator(
         mode = "gauge+number",
@@ -1431,7 +1431,7 @@ with col_adv_t2:
     fig_signal.update_layout(height=280, paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_signal, use_container_width=True)
 
-# --- DIAGNÓSTICO DE PRECISIÓN ---
+ # --- DIAGNÓSTICO DE PRECISIÓN ---
 if fuerza_senal < 20:
     st.error("🚨 PERDIDA DE TELEMETRÍA: La viscosidad o profundidad impiden recibir datos LWD. ¡Geonavegación a ciegas!")
 # --- MÓDULO DE DINÁMICA DE TRANSITORIOS (SURGE/SWAB & STICK-SLIP) ---
