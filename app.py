@@ -1268,15 +1268,15 @@ with col_geo2:
     techo_res = 2500 + 15 * np.sin(distancia / 100)
     piso_res = techo_res + 10 # Espesor de 10 metros
     
-    Trayectoria_del_ pozo basada en la inclinación
+    # Trayectoria_del_ pozo basada en la inclinación
     trayectoria = 2505 + (distancia * np.tan(np.radians(90 - inc_deseada)))
 
     fig_geo = go.Figure()
-    Dibujar Reservorio
+    #Dibujar Reservorio
     fig_geo.add_trace(go.Scatter(x=distancia, y=techo_res, name="Techo Reservorio", line=dict(color='gray', dash='dash')))
     fig_geo.add_trace(go.Scatter(x=distancia, y=piso_res, name="Piso Reservorio", fill='tonexty', fillcolor='rgba(255, 255, 0, 0.2)', line=dict(color='gray')))
     
-    Dibujar Pozo
+   # Dibujar Pozo
     fig_geo.add_trace(go.Scatter(x=distancia, y=trayectoria, name="Trayectoria Pozo", line=dict(color='lime', width=4)))
 
     fig_geo.update_layout(
