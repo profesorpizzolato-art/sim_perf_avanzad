@@ -1918,7 +1918,7 @@ def graficar_geologia_y_pozo(profundidad):
    # Creamos la figura explícitamente
     fig = go.Figure()
 
-    Dibujamos las capas geológicas (usando tus topes de Mendoza/Neuquén)
+    #Dibujamos las capas geológicas (usando tus topes de Mendoza/Neuquén)
     for capa in topes_reales:
         fig.add_shape(
             type="rect", x0=0, x1=1, y0=capa["top"], y1=capa["base"],
