@@ -1655,8 +1655,8 @@ with col_phys2:
     
     st.metric("Esfuerzo de Flexión", f"{round(esfuerzo_flexion / 1000, 1)} ksi")
     
-    Límite de Fatiga (Aproximación para Acero Grado S-135)
-    limite_fatiga = 45 # ksi
+    #Límite de Fatiga (Aproximación para Acero Grado S-135)
+   # limite_fatiga = 45 # ksi
     st.progress(min(esfuerzo_flexion / (limite_fatiga * 1000), 1.0), 
                 text=f"Consumo de Vida Útil por Ciclo: {round((esfuerzo_flexion/(limite_fatiga*1000))*100, 2)}%")
 
@@ -1668,8 +1668,8 @@ col_kin1, col_kin2 = st.columns(2)
 
 with col_kin1:
     st.subheader("⚡ Dinámica Axial (Bit Bounce)")
-    Simulación de aceleración G en la mecha
-    vibracion_axial = (wob / 5) * (rpm_actual / 100) * 1.5 # Valor base simulado
+    # Simulación de aceleración G en la mecha
+   # vibracion_axial = (wob / 5) * (rpm_actual / 100) * 1.5 # Valor base simulado
     
     st.metric("Vibración Axial (G-RMS)", f"{round(vibracion_axial, 2)} G")
     
@@ -1680,11 +1680,11 @@ with col_kin1:
 
 with col_kin2:
     st.subheader("🧪 Eficiencia de Acarreo (CCI - Cuttings Carrying Index)")
-    El CCI es el estándar para asegurar que el pozo esté limpio
-    CCI = (K * Densidad * Caudal) / (577 * Diametro)
-    k_index es el Consistency Index de Herschel-Bulkley calculado previamente
+    #El CCI es el estándar para asegurar que el pozo esté limpio
+    #CCI = (K * Densidad * Caudal) / (577 * Diametro)
+    #k_index es el Consistency Index de Herschel-Bulkley calculado previamente
     
-    cci = (k_index * densidad_lodo * v_actual_anular) / 400000 # Simplificación de campo
+    # cci = (k_index * densidad_lodo * v_actual_anular) / 400000 # Simplificación de campo
     
     fig_cci = go.Figure(go.Indicator(
         mode = "gauge+number",
