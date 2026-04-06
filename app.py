@@ -1573,23 +1573,23 @@ with kpi_col5:
     st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
 # --- CÁLCULO DE TEMPERATURA DE FONDO (Gradiente Geotérmico) ---
 # Supuestos para Mendoza/Cuenca Cuyana: 
-Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
-temp_superficie = 20 
-gradiente_geotermico = 0.03 °C/metro
-La lógica de alerta (PEGAR AQUÍ)
+#Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
+#temp_superficie = 20 
+#gradiente_geotermico = 0.03 °C/metro
+#La lógica de alerta (PEGAR AQUÍ)
 if temp_fondo > 120:
     st.sidebar.error(f"🌡️ ALTA TEMPERATURA: {round(temp_fondo, 1)}°C")
     st.sidebar.caption("⚠️ Riesgo de falla en sellos de motor de fondo y telemetría MWD.")
 elif temp_fondo > 100:
     st.sidebar.warning(f"💡 Temperatura elevada: {round(temp_fondo, 1)}°C")
-Cálculo dinámico
-temp_fondo = temp_superficie + (gradiente_geotermico * profundidad_actual)
+#Cálculo dinámico
+#temp_fondo = temp_superficie + (gradiente_geotermico * profundidad_actual)
 st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
 # --- GRÁFICO RADAR DE PERFORMANCE TÉCNICA ---
 st.subheader("🕸️ Análisis Multivariable de Operación")
 
 categories = ['Limpieza', 'Estabilidad', 'Eficiencia ROP', 'Integridad Zapata', 'Mecánica Sarta']
-Normalización de valores para el radar (0 a 1)
+#Normalización de valores para el radar (0 a 1)
 values = [
     min(cci, 1.5)/1.5, 
     1 - (abs(ecd_dinamico - (presion_poro + 0.5)) / 2), 
@@ -1627,17 +1627,17 @@ col_phys1, col_phys2 = st.columns(2)
 
 with col_phys1:
     st.subheader("Frecuencias Críticas (RPM)")
-    Cálculo simplificado de la primera frecuencia natural BHA
-    f = (1 / 2pi) * sqrt(E*I / m*L^4)
-    longitud_bha = 120  metros
-    diametro_interior = 3.0  inch
-    Frecuencia crítica en RPM
-    rpm_critica_1 = 60 * ( (10.2 / longitud_bha**2) * np.sqrt( (29e6 * (diametro_mecha**4 - diametro_interior**4)) / 490) )
+    #Cálculo simplificado de la primera frecuencia natural BHA
+    #f = (1 / 2pi) * sqrt(E*I / m*L^4)
+    #longitud_bha = 120  metros
+    #diametro_interior = 3.0  inch
+    #Frecuencia crítica en RPM
+    #rpm_critica_1 = 60 * ( (10.2 / longitud_bha**2) * np.sqrt( (29e6 * (diametro_mecha**4 - diametro_interior**4)) / 490) )
     
     st.write(f"**1ra Velocidad Crítica Teórica:** {round(rpm_critica_1, 1)} RPM")
     
-    Proximidad a la resonancia
-    proximidad = abs(rpm_actual - rpm_critica_1) / rpm_critica_1
+    #Proximidad a la resonancia
+    # proximidad = abs(rpm_actual - rpm_critica_1) / rpm_critica_1
     
     if proximidad < 0.1:
         st.error(f"🚨 RESONANCIA DETECTADA: Operando al {round((1-proximidad)*100,1)}% de la frecuencia crítica. ¡Cambie RPM inmediatamente!")
@@ -1646,12 +1646,12 @@ with col_phys1:
 
 with col_phys2:
     st.subheader("🦾 Rigidez a la Flexión (Stiff-String)")
-    Momento de Inercia de la tubería (I)
-    i_moment = (np.pi / 64) * (diametro_mecha**4 - diametro_interior**4)
-    Esfuerzo de flexión inducido por el DLS
-    Sigma = (E * d/2) / Radio_curvatura
-    radio_curvatura = 1718 / max(dls, 0.01) # pies
-    esfuerzo_flexion = (29e6 * (diametro_mecha / 2)) / (radio_curvatura * 12)
+    #Momento de Inercia de la tubería (I)
+    #i_moment = (np.pi / 64) * (diametro_mecha**4 - diametro_interior**4)
+    #Esfuerzo de flexión inducido por el DLS
+    # Sigma = (E * d/2) / Radio_curvatura
+   # radio_curvatura = 1718 / max(dls, 0.01) # pies
+   # esfuerzo_flexion = (29e6 * (diametro_mecha / 2)) / (radio_curvatura * 12)
     
     st.metric("Esfuerzo de Flexión", f"{round(esfuerzo_flexion / 1000, 1)} ksi")
     
