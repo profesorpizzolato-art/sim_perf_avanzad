@@ -1264,7 +1264,7 @@ with col_geo1:
 with col_geo2:
    # Gráfico de Geosteering (Sección Lateral)
     distancia = np.linspace(0, 500, 50)
-    Perfil _del_reservorio (Ondulado)
+   # Perfil _del_reservorio (Ondulado)
     techo_res = 2500 + 15 * np.sin(distancia / 100)
     piso_res = techo_res + 10 # Espesor de 10 metros
     
