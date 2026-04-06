@@ -1479,13 +1479,13 @@ else:
 
 # 3. Otros KPIs que podrías necesitar (MAASP, CCI, etc.)
 # ... (asegurate que todos se calculen aquí) ...
-SIMULACIÓN DE DINÁMICA DE ROTACIÓN 
+#SIMULACIÓN DE DINÁMICA DE ROTACIÓN 
 # 1. Recuperamos las RPM del slider (asegurate que el key coincida)
-rpm_actual = s.get('rpm', 0.0) 
+#rpm_actual = s.get('rpm', 0.0) 
 
 # 2. Factor de variación (esto simula vibraciones torsionales)
 # Si no tenés 'variacion_torque' definida, usamos un valor base de 1.0
-variacion_torque = s.get('var_torque', 1.0)
+#variacion_torque = s.get('var_torque', 1.0)
 
 # 3. Cálculo corregido (Línea 887)
 rpm_bit_real = rpm_actual * variacion_torque
@@ -1508,11 +1508,11 @@ if variacion_torque < 0.8:
 # --- CÁLCULO DE LIMPIEZA DE POZO (CCI) ---
 # 1. Recuperamos las variables del estado de la sesión (usando 's')
 # Asegurate de que 'caudal_gpm', 'id_hoyo' y 'od_dp' estén definidos arriba
-caudal = s.get('caudal_gpm', 0.0)
-diam_hoyo = 8.5   # Pulgadas
-diam_dp = 5.0     # Pulgadas (Drill Pipe)
-densidad_lodo = s.get('mw', 10.0)
-k_index = s.get('k_index', 0.5) # Índice de consistencia del lodo
+#caudal = s.get('caudal_gpm', 0.0)
+#diam_hoyo = 8.5   # Pulgadas
+#diam_dp = 5.0     # Pulgadas (Drill Pipe)
+#densidad_lodo = s.get('mw', 10.0)
+#k_index = s.get('k_index', 0.5) # Índice de consistencia del lodo
 
 # 2. Calculamos la Velocidad Anular (v_actual_anular) en ft/min
 # Fórmula: GPM / (Capacidad Anular en bbl/ft * 42) o simplificada:
