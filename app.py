@@ -382,8 +382,6 @@ if st.session_state.rol == "Instructor":
     with st.expander("Configurar Parámetros Iniciales", expanded=True):
         actual = leer_config_maestra()
         nueva_p = st.slider("Presión", 0, 5000, actual["presion"])
-        # ... resto de sliders
-        )
         st.session_state.params_instructor["wob"] = st.slider(
             "WOB (klbs)", 0, 50, st.session_state.params_instructor["wob"]
         )
