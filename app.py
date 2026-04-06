@@ -229,8 +229,9 @@ def generar_grafico_trayectoria(profundidad_actual):
 st.header("📊 Monitor de Perforación en Tiempo Real")
 
 # --- EN EL LÓGICA DEL ALUMNO ---
+# --- Lógica de renderizado en app.py ---
 
-# Llamada al motor (Fijate que ya no le pasamos 'rop', el motor la calcula)
+# 1. Llamamos al motor de física (asegúrate de tener 'import motor_calculos_avanzados as motor')
 res = motor.calcular_fisica_perforacion(
     wob=pizarra["wob_maestro"],
     rpm=pizarra["rpm_maestro"],
@@ -239,13 +240,16 @@ res = motor.calcular_fisica_perforacion(
     flow_rate=pizarra["caudal_maestro"]
 )
 
-# Renderizamos los nuevos Manómetros
-c1, c2, c3 = st.columns(3)
-with c1:
-    st.plotly_chart(crear_manometro(res["ROP"], "Velocidad ROP", "m/hr", 60, "lime"), use_container_width=True)
-with c2:
-    st.plotly_chart(crear_manometro(res["MSE"], "Eficiencia MSE", "kpsi", 100, "orange"), use_container_width=True)
-with c3:
+# 2. Dibujamos los manómetros usando tu nueva función
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.plotly_chart(crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True)
+
+with col2:
+    st.plotly_chart(crear_manometro(res["MSE"], "MSE", "kpsi", 100, "orange"), use_container_width=True)
+
+with col3:
     st.plotly_chart(crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 600, "white"), use_container_width=True)
 
 # Actualizamos la profundidad en la pizarra automáticamente (Simulando el avance)
