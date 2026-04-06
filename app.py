@@ -365,9 +365,6 @@ import streamlit as st
 import plotly.graph_objects as go  # <-- IMPORTANTE
 # ... otros imports ...
 
-# --- 1. PRIMERO LAS FUNCIONES ---
-def crear_manometro(valor, titulo, unidad, max_val, color_linea):
-    # (Aquí va el código que te pasé antes)
 def crear_manometro(valor, titulo, unidad, max_val, color_linea):
     fig = go.Figure(go.Indicator(
         mode = "gauge+number",
