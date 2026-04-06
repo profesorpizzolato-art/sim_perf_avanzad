@@ -4,7 +4,7 @@ import numpy as np
 import time
 import random
 import plotly.graph_objects as go
-import base64
+import base64 
 import os 
 from datetime import datetime
 from fpdf import FPDF
@@ -538,6 +538,13 @@ if pizarra["alarma_activa"]:
 else:
     st.success("✅ Sistema Estable - Esperando parámetros del Instructor")
 if st.session_state.rol == "Alumno":
+     # --- BLOQUE DE DEFINICIONES DE SEGURIDAD ---
+    fuerza_senal = 100.0  # Valor inicial
+    presion_fondo = 3500.0
+    # ... otras variables ...
+
+    # --- LUEGO EL RESTO DEL CÓDIGO ---
+    # (Aquí ya puedes usar fuerza_senal en la línea 1423 sin errores)
     # Leemos los valores que dejó el instructor
     p_inicial = st.session_state.params_instructor["presion"]
     wob_inicial = st.session_state.params_instructor["wob"]
@@ -1477,7 +1484,8 @@ with col_adv_t2:
    # Atenuación (Simplificada: aumenta con profundidad y viscosidad)
     #atenuacion = (profundidad_actual * 0.01) + (pv * 0.5)
     #fuerza_senal = max(0, 100 - atenuacion)
-    
+    # Definición de seguridad
+fuerza_senal = 85.0  # O el cálculo que necesites para la telemetría MWD
     fig_signal = go.Figure(go.Indicator(
         mode = "gauge+number",
         value = fuerza_senal,
