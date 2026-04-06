@@ -1791,7 +1791,7 @@ curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegaci
 # --- SECCIÓN DE REPORTES Y CERTIFICADOS ---
 if st.sidebar.button("🛠️ Generar Reporte Técnico"):
     try:
-        1. Intentamos generar el reporte principal
+        # 1. Intentamos generar el reporte principal
         pdf_bytes = generar_reporte_tecnico()
         datos_errores = st.session_state.get('errores_iadc', [])
         
