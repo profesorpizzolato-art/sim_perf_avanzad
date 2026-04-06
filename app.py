@@ -379,7 +379,7 @@ st.sidebar.write(f"Rol: **{st.session_state.rol.upper()}**")
 if st.session_state.rol == "instructor":
        st.title("🎮 Panel de Control del Instructor")
     
-    with st.expander("Configurar Parámetros Iniciales", expanded=True):
+   with st.expander("Configurar Parámetros Iniciales", expanded=True):
         # Al mover estos sliders, cambiamos el 'session_state' global
         st.session_state.params_instructor["presion"] = st.slider(
             "Presión Base (psi)", 0, 5000, st.session_state.params_instructor["presion"]
