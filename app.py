@@ -5,10 +5,24 @@ import time
 import random
 import plotly.graph_objects as go
 import base64
-import os
+import os 
 from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
+import json
+
+CONFIG_FILE = "params_simulador.json"
+
+def guardar_config_maestra(datos):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(datos, f)
+
+def leer_config_maestra():
+    if not os.path.exists(CONFIG_FILE):
+        # Valores por defecto si el archivo no existe
+        return {"presion": 3000, "wob": 10, "rpm": 60, "caudal": 400}
+    with open(CONFIG_FILE, "r") as f:
+        return json.load(f)
 # --- OPTIMIZACIONES DE RENDIMIENTO ---
 # --- OPTIMIZACIÓN DE RECURSOS ESTÁTICOS ---
 @st.cache_resource
@@ -135,7 +149,6 @@ if not st.session_state.autenticado:
     st.stop()
 
 # --- 3. DESDE AQUÍ EMPIEZA EL SIMULADOR (LOGUEADO) ---
-# ... resto de tu código
 # --- 1. INICIALIZACIÓN DE VARIABLES DE SESIÓN (OBLIGATORIO) ---
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
@@ -148,9 +161,14 @@ if "error_geo_activo" not in st.session_state:
     st.session_state.error_geo_activo = False
 if "error_tanques_activo" not in st.session_state:
     st.session_state.error_tanques_activo = False   
-# AGREGÁ ESTA LÍNEA AQUÍ ARRIBA:# --- EJEMPLO: CONTROL DE CIERRE DE POZO ---
-# --- DEFINICIÓN DE VARIABLES DE SEGURIDAD (Agregá esto arriba de la línea 87) ---
-
+# --- INICIALIZACIÓN DE PARÁMETROS MAESTROS (Solo una vez) ---
+if "params_instructor" not in st.session_state:
+    st.session_state.params_instructor = {
+        "presion": 3500.0,
+        "wob": 15.0,
+        "rpm": 80,
+        "caudal": 500.0
+    }
 # 1. Obtenemos el valor del slider de tanques (asegurate que el nombre coincida)
 ganancia_tanques = st.session_state.get('nivel_tanques', 0.0) 
 
@@ -359,6 +377,21 @@ st.sidebar.write(f"Rol: **{st.session_state.rol.upper()}**")
 
 # PANEL DEL INSTRUCTOR (Solo Fabricio puede modificar datos)
 if st.session_state.rol == "instructor":
+       st.title("🎮 Panel de Control del Instructor")
+    
+    with st.expander("Configurar Parámetros Iniciales", expanded=True):
+        # Al mover estos sliders, cambiamos el 'session_state' global
+        st.session_state.params_instructor["presion"] = st.slider(
+            "Presión Base (psi)", 0, 5000, st.session_state.params_instructor["presion"]
+        )
+        st.session_state.params_instructor["wob"] = st.slider(
+            "WOB (klbs)", 0, 50, st.session_state.params_instructor["wob"]
+        )
+        st.session_state.params_instructor["rpm"] = st.slider(
+            "RPM", 0, 200, st.session_state.params_instructor["rpm"]
+        )
+        
+    st.success("Parámetros actualizados para la sesión.")
     st.sidebar.markdown("---")
     st.sidebar.subheader("🎮 PANEL DE MODIFICACIÓN")
     
@@ -375,11 +408,35 @@ if st.session_state.rol == "instructor":
             pizarra["alarma_activa"] = False
             pizarra["incremento_kick"] = 0
             pizarra["mensaje_inst"] = "Operación Normal"
+if st.session_state.rol == "Instructor":
+    st.title("🎮 Panel de Control Maestro (MENFA)")
+    
+    # Cargar valores actuales para los sliders
+    actual = leer_config_maestra()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        nueva_p = st.slider("Presion Inicial (psi)", 0, 5000, actual["presion"])
+        nueva_wob = st.slider("WOB Inicial (klbs)", 0, 50, actual["wob"])
+    with col2:
+        nueva_rpm = st.slider("RPM Inicial", 0, 150, actual["rpm"])
+        nuevo_caudal = st.slider("Caudal Inicial (gpm)", 0, 1000, actual["caudal"])
+    
+    # Botón para "Lanzar" a todos los alumnos
+    if st.button("🚀 Sincronizar parámetros a todos los alumnos"):
+        datos_nuevos = {
+            "presion": nueva_p, 
+            "wob": nueva_wob, 
+            "rpm": nueva_rpm, 
+            "caudal": nuevo_caudal
+        }
+        guardar_config_maestra(datos_nuevos)
+        st.success("¡Parámetros enviados!")
+
 # --- DENTRO DE LA VISTA DEL ALUMNO ---
 if pizarra["alarma_activa"]:
     st.error(f"🔥 {pizarra['mensaje_inst']}")
-    
-    # Llamamos a la alarma sonora de tu carpeta assets
+       # Llamamos a la alarma sonora de tu carpeta assets
     reproducir_alarma_local()
     
     # EL BOTÓN CLAVE: Este botón afecta a la PIZARRA global
@@ -392,24 +449,51 @@ if pizarra["alarma_activa"]:
     else:
        st.success(f"✅ Estado: {pizarra['mensaje_inst']}")
        st.title("Simulador de Perforación en Tiempo Real")
-
+@st.fragment
+def monitor_datos_constantes(intervalo_ms=2000):
+    st_autorefresh(interval=intervalo_ms, key="refresh_alumno")
+    
+    # IMPORTANTE: El alumno lee el archivo que escribió el instructor
+    config = leer_config_maestra()
+    
+    # Ahora usamos esos valores para los cálculos o visualización
+    p_base = config["presion"]
+    wob_base = config["wob"]
+    
+    # Simular pequeña fluctuación sobre el valor del instructor
+    p_final = p_base + random.uniform(-5, 5)
+    
+    c1, c2 = st.columns(2)
+    c1.metric("Presión de Fondo (Set by Inst.)", f"{p_final:.1f} psi")
+    c2.metric("WOB Actual", f"{wob_base} klbs")
 # Lógica de incremento si hay Kick
 if pizarra["alarma_activa"]:
     pizarra["incremento_kick"] += 10 # La presión sube sola mientras no se libere
 
 presion_total = pizarra["presion_base"] + pizarra["incremento_kick"]
-
 col1, col2 = st.columns(2)
 col1.metric("SIDP (Tubería)", f"{presion_total} PSI", delta=f"+{pizarra['incremento_kick']}" if pizarra["alarma_activa"] else None)
 col2.metric("SICP (Anular)", f"{presion_total + 200} PSI")
 
 if pizarra["alarma_activa"]:
     st.error(f"⚠️ {pizarra['mensaje_inst']}")
-    # Aquí puedes agregar el código de la sirena que vimos antes
 else:
     st.success("✅ Sistema Estable - Esperando parámetros del Instructor")
+if st.session_state.rol == "Alumno":
+    # Leemos los valores que dejó el instructor
+    p_inicial = st.session_state.params_instructor["presion"]
+    wob_inicial = st.session_state.params_instructor["wob"]
+    rpm_inicial = st.session_state.params_instructor["rpm"]
 
-
+    # Mostramos los monitores usando esos valores
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Presión", f"{p_inicial} psi")
+    col2.metric("WOB", f"{wob_inicial} klbs")
+    col3.metric("RPM", f"{rpm_inicial}")
+    
+    # Si el alumno tiene sliders para "operar", su valor inicial (value) 
+    # debe ser el del instructor
+    wob_alumno = st.slider("Ajustar WOB", 0, 50, value=wob_inicial)
 import base64
 import os
 
