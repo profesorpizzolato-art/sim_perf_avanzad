@@ -97,15 +97,28 @@ st.sidebar.image("logo.menfa.png", use_container_width=True)
 st.sidebar.title(f"Usuario: {st.session_state.usuario}")
 
 # --- PANEL DEL INSTRUCTOR (Aproximadamente línea 100) ---
-st.sidebar.title("👨‍🏫 Panel del Instructor")
+# --- 1. CONFIGURACIÓN DE LA BARRA LATERAL ---
+with st.sidebar:
+    st.title("👨‍🏫 Panel del Instructor")
+    
+    # --- AQUÍ VAN LOS SLIDERS "A PRUEBA DE BALAS" ---
+    
+    # Caudal (GPM)
+    val_caudal = max(0.0, min(1200.0, float(pizarra["caudal_maestro"])))
+    nuevo_caudal = st.sidebar.slider("Caudal (GPM)", 0, 1200, val_caudal)
+    pizarra["caudal_maestro"] = nuevo_caudal
 
-# Asegurate de que estas líneas NO tengan espacios extra al principio
-nuevo_caudal = st.sidebar.slider("Caudal (GPM)", 0, 1200, float(pizarra["caudal_maestro"]))
-nuevo_wob = st.sidebar.slider("WOB (klbs)", 0, 100, float(pizarra["wob_maestro"]))
-nuevo_rpm = st.sidebar.slider("RPM", 0, 200, float(pizarra["rpm_maestro"]))
+    # WOB (klbs)
+    val_wob = max(0.0, min(100.0, float(pizarra["wob_maestro"])))
+    nuevo_wob = st.sidebar.slider("WOB (klbs)", 0, 100, val_wob)
+    pizarra["wob_maestro"] = nuevo_wob
 
-# El divisor debe estar ALINEADO con los sliders de arriba
-st.sidebar.divider() 
+    # RPM
+    val_rpm = max(0.0, min(200.0, float(pizarra["rpm_maestro"])))
+    nuevo_rpm = st.sidebar.slider("RPM", 0, 200, val_rpm)
+    pizarra["rpm_maestro"] = nuevo_rpm
+
+    st.sidebar.divider()
 
 st.sidebar.subheader("🕹️ Simulación de Fallas")
 
