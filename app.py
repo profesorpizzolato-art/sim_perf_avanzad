@@ -1458,7 +1458,7 @@ with col_adv_t1:
         st.info("💡 Lodo altamente pseudoplástico: Excelente para limpieza con bajo caudal.")
 
 with col_adv_t2:
-st.subheader("📡 Calidad de Señal MWD")
+    st.subheader("📡 Calidad de Señal MWD")
     
     # --- CÁLCULOS TÉCNICOS (Comentados para evitar errores) ---
     # La compresibilidad del lodo afecta la velocidad del pulso
