@@ -126,16 +126,23 @@ pizarra["wob_maestro"] = nuevo_wob
 pizarra["rpm_maestro"] = nuevo_rpm
 st.sidebar.divider()
 
-if not pizarra["alarma_activa"]:
-# --- LÓGICA DE CONTROL DE EVENTOS (Línea 130 aprox) ---
 if st.session_state.get("evento_activo") == "KICK":
+    # Acción obligatoria: La presión sube si el pozo no está cerrado
     if not pizarra["bop_cerrado"]:
-        pizarra["presion_base"] += 2.5 # La presión sube si no cierran
+        pizarra["presion_base"] += 2.5 
         st.error("🚨 ¡ALERTA DE KICK! PRESIÓN EN AUMENTO")
     else:
-        # ESTE ES EL ELSE DE LA LÍNEA 134 CORREGIDO:
         st.success("✅ POZO CERRADO BAJO PRESIÓN (SIDPP)")
-        st.info(f"Presión Estabilizada: {pizarra['presion_base']} psi")
+
+elif st.session_state.get("evento_activo") == "PERDIDA":
+    # Acción obligatoria: Bajamos el caudal de retorno simulado
+    st.warning("📉 PÉRDIDA DE CIRCULACIÓN DETECTADA")
+    pizarra["caudal_maestro"] *= 0.9
+
+elif st.session_state.get("evento_activo") == "FALLA_BOMBA":
+    # Acción obligatoria: Reducimos la potencia de bombeo
+    st.error("💥 FALLA EN VÁLVULA DE BOMBA 1")
+    pizarra["caudal_maestro"] = 250.0
 
 # --- MODO ALUMNO (VISUALIZACIÓN Y ACCIÓN) ---
 st.title("📟 Panel Integral de Operaciones")
