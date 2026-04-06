@@ -1360,9 +1360,9 @@ if dls > 2.5 and wob > 20:
     st.error("⚠️ RIESGO DE FATIGA: DLS excesivo con alto WOB.")
     st.warning("Reduzca el peso sobre el trépano para evitar rotura de sarta.")
     st.subheader("🌡️ Efecto Térmico en el Lodo")
-    temp_superficie = 20 °C
-    gradiente_termico = 0.03 °C/m
-    temp_fondo = temp_superficie + (gradiente_termico * profundidad_actual)
+    # temp_superficie = 20 °C
+    # gradiente_termico = 0.03 °C/m
+    # temp_fondo = temp_superficie + (gradiente_termico * profundidad_actual)
     
     # La densidad cae aprox 0.01 ppg por cada 15°C de aumento
     # reduccion_densidad = (temp_fondo - 20) / 15 * 0.01
