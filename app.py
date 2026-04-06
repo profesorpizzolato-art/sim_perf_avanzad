@@ -97,28 +97,40 @@ st.sidebar.image("logo.menfa.png", use_container_width=True)
 st.sidebar.title(f"Usuario: {st.session_state.usuario}")
 
 # --- PANEL DEL INSTRUCTOR (Aproximadamente línea 100) ---
-# --- 1. CONFIGURACIÓN DE LA BARRA LATERAL ---
+# --- PANEL DEL INSTRUCTOR (Línea 100 en adelante) ---
 with st.sidebar:
     st.title("👨‍🏫 Panel del Instructor")
     
-    # --- AQUÍ VAN LOS SLIDERS "A PRUEBA DE BALAS" ---
+    # 1. CAUDAL: Forzamos a que todo sea número entero
+    try:
+        val_c = int(float(pizarra.get("caudal_maestro", 500)))
+    except:
+        val_c = 500
     
-    # Caudal (GPM)
-    val_caudal = max(0.0, min(1200.0, float(pizarra["caudal_maestro"])))
-    nuevo_caudal = st.sidebar.slider("Caudal (GPM)", 0, 1200, val_caudal)
-    pizarra["caudal_maestro"] = nuevo_caudal
+    # Aseguramos rango 0-1200 y que sea INT
+    val_c = max(0, min(1200, val_c))
+    nuevo_caudal = st.slider("Caudal (GPM)", 0, 1200, val_c, step=1)
+    pizarra["caudal_maestro"] = float(nuevo_caudal)
 
-    # WOB (klbs)
-    val_wob = max(0.0, min(100.0, float(pizarra["wob_maestro"])))
-    nuevo_wob = st.sidebar.slider("WOB (klbs)", 0, 100, val_wob)
-    pizarra["wob_maestro"] = nuevo_wob
+    # 2. WOB: Rango 0-100
+    try:
+        val_w = int(float(pizarra.get("wob_maestro", 0)))
+    except:
+        val_w = 0
+        
+    val_w = max(0, min(100, val_w))
+    nuevo_wob = st.slider("WOB (klbs)", 0, 100, val_w, step=1)
+    pizarra["wob_maestro"] = float(nuevo_wob)
 
-    # RPM
-    val_rpm = max(0.0, min(200.0, float(pizarra["rpm_maestro"])))
-    nuevo_rpm = st.sidebar.slider("RPM", 0, 200, val_rpm)
-    pizarra["rpm_maestro"] = nuevo_rpm
-
-    st.sidebar.divider()
+    # 3. RPM: Rango 0-200
+    try:
+        val_r = int(float(pizarra.get("rpm_maestro", 0)))
+    except:
+        val_r = 0
+        
+    val_r = max(0, min(200, val_r))
+    nuevo_rpm = st.slider("RPM", 0, 200, val_r, step=1)
+    pizarra["rpm_maestro"] = float(nuevo_rpm)
 
 st.sidebar.subheader("🕹️ Simulación de Fallas")
 
