@@ -30,8 +30,8 @@ def leer_config_maestra():
 # --- OPTIMIZACIÓN DE RECURSOS ---
 @st.cache_resource
 def cargar_logo_eficiente():
-    if os.path.exists("logo_menfa.png"):
-        return "logo_menfa.png"
+    if os.path.exists("logo.menfa.png"):
+        return "logo.menfa.png"
     return None
 
 logo_path = cargar_logo_eficiente()
@@ -59,8 +59,6 @@ if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario = ""
     st.session_state.rol = None
-if "penalizaciones" not in st.session_state:
-    st.session_state.penalizaciones = []
 
 # --- 2. CARÁTULA DE INGRESO ---
 if not st.session_state.autenticado:
@@ -1460,17 +1458,16 @@ with col_adv_t1:
         st.info("💡 Lodo altamente pseudoplástico: Excelente para limpieza con bajo caudal.")
 
 with col_adv_t2:
-    st.subheader("📡 Calidad de Señal MWD")
-  #  La compresibilidad_del lodo afecta la velocidad _del pulso
-  #  v = sqrt(K / rho)
-   # modulo_bulk = 220000 # PSI aprox para lodo base agua
-   # velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) ft/s
+st.subheader("📡 Calidad de Señal MWD")
     
-   # Atenuación (Simplificada: aumenta con profundidad y viscosidad)
-    #atenuacion = (profundidad_actual * 0.01) + (pv * 0.5)
-    #fuerza_senal = max(0, 100 - atenuacion)
-    # Definición de seguridad
-fuerza_senal = 85.0  # O el cálculo que necesites para la telemetría MWD
+    # --- CÁLCULOS TÉCNICOS (Comentados para evitar errores) ---
+    # La compresibilidad del lodo afecta la velocidad del pulso
+    # v = sqrt(K / rho)
+    # modulo_bulk = 220000 
+    
+    # Definición de seguridad (Alineada con el subheader)
+    fuerza_senal = 85.0  
+    
     fig_signal = go.Figure(go.Indicator(
         mode = "gauge+number",
         value = fuerza_senal,
@@ -1481,9 +1478,9 @@ fuerza_senal = 85.0  # O el cálculo que necesites para la telemetría MWD
             'steps': [{'range': [0, 30], 'color': "rgba(255, 0, 0, 0.3)"}]
         }
     ))
+    
     fig_signal.update_layout(height=280, paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_signal, use_container_width=True)
-
  # --- DIAGNÓSTICO DE PRECISIÓN ---
 if fuerza_senal < 20:
     st.error("🚨 PERDIDA DE TELEMETRÍA: La viscosidad o profundidad impiden recibir datos LWD. ¡Geonavegación a ciegas!")
