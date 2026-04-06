@@ -360,3 +360,37 @@ def crear_manometro(valor, titulo, unidad, max_val, color_linea):
     )
     return fig
 
+import plotly.graph_objects as go
+
+def crear_manometro(valor, titulo, unidad, max_val, color_linea):
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = valor,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': f"<b>{titulo}</b><br><span style='font-size:0.8em;color:gray'>{unidad}</span>", 'font': {'size': 18}},
+        gauge = {
+            'axis': {'range': [None, max_val], 'tickwidth': 1, 'tickcolor': "white"},
+            'bar': {'color': color_linea},
+            'bgcolor': "rgba(0,0,0,0)",
+            'borderwidth': 2,
+            'bordercolor': "#555",
+            'steps': [
+                {'range': [0, max_val*0.8], 'color': 'rgba(0, 255, 0, 0.1)'},
+                {'range': [max_val*0.8, max_val], 'color': 'rgba(255, 0, 0, 0.3)'}
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': valor
+            }
+        }
+    ))
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=20, r=20, t=50, b=20),
+        height=250,
+        font={'color': "white", 'family': "Arial"}
+    )
+    return fig
+    
