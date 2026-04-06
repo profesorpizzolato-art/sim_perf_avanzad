@@ -15,6 +15,14 @@ import torque_and_drag as td
 import bombas_de_lodo as bombas
 import sartas_perforacion as sartas
 
+import sys
+import os
+
+# Esto le dice a Python que busque módulos en la carpeta donde está app.py
+sys.path.append(os.path.dirname(__file__))
+
+import streamlit as st
+import bombas_de_lodo as bombas  # Ahora debería encontrarlo
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="MENFA 3.0 - Mendoza Oil Industry", layout="wide", page_icon="🏗️")
 
