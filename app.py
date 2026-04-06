@@ -28,8 +28,8 @@ if not st.session_state.autenticado:
     
     with col_logo:
         # LÓGICA DEL LOGO:
-        if os.path.exists("logo_menfa.png"):
-            st.image("logo_menfa.png", use_container_width=True)
+        if os.path.exists("logo.menfa.png"):
+            st.image("logo.menfa.png", use_container_width=True)
         else:
             # Si no está el archivo, mostramos un título grande
             st.markdown("<h1 style='text-align: center;'>🏗️ MENFA</h1>", unsafe_allow_html=True)
