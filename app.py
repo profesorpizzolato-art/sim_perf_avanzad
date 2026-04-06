@@ -127,15 +127,15 @@ pizarra["rpm_maestro"] = nuevo_rpm
 st.sidebar.divider()
 
 if not pizarra["alarma_activa"]:
-        if st.sidebar.button("🚨 ACTIVAR KICK / SURGENCIA", type="primary", use_container_width=True):
-            pizarra["alarma_activa"] = True
-            pizarra["bop_cerrado"] = False
-            pizarra["mensaje_evento"] = "¡AMENAZA DE SURGENCIA DETECTADA! CIERRE EL POZO."
+# --- LÓGICA DE CONTROL DE EVENTOS (Línea 130 aprox) ---
+if st.session_state.get("evento_activo") == "KICK":
+    if not pizarra["bop_cerrado"]:
+        pizarra["presion_base"] += 2.5 # La presión sube si no cierran
+        st.error("🚨 ¡ALERTA DE KICK! PRESIÓN EN AUMENTO")
     else:
-        if st.sidebar.button("✅ NORMALIZAR SISTEMA", use_container_width=True):
-            pizarra["alarma_activa"] = False
-            pizarra["bop_cerrado"] = False
-            pizarra["mensaje_evento"] = "Operación Normal"
+        # ESTE ES EL ELSE DE LA LÍNEA 134 CORREGIDO:
+        st.success("✅ POZO CERRADO BAJO PRESIÓN (SIDPP)")
+        st.info(f"Presión Estabilizada: {pizarra['presion_base']} psi")
 
 # --- MODO ALUMNO (VISUALIZACIÓN Y ACCIÓN) ---
 st.title("📟 Panel Integral de Operaciones")
