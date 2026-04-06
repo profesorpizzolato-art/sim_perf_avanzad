@@ -1180,21 +1180,21 @@ with col_geo1:
     st.info(f"Objetivo: Mantener GR < 40 API")
 
 with col_geo2:
-    # Gráfico de Geosteering (Sección Lateral)
+    Gráfico de Geosteering (Sección Lateral)
     distancia = np.linspace(0, 500, 50)
-    # Perfil del reservorio (Ondulado)
+    Perfil _del_reservorio (Ondulado)
     techo_res = 2500 + 15 * np.sin(distancia / 100)
     piso_res = techo_res + 10 # Espesor de 10 metros
     
-    # Trayectoria del pozo basada en la inclinación
+    Trayectoria_del_ pozo basada en la inclinación
     trayectoria = 2505 + (distancia * np.tan(np.radians(90 - inc_deseada)))
 
     fig_geo = go.Figure()
-    # Dibujar Reservorio
+    Dibujar Reservorio
     fig_geo.add_trace(go.Scatter(x=distancia, y=techo_res, name="Techo Reservorio", line=dict(color='gray', dash='dash')))
     fig_geo.add_trace(go.Scatter(x=distancia, y=piso_res, name="Piso Reservorio", fill='tonexty', fillcolor='rgba(255, 255, 0, 0.2)', line=dict(color='gray')))
     
-    # Dibujar Pozo
+    Dibujar Pozo
     fig_geo.add_trace(go.Scatter(x=distancia, y=trayectoria, name="Trayectoria Pozo", line=dict(color='lime', width=4)))
 
     fig_geo.update_layout(
@@ -1221,12 +1221,12 @@ col_tor1, col_tor2 = st.columns([1, 2])
 
 with col_tor1:
     st.subheader("📐 Parámetros de Curvatura")
-    # Simulación de cambio de inclinación entre estaciones
+    Simulación de cambio de inclinación entre estaciones
     inc_anterior = 89.5 
     delta_inc = abs(inc_deseada - inc_anterior)
     distancia_estacion = 30 # metros estándar
     
-    # Cálculo de DLS (°/30m)
+    Cálculo de DLS (°/30m)
     dls = (delta_inc / distancia_estacion) * 30
     
     st.metric("Dogleg Severity (DLS)", f"{round(dls, 2)} °/30m")
@@ -1241,7 +1241,7 @@ with col_tor1:
 
 with col_tor2:
     st.subheader("📈 Mapa de Tortuosidad Acumulada")
-    # Generar una trayectoria con "ruido" para visualizar tortuosidad
+    Generar una trayectoria con "ruido" para visualizar tortuosidad
     puntos = np.linspace(0, 100, 20)
     ideal = 90 + 0 * puntos
     real = ideal + (dls * np.sin(puntos/5) * 0.5) # Simula la sinuosidad
@@ -1259,33 +1259,30 @@ with col_tor2:
     )
     st.plotly_chart(fig_tor, use_container_width=True)
 
-# --- CÁLCULO DE CARGA EN EL GANCHO (HOOK LOAD) ---
+ --- CÁLCULO DE CARGA EN EL GANCHO (HOOK LOAD) ---
 
 # 1. Recuperamos el WOB del estado de la sesión o del slider
 # (Usamos .get para que si no existe, devuelva 0 y no explote)
 wob_valor = st.session_state.get('wob', 0.0) 
 
-# 2. Variables de fricción (asegurate que estén definidas arriba)
+Variables de fricción (asegurate que estén definidas arriba)
 hook_load_estatico = s.get('peso_sarta', 150.0) # Valor base en klbs
 drag_friccion = s.get('drag', 5.0)
-
-# 3. Cálculo corregido (Línea 779)
 hook_load_real = hook_load_estatico - drag_friccion - (wob_valor * 0.8)
 
-# --- ANÁLISIS DE RIESGO DIRECCIONAL ---
+--- ANÁLISIS DE RIESGO DIRECCIONAL ---
 dls = s.get('dls_actual', 0.0)
 wob = s.get('wob', 0.0)
 
-# Asegurate de que no haya espacios extra al inicio de este 'if'
 if dls > 2.5 and wob > 20:
     st.error("⚠️ RIESGO DE FATIGA: DLS excesivo con alto WOB.")
     st.warning("Reduzca el peso sobre el trépano para evitar rotura de sarta.")
     st.subheader("🌡️ Efecto Térmico en el Lodo")
-    temp_superficie = 20 # °C
-    gradiente_termico = 0.03 # °C/m
+    temp_superficie = 20 °C
+    gradiente_termico = 0.03 °C/m
     temp_fondo = temp_superficie + (gradiente_termico * profundidad_actual)
     
-    # La densidad cae aprox 0.01 ppg por cada 15°C de aumento
+    La densidad cae aprox 0.01 ppg por cada 15°C de aumento
     reduccion_densidad = (temp_fondo - 20) / 15 * 0.01
     densidad_fondo_real = densidad_lodo - reduccion_densidad
 
@@ -1293,7 +1290,7 @@ if dls > 2.5 and wob > 20:
     st.metric("Densidad Real en Fondo", f"{round(densidad_fondo_real, 2)} ppg", 
               delta=f"-{round(reduccion_densidad, 3)} por expansión térmica", delta_color="inverse")
 
-# --- GRÁFICA DE ESFUERZOS ACUMULADOS ---
+--- GRÁFICA DE ESFUERZOS ACUMULADOS ---
 st.subheader("📊 Gráfico de Cargas Críticas")
 depth_array = np.linspace(0, profundidad_actual, 50)
 carga_limite = 200 - (depth_array * 0.01) # Límite de tensión de la tubería
@@ -1305,20 +1302,19 @@ fig_esf.add_trace(go.Scatter(x=depth_array, y=carga_actual, name="Carga en la Sa
 fig_esf.update_layout(title="Margen de Tensión (Overpull Capability)", template="plotly_dark", height=300)
 st.plotly_chart(fig_esf, use_container_width=True)
 
-# --- MÓDULO DE REOLOGÍA AVANZADA Y TELEMETRÍA ---
+--- MÓDULO DE REOLOGÍA AVANZADA Y TELEMETRÍA ---
 st.divider()
 st.header("🧬 Física de Fluidos y Telemetría MWD")
-
 col_adv_t1, col_adv_t2 = st.columns(2)
 
 with col_adv_t1:
     st.subheader("🧪 Modelo de Herschel-Bulkley")
-    # Entradas de laboratorio (Fann 35)
+    Entradas de laboratorio (Fann 35)
     r600 = st.number_input("Lectura 600 RPM", value=50)
     r300 = st.number_input("Lectura 300 RPM", value=30)
     r3 = st.number_input("Lectura 3 RPM (Gel)", value=5)
     
-    # Cálculo de índices n, k y Tau0
+    Cálculo de índices n, k y Tau0
     n_index = 3.32 * np.log10(r600 / r300)
     k_index = (0.511 * r300) / (511**n_index)
     tau0 = r3 # Aproximación simple del Yield Stress real
@@ -1331,12 +1327,12 @@ with col_adv_t1:
 
 with col_adv_t2:
     st.subheader("📡 Calidad de Señal MWD")
-    # La compresibilidad del lodo afecta la velocidad del pulso
-    # v = sqrt(K / rho)
+    La compresibilidad_del lodo afecta la velocidad _del pulso
+    v = sqrt(K / rho)
     modulo_bulk = 220000 # PSI aprox para lodo base agua
-    velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) # ft/s
+    velocidad_pulso = np.sqrt((modulo_bulk * 144) / (densidad_lodo * 0.00149)) ft/s
     
-    # Atenuación (Simplificada: aumenta con profundidad y viscosidad)
+    Atenuación (Simplificada: aumenta con profundidad y viscosidad)
     atenuacion = (profundidad_actual * 0.01) + (pv * 0.5)
     fuerza_senal = max(0, 100 - atenuacion)
     
@@ -1401,8 +1397,7 @@ else:
 
 # 3. Otros KPIs que podrías necesitar (MAASP, CCI, etc.)
 # ... (asegurate que todos se calculen aquí) ...
-# --- SIMULACIÓN DE DINÁMICA DE ROTACIÓN ---
-
+SIMULACIÓN DE DINÁMICA DE ROTACIÓN 
 # 1. Recuperamos las RPM del slider (asegurate que el key coincida)
 rpm_actual = s.get('rpm', 0.0) 
 
@@ -1429,7 +1424,6 @@ if variacion_torque < 0.8:
 
 
 # --- CÁLCULO DE LIMPIEZA DE POZO (CCI) ---
-
 # 1. Recuperamos las variables del estado de la sesión (usando 's')
 # Asegurate de que 'caudal_gpm', 'id_hoyo' y 'od_dp' estén definidos arriba
 caudal = s.get('caudal_gpm', 0.0)
@@ -1444,8 +1438,6 @@ if (diam_hoyo**2 - diam_dp**2) > 0:
     v_actual_anular = (24.5 * caudal) / (diam_hoyo**2 - diam_dp**2)
 else:
     v_actual_anular = 0
-
-# 3. Cálculo corregido del CCI (Línea 937)
 if v_actual_anular > 0:
     cci = (k_index * densidad_lodo * v_actual_anular) / 400000
 else:
@@ -1467,9 +1459,7 @@ if cci < 1.0:
 # --- PANEL DE TELEMETRÍA MAESTRA (KPI CONSOLIDATED VIEW) ---
 st.divider()
 st.header("📡 Centro de Control y Telemetría de Alta Fidelidad")
-# --- CÁLCULO DE VIBRACIONES (Pegar antes de la línea 960) ---
-# Simulamos la vibración axial (Bit Bounce) basada en WOB y RPM
-# Si no hay rotación o peso, la vibración es mínima (0.1)
+
 if rpm_actual > 0 and wob > 0:
     vibracion_axial = (wob / 5) * (rpm_actual / 100) * random.uniform(0.8, 1.2)
 else:
@@ -1501,25 +1491,23 @@ with kpi_col5:
     st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
 # --- CÁLCULO DE TEMPERATURA DE FONDO (Gradiente Geotérmico) ---
 # Supuestos para Mendoza/Cuenca Cuyana: 
-# Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
+Temp Superficie: 20°C | Gradiente: 3°C por cada 100m
 temp_superficie = 20 
-gradiente_geotermico = 0.03 # °C/metro
-# 2. La lógica de alerta (PEGAR AQUÍ)
+gradiente_geotermico = 0.03 °C/metro
+La lógica de alerta (PEGAR AQUÍ)
 if temp_fondo > 120:
     st.sidebar.error(f"🌡️ ALTA TEMPERATURA: {round(temp_fondo, 1)}°C")
     st.sidebar.caption("⚠️ Riesgo de falla en sellos de motor de fondo y telemetría MWD.")
 elif temp_fondo > 100:
     st.sidebar.warning(f"💡 Temperatura elevada: {round(temp_fondo, 1)}°C")
-# Cálculo dinámico
+Cálculo dinámico
 temp_fondo = temp_superficie + (gradiente_geotermico * profundidad_actual)
-
-# Ahora la línea 1019 funcionará correctamente
 st.metric("Temp Fondo", f"{round(temp_fondo, 0)}°C")
 # --- GRÁFICO RADAR DE PERFORMANCE TÉCNICA ---
 st.subheader("🕸️ Análisis Multivariable de Operación")
 
 categories = ['Limpieza', 'Estabilidad', 'Eficiencia ROP', 'Integridad Zapata', 'Mecánica Sarta']
-# Normalización de valores para el radar (0 a 1)
+Normalización de valores para el radar (0 a 1)
 values = [
     min(cci, 1.5)/1.5, 
     1 - (abs(ecd_dinamico - (presion_poro + 0.5)) / 2), 
@@ -1551,22 +1539,22 @@ st.caption(f"© 2026 Menfa Capacitaciones - Mendoza, Argentina. Sistema de Simul
 
 # --- MÓDULO DE RESONANCIA ESTRUCTURAL Y RIGIDEZ (Advanced Physics) ---
 st.divider()
-st.header("🎻 Análisis de Resonancia y Rigidez de Sarta")
+st.header("Análisis de Resonancia y Rigidez de Sarta")
 
 col_phys1, col_phys2 = st.columns(2)
 
 with col_phys1:
-    st.subheader("🎵 Frecuencias Críticas (RPM)")
-    # Cálculo simplificado de la primera frecuencia natural del BHA
-    # f = (1 / 2pi) * sqrt(E*I / m*L^4)
-    longitud_bha = 120 # metros
-    diametro_interior = 3.0 # in
-    # Frecuencia crítica en RPM
+    st.subheader("Frecuencias Críticas (RPM)")
+    Cálculo simplificado de la primera frecuencia natural BHA
+    f = (1 / 2pi) * sqrt(E*I / m*L^4)
+    longitud_bha = 120  metros
+    diametro_interior = 3.0  inch
+    Frecuencia crítica en RPM
     rpm_critica_1 = 60 * ( (10.2 / longitud_bha**2) * np.sqrt( (29e6 * (diametro_mecha**4 - diametro_interior**4)) / 490) )
     
     st.write(f"**1ra Velocidad Crítica Teórica:** {round(rpm_critica_1, 1)} RPM")
     
-    # Proximidad a la resonancia
+    Proximidad a la resonancia
     proximidad = abs(rpm_actual - rpm_critica_1) / rpm_critica_1
     
     if proximidad < 0.1:
@@ -1576,16 +1564,16 @@ with col_phys1:
 
 with col_phys2:
     st.subheader("🦾 Rigidez a la Flexión (Stiff-String)")
-    # Momento de Inercia de la tubería (I)
+    Momento de Inercia de la tubería (I)
     i_moment = (np.pi / 64) * (diametro_mecha**4 - diametro_interior**4)
-    # Esfuerzo de flexión inducido por el DLS
-    # Sigma = (E * d/2) / Radio_curvatura
+    Esfuerzo de flexión inducido por el DLS
+    Sigma = (E * d/2) / Radio_curvatura
     radio_curvatura = 1718 / max(dls, 0.01) # pies
     esfuerzo_flexion = (29e6 * (diametro_mecha / 2)) / (radio_curvatura * 12)
     
     st.metric("Esfuerzo de Flexión", f"{round(esfuerzo_flexion / 1000, 1)} ksi")
     
-    # Límite de Fatiga (Aproximación para Acero Grado S-135)
+    Límite de Fatiga (Aproximación para Acero Grado S-135)
     limite_fatiga = 45 # ksi
     st.progress(min(esfuerzo_flexion / (limite_fatiga * 1000), 1.0), 
                 text=f"Consumo de Vida Útil por Ciclo: {round((esfuerzo_flexion/(limite_fatiga*1000))*100, 2)}%")
@@ -1598,7 +1586,7 @@ col_kin1, col_kin2 = st.columns(2)
 
 with col_kin1:
     st.subheader("⚡ Dinámica Axial (Bit Bounce)")
-    # Simulación de aceleración G en la mecha
+    Simulación de aceleración G en la mecha
     vibracion_axial = (wob / 5) * (rpm_actual / 100) * 1.5 # Valor base simulado
     
     st.metric("Vibración Axial (G-RMS)", f"{round(vibracion_axial, 2)} G")
@@ -1610,9 +1598,9 @@ with col_kin1:
 
 with col_kin2:
     st.subheader("🧪 Eficiencia de Acarreo (CCI - Cuttings Carrying Index)")
-    # El CCI es el estándar para asegurar que el pozo esté limpio
-    # CCI = (K * Densidad * Caudal) / (577 * Diametro)
-    # k_index es el Consistency Index de Herschel-Bulkley calculado previamente
+    El CCI es el estándar para asegurar que el pozo esté limpio
+    CCI = (K * Densidad * Caudal) / (577 * Diametro)
+    k_index es el Consistency Index de Herschel-Bulkley calculado previamente
     
     cci = (k_index * densidad_lodo * v_actual_anular) / 400000 # Simplificación de campo
     
@@ -1642,9 +1630,6 @@ if cci < 1.0:
     > **Ingeniería Menfa:** El CCI actual de **{round(cci,2)}** indica que el lodo no tiene suficiente 'capacidad de transporte'. 
     > Aumente el **Yield Point (YP)** o incremente el **Caudal** para evitar el enterramiento de la sarta.
     """)
-
-
-
 
 # --- PANEL DE TELEMETRÍA MAESTRA (KPI CONSOLIDATED VIEW) ---
 st.divider()
@@ -1724,7 +1709,7 @@ curso_tipo = st.sidebar.selectbox("Módulo:", ["Perforación IADC", "Geonavegaci
 # --- SECCIÓN DE REPORTES Y CERTIFICADOS ---
 if st.sidebar.button("🛠️ Generar Reporte Técnico"):
     try:
-        # 1. Intentamos generar el reporte principal
+        1. Intentamos generar el reporte principal
         pdf_bytes = generar_reporte_tecnico()
         datos_errores = st.session_state.get('errores_iadc', [])
         
@@ -1739,7 +1724,6 @@ if st.sidebar.button("🛠️ Generar Reporte Técnico"):
             mime="application/pdf"
         )
         
-        # 2. Generamos el Certificado de Alumno automáticamente debajo
         nombre_alumno = st.session_state.get('nombre_alumno', 'Alumno Menfa')
         dni_alumno = st.session_state.get('dni_alumno', '00.000.000')
         curso_tipo = "Perforación y Control de Pozos"
@@ -1849,10 +1833,10 @@ import plotly.graph_objects as go
 def graficar_geologia_y_pozo(profundidad):
     import plotly.graph_objects as go
     
-    # 1. Creamos la figura explícitamente
+    Creamos la figura explícitamente
     fig = go.Figure()
 
-    # 2. Dibujamos las capas geológicas (usando tus topes de Mendoza/Neuquén)
+    Dibujamos las capas geológicas (usando tus topes de Mendoza/Neuquén)
     for capa in topes_reales:
         fig.add_shape(
             type="rect", x0=0, x1=1, y0=capa["top"], y1=capa["base"],
@@ -1864,7 +1848,6 @@ def graficar_geologia_y_pozo(profundidad):
             text=capa["nombre"], showarrow=False, font=dict(color="white")
         )
 
-    # 3. Dibujamos el pozo (una línea que baja con la profundidad actual)
     fig.add_trace(go.Scatter(
         x=[0.5, 0.5], y=[0, profundidad],
         mode="lines+markers",
@@ -1872,7 +1855,6 @@ def graficar_geologia_y_pozo(profundidad):
         name="Pozo en Perforación"
     ))
 
-    # 4. Configuramos los ejes (AQUÍ ESTABA EL ERROR)
     fig.update_layout(
         title="Perfil Geológico y Estado del Pozo",
         xaxis=dict(showticklabels=False, range=[0, 1]),
@@ -1884,8 +1866,6 @@ def graficar_geologia_y_pozo(profundidad):
     return fig
 # --- Aseguramos la existencia de la variable ---
 profundidad_actual = st.session_state.get('profundidad', 0)
-
-# 1. Definimos la lista (asegurando el nombre que usa la función)
 formaciones = [
     {"nombre": "Grupo Neuquén", "top": 0, "base": 1200, "fp": 1.2, "color": "#f1c40f"},
     {"nombre": "Fm. Quintuco", "top": 1200, "base": 2100, "fp": 0.9, "color": "#bdc3c7"},
@@ -1926,11 +1906,8 @@ rpm = st.session_state.get('rpm_actual', 0)
 # Buscamos el diámetro; si no existe en la UI, usamos 8.5 por defecto
 diam_m = st.session_state.get('diam_mecha', st.session_state.get('diametro_mecha', 8.5))
 
-# --- CÁLCULO DE ROP ---
 rop_base = (wob * rpm) / (diam_m ** 2) if diam_m > 0 else 0
 rop_final = rop_base * factor_dureza
-
-# Aplicar desgaste de mecha si existe el evento
 if st.session_state.get('mecha_gastada', False):
     rop_final *= 0.6
 
@@ -1977,10 +1954,6 @@ fig_bombeo = go.Figure(go.Indicator(
 ))
 fig_bombeo.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20))
 st.plotly_chart(fig_bombeo, use_container_width=True)
-
-import base64
-
-# Función para cargar audio y convertirlo a base64 (para que no falle el navegador)
 import base64
 import os
 
@@ -2281,22 +2254,6 @@ else:
 # ==========================================
 # --- 10. CIERRE DE SESIÓN Y EVALUACIÓN ---
 # ==========================================
-
-# --- PASO A: REGISTRO VISUAL ---
-st.write("### 📸 Registro Visual de la Jornada")
-img_col1, img_col2, img_col3 = st.columns(3)
-
-with img_col1:
-    if os.path.exists("Imagen generada por Gemini_dn7zasdn7zasdn7z.png"):
-        st.image("Imagen generada por Gemini_dn7zasdn7zasdn7z.png", caption="Análisis de Formación", use_container_width=True)
-with img_col2:
-    if os.path.exists("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png"):
-        st.image("Imagen generada por Géminis_i9vg9ti9vg9ti9vg.png", caption="Estado del Trépano", use_container_width=True)
-with img_col3:
-    if os.path.exists("Imagen generada por Gemini_jl30d0jl30d0jl30.png"):
-        st.image("Imagen generada por Gemini_jl30d0jl30d0jl30.png", caption="Perfil del Pozo", use_container_width=True)
-
-st.write("---")
 
 # --- PASO B: EVALUACIÓN FINAL DE SEGURIDAD ---
 try:
