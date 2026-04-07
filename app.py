@@ -743,8 +743,7 @@ if not piz.get("evento_activo"):
     
 # Ahora podés usar 'hook_load_real' en cualquier reloj de la Tab 1
 with st.sidebar:
-# --- PANEL DE CONTROL (BARRA LATERAL O CONSOLA) ---
-st.header("🎮 Controles del Perforador")
+     st.header("🎮 Controles del Perforador")
 
 # Forzamos que los valores estén en rango para evitar el error de StreamlitAPI
 valor_seguro_rpm = max(0, min(200, piz.get("rpm_maestro", 0)))
