@@ -669,8 +669,7 @@ st.sidebar.metric("💰 Costo Operativo", f"USD {st.session_state.costo_acumulad
 # Asegurate de que esto esté fuera de cualquier otro bloque 'with'
 with tab4:
     st.subheader("🛰️ Navegación en el Target")
-# --- 4. INTERFAZ DE USUARIO (TABS) ---
-# --- 1. INICIALIZACIÓN DEL ESTADO ---
+    
 if 'pizarra' not in st.session_state:
     st.session_state.pizarra = {
         "wob_maestro": 0.0,
@@ -679,11 +678,10 @@ if 'pizarra' not in st.session_state:
         "densidad_maestra": 10.2,
         "presion_base": 1200.0,
         "profundidad_actual": 2500.0,
-        "evento_activo": None
-        "piletas_nivel": 500.0  # Barriles (bbl) iniciales en el sistema
-    }
+        "evento_activo": None,    # <--- AQUÍ FALTABA LA COMA (Línea 682)
+        "piletas_nivel": 500.0,   # Esta es la nueva que agregamos
+        "bop_cerrado": False      # Esta puede ir sin coma si es la última
     
-
 piz = st.session_state.pizarra
 # 1. PRIMERO: Definimos la variable global para todos los tabs
 piz = st.session_state.pizarra
