@@ -1,7 +1,33 @@
 import streamlit as st
 import time
 import random
+import streamlit as st
 
+def render_tanques(pizarra):
+    st.subheader("Estado de Piletas")
+    
+    # Creamos 3 columnas para los 3 tanques
+    col1, col2, col3 = st.columns(3)
+    
+    nivel = pizarra.get("piletas_nivel", 80.0) # Valor por defecto 80%
+    
+    with col1:
+        st.metric("Tanque 1 (Activo)", f"{nivel:.1f} %")
+        st.progress(nivel / 100)
+        
+    with col2:
+        st.metric("Tanque 2 (Reserva)", "75.0 %")
+        st.progress(0.75)
+        
+    with col3:
+        st.metric("Tanque 3 (Píldora)", "40.0 %")
+        st.progress(0.40)
+
+    # Lógica visual si hay pérdida o ganancia
+    if pizarra.get("evento_activo") == "KICK":
+        st.warning("⚠️ ¡Nivel de piletas subiendo! Posible surgencia.")
+    elif pizarra.get("evento_activo") == "PERDIDA":
+        st.error("📉 ¡Nivel de piletas bajando! Pérdida en formación.")
 def modulo_perdida_circulacion():
     st.title("⚠️ ALERTA: PÉRDIDA DE CIRCULACIÓN (LCM)")
     
