@@ -819,74 +819,72 @@ with tab4:
         
     st.metric("Posición Actual TVD", f"{piz['profundidad_actual']:.2f} m")
 
-import random
-import time
+# --- 1. LÓGICA DE FALLAS Y TIEMPO ---
+if 'inicio_falla' not in st.session_state:
+    st.session_state.inicio_falla = None
 
-# --- MOTOR DE EVENTOS ALEATORIOS ---
-if 'ultima_falla' not in st.session_state:
-    st.session_state.ultima_falla = time.time()
-    st.session_state.mensaje_alerta = "Operación Normal"
-
-# Cada 60 segundos, hay un 30% de probabilidad de falla
+# Motor de eventos aleatorios
 if time.time() - st.session_state.ultima_falla > 60:
     if random.random() < 0.3: 
         fallas = ["KICK", "PERDIDA", "FALLA BOMBA", "PEGAMIENTO"]
         piz["evento_activo"] = random.choice(fallas)
         st.session_state.ultima_falla = time.time()
+        st.session_state.inicio_falla = time.time() # Iniciamos cronómetro
 
-# --- PANEL DE ESTADO DINÁMICO ---
-if piz["evento_activo"] == "KICK":
-    st.error("🚨 ¡Surgencia Detectada! (KICK) - ¡Cerrar BOP inmediatamente!")
-    piz["presion_base"] += 50 # La presión sube sola
-    piz["piletas_nivel"] += 0.5 # El lodo sube
-    
-elif piz["evento_activo"] == "PERDIDA":
-    st.warning("📉 Pérdida de Circulación - Bajando densidad...")
-    piz["piletas_nivel"] -= 0.5
-    
-elif piz["evento_activo"] == "FALLA BOMBA":
-    st.info("⚙️ Falla en Bomba 1 - Caudal reducido al 50%")
-    piz["caudal_maestro"] *= 0.5
-    piz["evento_activo"] = None # Se soluciona solo al avisar
-with tab2:
-    if piz["evento_activo"] == "KICK":
-        if st.button("✅ MANIOBRA DE CIERRE (Driller's Method)"):
-            piz["evento_activo"] = None
-            st.balloons()
-            st.success("¡Pozo Controlado! El alumno salvó la operación.")
-            registrar_evento("Alumno controló KICK exitosamente")
-
-with tab3:
-    if piz["evento_activo"] == "PERDIDA":
-        if st.button("🧪 Bombear Píldora de Obturación (LCM)"):
-            piz["evento_activo"] = None
-            st.success("Pérdida sellada.")
-            registrar_evento("Alumno selló pérdida con LCM")
+# --- 2. PANEL DE ALERTAS (VISIBLES EN TODA LA APP) ---
 if piz.get("evento_activo"):
+    # Si por algún motivo no se inició el tiempo, lo iniciamos ahora
+    if st.session_state.inicio_falla is None:
+        st.session_state.inicio_falla = time.time()
+        
     tiempo_transcurrido = int(time.time() - st.session_state.inicio_falla)
     
     col_err1, col_err2 = st.columns([3, 1])
     with col_err1:
-        st.error(f"⚠️ ¡FALLA ACTIVA: {piz['evento_activo']}!")
+        st.error(f"🚨 ¡FALLA ACTIVA: {piz['evento_activo']}!")
+        # Lógica dinámica de la falla
+        if piz["evento_activo"] == "KICK":
+            piz["presion_base"] += 0.5
+            piz["piletas_nivel"] += 0.1
+        elif piz["evento_activo"] == "PERDIDA":
+            piz["piletas_nivel"] -= 0.1
+            
     with col_err2:
-        st.metric("⏱️ Tiempo", f"{tiempo_transcurrido} seg")
-    with tab3:
-        st.metric("📦 Volumen en Piletas", f"{piz['piletas_nivel']:.1f} bbl")
-    # Si tarda más de 45 segundos, el pozo se pierde
-    if tiempo_transcurrido > 45:
-        st.error("💥 ¡COLAPSO! Tardaste demasiado en reaccionar.")
-        st.stop() # Frena la aplicación hasta que reinicie
+        st.metric("⏱️ Tiempo Reacción", f"{tiempo_transcurrido} s")
 
+    if tiempo_transcurrido > 45:
+        st.error("💥 ¡DESCONTROL DEL POZO! Tardaste demasiado.")
+        st.stop()
+
+# --- 3. CONTENIDO DE LAS PESTAÑAS (TABS) ---
 with tab1:
+    st.subheader("📊 Panel de Control Principal")
+    # ... tus otros gráficos ...
     st.divider()
-    st.subheader("🏆 Ranking de Operadores")
-    
-    # Simulamos una lista de mejores tiempos (esto se puede guardar en base de datos después)
+    st.subheader("🏆 Ranking de Operadores (Top Mendoza)")
     data_ranking = {
         "Alumno": ["Fabricio", "Alumno A", "Alumno B"],
-        "Mejor Reacción (seg)": [12, 18, 25],
-        "Costo de Pozo (USD)": [15000, 18200, 22100]
+        "Reacción (s)": [12, 18, 25],
+        "Costo (USD)": [15000, 18200, 22100]
     }
     st.table(data_ranking)
 
+with tab2:
+    st.header("🛡️ Seguridad de Pozo (BOP)")
+    if piz["evento_activo"] == "KICK":
+        if st.button("✅ CERRAR POZO (Driller's Method)", type="primary"):
+            piz["evento_activo"] = None
+            st.session_state.inicio_falla = None
+            st.balloons()
+            st.success("🎯 ¡KICK CONTROLADO!")
 
+with tab3:
+    st.header("🧪 Sistema de Circulación")
+    # Consolidamos la métrica de piletas aquí
+    st.metric("📦 Volumen en Piletas", f"{piz.get('piletas_nivel', 500):.1f} bbl")
+    
+    if piz["evento_activo"] == "PERDIDA":
+        if st.button("🧪 Bombear Píldora LCM"):
+            piz["evento_activo"] = None
+            st.session_state.inicio_falla = None
+            st.success("✅ Pérdida sellada exitosamente")
