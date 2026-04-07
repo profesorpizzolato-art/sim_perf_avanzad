@@ -360,10 +360,12 @@ with tab1:
 
 with tab2:
     import bop_panel as bop # Importamos tu módulo de BOP
+with tab2:
+    import bop_panel as bop 
     st.header("🛡️ Sistema de Seguridad de Pozo")
-    # Aquí podés llamar a una función de tu archivo bop_panel.py
-    bop.mostrar_interfaz_bop(pizarra) 
-
+    
+    # Cambiamos 'mostrar_interfaz_bop' por 'render_bop_ui'
+    bop.render_bop_ui(pizarra)   
 with tab3:
     import gestion_perdidas as gp
     st.header("🧪 Control de Piletas y Lodos")
