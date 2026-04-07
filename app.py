@@ -669,7 +669,25 @@ st.sidebar.metric("💰 Costo Operativo", f"USD {st.session_state.costo_acumulad
 # Asegurate de que esto esté fuera de cualquier otro bloque 'with'
 with tab4:
     st.subheader("🛰️ Navegación en el Target")
-    
+# --- 4. INTERFAZ DE USUARIO (TABS) ---
+
+# 1. PRIMERO: Definimos la variable global para todos los tabs
+piz = st.session_state.pizarra 
+
+# 2. SEGUNDO: Creamos los tabs
+tab1, tab2, tab3, tab4 = st.tabs(["🎮 Consola", "🛡️ BOP", "🧪 Lodos", "🛰️ Geo"])
+
+with tab1:
+    # Acá piz ya funciona
+    st.write(f"Profundidad: {piz['profundidad_actual']}")
+
+with tab4:
+    st.subheader("🛰️ Navegación en el Target")
+    # LÍNEA 674: Ahora sí, 'piz' existe y no va a tirar error
+    actual = piz["profundidad_actual"] 
+    limite_superior = 2510 
+    limite_inferior = 2540
+    # ... resto del código    
     # Definimos variables locales para este Tab
     actual = piz["profundidad_actual"]
     limite_superior = 2510 
