@@ -586,3 +586,58 @@ if st.session_state.get("tipo_evento") == "FALLA_BOMBA":
     pizarra["caudal_maestro"] = pizarra["caudal_maestro"] * 0.5
     st.error("💥 FALLA EN VÁLVULA DE BOMBA 1. CAUDAL REDUCIDO AL 50%")
 
+# --- NUEVO MÓDULO: HIDRÁULICA ---
+def calcular_hidraulica(piz, res):
+    # Densidad base + incremento por fricción (simplificado)
+    friccion = (piz["caudal_maestro"] ** 1.8) / 100000 
+    ecd = piz["densidad_maestra"] + friccion
+    
+    # Presión de Fondo (BHP) en PSI
+    bhp = 0.052 * ecd * (piz["profundidad_actual"] * 3.28) # Convertimos m a ft
+    return ecd, bhp
+
+# Uso en la Tab 1 o Tab 3:
+ecd_val, bhp_val = calcular_hidraulica(pizarra, res)
+# --- NUEVO MÓDULO: LIMPIEZA ---
+with tab3:
+    st.subheader("📊 Análisis de Limpieza (Cuttings)")
+    vel_anular = res["AV"] # Viene de tu motor
+    vel_critica = 120.0    # ft/min (valor típico para Vaca Muerta)
+    
+    if vel_anular < vel_critica:
+        st.error(f"⚠️ VELOCIDAD BAJA ({vel_anular:.1f} ft/min). Riesgo de atascamiento.")
+    else:
+        st.success(f"✅ LIMPIEZA ÓPTIMA ({vel_anular:.1f} ft/min)")
+    
+    st.progress(min(1.0, vel_anular/200), text="Eficiencia de Transporte")
+
+# --- NUEVO MÓDULO: COSTOS ---
+if 'costo_acumulado' not in st.session_state:
+    st.session_state.costo_acumulado = 0.0
+
+# Costo ficticio: $2500 USD por hora de equipo
+costo_por_segundo = 2500 / 3600
+st.session_state.costo_acumulado += costo_por_segundo
+
+st.sidebar.metric("💰 Costo Operativo", f"USD {st.session_state.costo_acumulado:.2f}")
+
+with tab4:
+    st.subheader("🛰️ Navegación en el Target")
+    # Simulación de ventana de formación (Margen de Maniobra)
+    limite_superior = 2510 
+    limite_inferior = 2540
+    actual = piz["profundidad_actual"]
+    
+    col_geo1, col_geo2 = st.columns(2)
+    with col_geo1:
+        st.metric("Techo Formación", f"{limite_superior} m")
+        st.metric("Piso Formación", f"{limite_inferior} m")
+    
+    with col_geo2:
+        if actual > limite_inferior:
+            st.error("🚨 SALIDA POR EL PISO - ¡CORREGIR INCLINACIÓN!")
+        elif actual < limite_superior:
+            st.warning("⚠️ CERCA DEL TECHO - AJUSTAR TRAYECTORIA")
+        else:
+            st.success("🎯 DENTRO DE LA VENTANA PRODUCTIVA")
+
