@@ -821,14 +821,15 @@ with tab4:
 if 'inicio_falla' not in st.session_state:
     st.session_state.inicio_falla = None
 
-# Motor de eventos aleatorios
-if time.time() - st.session_state.ultima_falla > 60:
+ultima_falla_segura = st.session_state.get("ultima_falla", time.time())
+
+if time.time() - ultima_falla_segura > 60:
     if random.random() < 0.3: 
         fallas = ["KICK", "PERDIDA", "FALLA BOMBA", "PEGAMIENTO"]
         piz["evento_activo"] = random.choice(fallas)
         st.session_state.ultima_falla = time.time()
-        st.session_state.inicio_falla = time.time() # Iniciamos cronómetro
-
+        st.session_state.inicio_falla = time.time()
+  
 # --- 2. PANEL DE ALERTAS (VISIBLES EN TODA LA APP) ---
 if piz.get("evento_activo"):
     # Si por algún motivo no se inició el tiempo, lo iniciamos ahora
