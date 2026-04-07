@@ -684,7 +684,7 @@ if 'pizarra' not in st.session_state:
 
 piz = st.session_state.pizarra
 # 1. PRIMERO: Definimos la variable global para todos los tabs
-piz =  
+piz = st.session_state.pizarra
 # 2. SEGUNDO: Creamos los tabs
 tab1, tab2, tab3, tab4 = st.tabs(["🎮 Consola", "🛡️ BOP", "🧪 Lodos", "🛰️ Geo"])
 
