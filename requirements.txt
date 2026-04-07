@@ -4,3 +4,5 @@ numpy
 plotly
 fpdf2
 streamlit-autorefresh
+qrcode
+pillow
