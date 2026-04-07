@@ -681,7 +681,7 @@ if 'pizarra' not in st.session_state:
         "evento_activo": None,    # <--- AQUÍ FALTABA LA COMA (Línea 682)
         "piletas_nivel": 500.0,   # Esta es la nueva que agregamos
         "bop_cerrado": False      # Esta puede ir sin coma si es la última
-    
+    }
 piz = st.session_state.pizarra
 # 1. PRIMERO: Definimos la variable global para todos los tabs
 piz = st.session_state.pizarra
