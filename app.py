@@ -377,6 +377,39 @@ with tab4:
     st.header("🛰️ Trayectoria en Vaca Muerta")
     fig_geo = geo.generar_grafico_trayectoria(pizarra["profundidad_actual"])
     st.plotly_chart(fig_geo, use_container_width=True, key="grafico_geo_tab4")
+    import plotly.graph_objects as go
+
+def crear_reloj(valor, titulo, unidad, max_val, color_linea):
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = valor,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': f"<b>{titulo}</b><br><span style='font-size:0.8em;color:gray'>{unidad}</span>"},
+        gauge = {
+            'axis': {'range': [None, max_val], 'tickwidth': 1, 'tickcolor': "white"},
+            'bar': {'color': color_linea},
+            'bgcolor': "rgba(0,0,0,0)",
+            'borderwidth': 2,
+            'bordercolor': "#444",
+            'steps': [
+                {'range': [0, max_val*0.8], 'color': 'rgba(0, 255, 0, 0.1)'},
+                {'range': [max_val*0.8, max_val], 'color': 'rgba(255, 0, 0, 0.2)'}
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': valor
+            }
+        }
+    ))
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=30, r=30, t=50, b=30),
+        height=280,
+        font={'color': "white", 'family': "Arial"}
+    )
+    return fig
 # 2. Dibujamos los manómetros usando tu nueva función
 col1, col2, col3 = st.columns(3)
 
