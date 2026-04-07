@@ -725,4 +725,138 @@ peso_lineal = 0.02 # klbs por metro
 peso_sarta = piz["profundidad_actual"] * peso_lineal
 hook_load_real = peso_sarta - piz["wob_maestro"]
 
+import time
+
+# Inicializamos el cronómetro en el estado de sesión
+if 'inicio_falla' not in st.session_state:
+    st.session_state.inicio_falla = None
+if 'tiempo_respuesta' not in st.session_state:
+    st.session_state.tiempo_respuesta = 0
+
+# Si hay una falla activa y el cronómetro no empezó, lo iniciamos
+if piz.get("evento_activo") and st.session_state.inicio_falla is None:
+    st.session_state.inicio_falla = time.time()
+
+# Si no hay falla, reseteamos el inicio
+if not piz.get("evento_activo"):
+    st.session_state.inicio_falla = None
+    
 # Ahora podés usar 'hook_load_real' en cualquier reloj de la Tab 1
+with st.sidebar:
+    st.header("🎮 Controles del Perforador")
+        # El alumno mueve esto y todo el simulador (Hidráulica, ROP, Costos) cambia
+    piz["rpm_maestro"] = st.slider("Rotación (RPM)", 0, 200, piz["rpm_maestro"])
+    piz["wob_maestro"] = st.slider("Peso sobre Trépano (WOB klbs)", 0, 50, piz["wob_maestro"])
+    piz["caudal_maestro"] = st.slider("Bomba (GPM)", 0, 1000, piz["caudal_maestro"])
+    
+    st.divider()
+    if st.button("🚨 EMERGENCIA: PARADA TOTAL"):
+        piz["rpm_maestro"] = 0
+        piz["caudal_maestro"] = 0
+        st.warning("SISTEMA DETENIDO")
+
+with tab2:
+    st.header("🛡️ Unidad de Cierre BOP")
+    col_bop1, col_bop2 = st.columns(2)
+    
+    with col_bop1:
+        st.image("https://img.freepik.com/vector-premium/icono-prevencion-reventones-bop_1120033-14.jpg", width=100) # O un icono local
+        if st.button("🔒 CERRAR RAMS (Anular)", type="primary"):
+            piz["bop_cerrado"] = True
+            st.error("BOP CERRADO - Presión contenida")
+            
+    with col_bop2:
+        if st.button("🔓 ABRIR RAMS"):
+            piz["bop_cerrado"] = False
+            st.success("BOP ABIERTO - Circulación libre")
+
+with tab3:
+    st.header("🧪 Control de Densidad")
+    nuevo_peso = st.number_input("Ajustar Densidad (ppg)", 8.0, 18.0, piz["densidad_maestra"])
+    
+    if st.button("⚗️ Tratar Lodo"):
+        piz["densidad_maestra"] = nuevo_peso
+        st.info(f"Densidad ajustada a {nuevo_peso} ppg. Recalculando ECD...")
+
+with tab4:
+    st.header("🛰️ Dirección de Pozo")
+    # Simulamos el 'Toolface' o la dirección
+    inc_ajuste = st.select_slider("Corregir Inclinación", options=["Bajar (-)", "Mantener", "Subir (+)"])
+    
+    if inc_ajuste == "Subir (+)":
+        piz["profundidad_actual"] -= 1.5 # Sube hacia el techo
+    elif inc_ajuste == "Bajar (-)":
+        piz["profundidad_actual"] += 1.5 # Baja hacia el piso
+        
+    st.write(f"Posición actual TVD: {piz['profundidad_actual']:.2f} m")
+
+import random
+import time
+
+# --- MOTOR DE EVENTOS ALEATORIOS ---
+if 'ultima_falla' not in st.session_state:
+    st.session_state.ultima_falla = time.time()
+    st.session_state.mensaje_alerta = "Operación Normal"
+
+# Cada 60 segundos, hay un 30% de probabilidad de falla
+if time.time() - st.session_state.ultima_falla > 60:
+    if random.random() < 0.3: 
+        fallas = ["KICK", "PERDIDA", "FALLA BOMBA", "PEGAMIENTO"]
+        piz["evento_activo"] = random.choice(fallas)
+        st.session_state.ultima_falla = time.time()
+
+# --- PANEL DE ESTADO DINÁMICO ---
+if piz["evento_activo"] == "KICK":
+    st.error("🚨 ¡Surgencia Detectada! (KICK) - ¡Cerrar BOP inmediatamente!")
+    piz["presion_base"] += 50 # La presión sube sola
+    piz["piletas_nivel"] += 0.5 # El lodo sube
+    
+elif piz["evento_activo"] == "PERDIDA":
+    st.warning("📉 Pérdida de Circulación - Bajando densidad...")
+    piz["piletas_nivel"] -= 0.5
+    
+elif piz["evento_activo"] == "FALLA BOMBA":
+    st.info("⚙️ Falla en Bomba 1 - Caudal reducido al 50%")
+    piz["caudal_maestro"] *= 0.5
+    piz["evento_activo"] = None # Se soluciona solo al avisar
+with tab2:
+    if piz["evento_activo"] == "KICK":
+        if st.button("✅ MANIOBRA DE CIERRE (Driller's Method)"):
+            piz["evento_activo"] = None
+            st.balloons()
+            st.success("¡Pozo Controlado! El alumno salvó la operación.")
+            registrar_evento("Alumno controló KICK exitosamente")
+
+with tab3:
+    if piz["evento_activo"] == "PERDIDA":
+        if st.button("🧪 Bombear Píldora de Obturación (LCM)"):
+            piz["evento_activo"] = None
+            st.success("Pérdida sellada.")
+            registrar_evento("Alumno selló pérdida con LCM")
+if piz.get("evento_activo"):
+    tiempo_transcurrido = int(time.time() - st.session_state.inicio_falla)
+    
+    col_err1, col_err2 = st.columns([3, 1])
+    with col_err1:
+        st.error(f"⚠️ ¡FALLA ACTIVA: {piz['evento_activo']}!")
+    with col_err2:
+        st.metric("⏱️ Tiempo", f"{tiempo_transcurrido} seg")
+    
+    # Si tarda más de 45 segundos, el pozo se pierde
+    if tiempo_transcurrido > 45:
+        st.error("💥 ¡COLAPSO! Tardaste demasiado en reaccionar.")
+        st.stop() # Frena la aplicación hasta que reinicie
+
+with tab1:
+    st.divider()
+    st.subheader("🏆 Ranking de Operadores")
+    
+    # Simulamos una lista de mejores tiempos (esto se puede guardar en base de datos después)
+    data_ranking = {
+        "Alumno": ["Fabricio", "Alumno A", "Alumno B"],
+        "Mejor Reacción (seg)": [12, 18, 25],
+        "Costo de Pozo (USD)": [15000, 18200, 22100]
+    }
+    st.table(data_ranking)
+
+
