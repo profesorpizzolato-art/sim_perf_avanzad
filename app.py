@@ -745,7 +745,10 @@ if not piz.get("evento_activo"):
 with st.sidebar:
     st.header("🎮 Controles del Perforador")
         # El alumno mueve esto y todo el simulador (Hidráulica, ROP, Costos) cambia
-    piz["rpm_maestro"] = st.slider("Rotación (RPM)", 0, 200, piz["rpm_maestro"])
+   # Forzamos que el valor esté entre 0 y 200 antes de pasarlo al slider
+valor_seguro_rpm = max(0, min(200, piz["rpm_maestro"]))
+
+piz["rpm_maestro"] = st.slider("Rotación (RPM)", 0, 200, valor_seguro_rpm)
     piz["wob_maestro"] = st.slider("Peso sobre Trépano (WOB klbs)", 0, 50, piz["wob_maestro"])
     piz["caudal_maestro"] = st.slider("Bomba (GPM)", 0, 1000, piz["caudal_maestro"])
     
@@ -759,8 +762,8 @@ with tab2:
     st.header("🛡️ Unidad de Cierre BOP")
     col_bop1, col_bop2 = st.columns(2)
     
-    with col_bop1:
-        st.image("https://img.freepik.com/vector-premium/icono-prevencion-reventones-bop_1120033-14.jpg", width=100) # O un icono local
+    with col_bop1:"
+        st.image(https://img.freepik.com/vector-premium/icono-prevencion-reventones-bop_1120033-14.jpg", width=100) # O un icono local
         if st.button("🔒 CERRAR RAMS (Anular)", type="primary"):
             piz["bop_cerrado"] = True
             st.error("BOP CERRADO - Presión contenida")
