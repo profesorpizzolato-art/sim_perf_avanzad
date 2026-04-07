@@ -680,7 +680,9 @@ if 'pizarra' not in st.session_state:
         "presion_base": 1200.0,
         "profundidad_actual": 2500.0,
         "evento_activo": None
+        "piletas_nivel": 500.0  # Barriles (bbl) iniciales en el sistema
     }
+    
 
 piz = st.session_state.pizarra
 # 1. PRIMERO: Definimos la variable global para todos los tabs
@@ -868,7 +870,8 @@ if piz.get("evento_activo"):
         st.error(f"⚠️ ¡FALLA ACTIVA: {piz['evento_activo']}!")
     with col_err2:
         st.metric("⏱️ Tiempo", f"{tiempo_transcurrido} seg")
-    
+    with tab3:
+        st.metric("📦 Volumen en Piletas", f"{piz['piletas_nivel']:.1f} bbl")
     # Si tarda más de 45 segundos, el pozo se pierde
     if tiempo_transcurrido > 45:
         st.error("💥 ¡COLAPSO! Tardaste demasiado en reaccionar.")
