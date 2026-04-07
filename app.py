@@ -684,4 +684,13 @@ with tab4:
             st.warning("⚠️ CERCA DEL TECHO - AJUSTAR TRAYECTORIA")
         else:
             st.success("🎯 DENTRO DE LA VENTANA PRODUCTIVA")
+# --- CÁLCULO DE CARGA EN EL GANCHO ---
+# Supongamos que cada tiro de tubería pesa 20 klbs
+peso_lineal = 0.02 # klbs por metro
+peso_sarta = piz["profundidad_actual"] * peso_lineal
 
+# El Hook Load real es el peso total menos el WOB (Peso sobre el trépano)
+hook_load_real = peso_sarta - piz["wob_maestro"]
+
+# Ahora usamos este valor en tu manómetro:
+# st.plotly_chart(crear_reloj(hook_load_real, "Hook Load", "klbs", 600, "white"))
