@@ -899,7 +899,8 @@ def generar_pdf(nombre_alumno, fecha, desempeño):
     pdf.set_font("Arial", 'B', 24)
     pdf.cell(200, 20, "IPCL MENFA", ln=True, align='C')
     pdf.set_font("Arial", 'I', 16)
-    pdf.cell(200, 10, "Instituto de Perfeccionamiento y Capacitación Laboral", ln=True, align='C')
+    pdf.cell(200, 10, "Instituto  privado de Capacitación Laboral", ln=True, align='C')
+    pdf.image('logo_menfa.png', x=80, y=10, w=50)
     
     pdf.ln(20)
     pdf.set_font("Arial", '', 18)
@@ -949,7 +950,7 @@ def generar_certificado_pro(nombre_alumno, desempeño):
     # --- Estética del Certificado ---
     pdf.set_draw_color(0, 82, 155) # Azul institucional
     pdf.rect(5, 5, 200, 287) # Marco externo
-    
+    pdf.image('logo.menfa.png', x=80, y=10, w=50)
     # Encabezado
     pdf.set_font("Arial", 'B', 26)
     pdf.set_text_color(0, 82, 155)
