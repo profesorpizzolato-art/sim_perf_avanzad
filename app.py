@@ -671,7 +671,9 @@ with tab4:
     limite_superior = 2510 
     limite_inferior = 2540
     actual = piz["profundidad_actual"]
-    
+    # Vinculamos la variable 'piz' al objeto real en la memoria de Streamlit
+piz = st.session_state.pizarra
+actual = piz["profundidad_actual"]
     col_geo1, col_geo2 = st.columns(2)
     with col_geo1:
         st.metric("Techo Formación", f"{limite_superior} m")
