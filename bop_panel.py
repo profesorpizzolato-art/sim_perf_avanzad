@@ -1,6 +1,10 @@
 import streamlit as st
 import time
 
+
+def render_bop_ui(pizarra):  # <-- Asegurate que se llame así, todo en minúsculas
+    st.write("### Consola de Control de Surgencias")
+
 def bop_panel_module():
     st.title("🛡️ UNIDAD DE CIERRE - PANEL BOP")
     st.image("logo_menfa.png", width=100)
