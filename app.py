@@ -743,27 +743,32 @@ if not piz.get("evento_activo"):
     
 # Ahora podés usar 'hook_load_real' en cualquier reloj de la Tab 1
 with st.sidebar:
-    st.header("🎮 Controles del Perforador")
-        # El alumno mueve esto y todo el simulador (Hidráulica, ROP, Costos) cambia
-   # Forzamos que el valor esté entre 0 y 200 antes de pasarlo al slider
-valor_seguro_rpm = max(0, min(200, piz["rpm_maestro"]))
+# --- PANEL DE CONTROL (BARRA LATERAL O CONSOLA) ---
+st.header("🎮 Controles del Perforador")
+
+# Forzamos que los valores estén en rango para evitar el error de StreamlitAPI
+valor_seguro_rpm = max(0, min(200, piz.get("rpm_maestro", 0)))
+valor_seguro_wob = max(0, min(50, piz.get("wob_maestro", 0)))
+valor_seguro_gpm = max(0, min(1000, piz.get("caudal_maestro", 500)))
 
 piz["rpm_maestro"] = st.slider("Rotación (RPM)", 0, 200, valor_seguro_rpm)
-    piz["wob_maestro"] = st.slider("Peso sobre Trépano (WOB klbs)", 0, 50, piz["wob_maestro"])
-    piz["caudal_maestro"] = st.slider("Bomba (GPM)", 0, 1000, piz["caudal_maestro"])
-    
-    st.divider()
-    if st.button("🚨 EMERGENCIA: PARADA TOTAL"):
-        piz["rpm_maestro"] = 0
-        piz["caudal_maestro"] = 0
-        st.warning("SISTEMA DETENIDO")
+piz["wob_maestro"] = st.slider("Peso sobre Trépano (WOB klbs)", 0, 50, valor_seguro_wob)
+piz["caudal_maestro"] = st.slider("Bomba (GPM)", 0, 1000, valor_seguro_gpm)
 
+st.divider()
+if st.button("🚨 EMERGENCIA: PARADA TOTAL"):
+    piz["rpm_maestro"] = 0
+    piz["caudal_maestro"] = 0
+    st.warning("SISTEMA DETENIDO")
+
+# --- PESTAÑAS INTERACTIVAS ---
 with tab2:
     st.header("🛡️ Unidad de Cierre BOP")
     col_bop1, col_bop2 = st.columns(2)
     
-    with col_bop1:"
-        st.image(https://img.freepik.com/vector-premium/icono-prevencion-reventones-bop_1120033-14.jpg", width=100) # O un icono local
+    with col_bop1:
+        # CORREGIDO: Se agregó la comilla faltante al principio de la URL
+        st.image("https://img.freepik.com/vector-premium/icono-prevencion-reventones-bop_1120033-14.jpg", width=100) 
         if st.button("🔒 CERRAR RAMS (Anular)", type="primary"):
             piz["bop_cerrado"] = True
             st.error("BOP CERRADO - Presión contenida")
@@ -775,7 +780,9 @@ with tab2:
 
 with tab3:
     st.header("🧪 Control de Densidad")
-    nuevo_peso = st.number_input("Ajustar Densidad (ppg)", 8.0, 18.0, piz["densidad_maestra"])
+    # Usamos .get para evitar errores si la clave no existe aún
+    dens_actual = piz.get("densidad_maestra", 10.0)
+    nuevo_peso = st.number_input("Ajustar Densidad (ppg)", 8.0, 18.0, dens_actual)
     
     if st.button("⚗️ Tratar Lodo"):
         piz["densidad_maestra"] = nuevo_peso
@@ -783,15 +790,14 @@ with tab3:
 
 with tab4:
     st.header("🛰️ Dirección de Pozo")
-    # Simulamos el 'Toolface' o la dirección
-    inc_ajuste = st.select_slider("Corregir Inclinación", options=["Bajar (-)", "Mantener", "Subir (+)"])
+    inc_ajuste = st.select_slider("Corregir Inclinación", options=["Bajar (-)", "Mantener", "Subir (+)"], value="Mantener")
     
     if inc_ajuste == "Subir (+)":
-        piz["profundidad_actual"] -= 1.5 # Sube hacia el techo
+        piz["profundidad_actual"] -= 0.5 # Sube hacia el techo (TVD menor)
     elif inc_ajuste == "Bajar (-)":
-        piz["profundidad_actual"] += 1.5 # Baja hacia el piso
+        piz["profundidad_actual"] += 0.5 # Baja hacia el piso (TVD mayor)
         
-    st.write(f"Posición actual TVD: {piz['profundidad_actual']:.2f} m")
+    st.metric("Posición Actual TVD", f"{piz['profundidad_actual']:.2f} m")
 
 import random
 import time
