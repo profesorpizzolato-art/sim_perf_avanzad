@@ -421,7 +421,15 @@ with col2:
 
 with col3:
     st.plotly_chart(crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 600, "white"), use_container_width=True)
+# --- CÁLCULOS DE POTENCIA HIDRÁULICA (Antes de los relojes) ---
+# La fórmula es: (Presión * Caudal) / 1714
+presion = pizarra.get("presion_base", 0)
+caudal = pizarra.get("caudal_maestro", 0)
 
+hhp_actual = (presion * caudal) / 1714
+
+# Ahora sí, el reloj de la línea 433 va a funcionar:
+st.plotly_chart(crear_reloj(hhp_actual, "Potencia", "HHP", 2000, "purple"))
 # Actualizamos la profundidad en la pizarra automáticamente (Simulando el avance)
 if not pizarra["bop_cerrado"] and res["ROP"] > 1:
     pizarra["profundidad_actual"] += (res["ROP"] / 3600) # Avance por segundo
