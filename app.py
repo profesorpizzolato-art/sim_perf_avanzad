@@ -376,7 +376,7 @@ with tab4:
     import geonavegacion_pro as geo
     st.header("🛰️ Trayectoria en Vaca Muerta")
     fig_geo = geo.generar_grafico_trayectoria(pizarra["profundidad_actual"])
-    st.plotly_chart(fig_geo, use_container_width=True)
+    st.plotly_chart(fig_geo, use_container_width=True, key="grafico_geo_tab4")
 # 2. Dibujamos los manómetros usando tu nueva función
 col1, col2, col3 = st.columns(3)
 
