@@ -888,3 +888,130 @@ with tab3:
             piz["evento_activo"] = None
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
+from fpdf import FPDF
+import base64
+
+def generar_pdf(nombre_alumno, fecha, desempeño):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Diseño del Certificado
+    pdf.set_font("Arial", 'B', 24)
+    pdf.cell(200, 20, "IPCL MENFA", ln=True, align='C')
+    pdf.set_font("Arial", 'I', 16)
+    pdf.cell(200, 10, "Instituto de Perfeccionamiento y Capacitación Laboral", ln=True, align='C')
+    
+    pdf.ln(20)
+    pdf.set_font("Arial", '', 18)
+    pdf.cell(200, 10, "Certifica que:", ln=True, align='C')
+    
+    pdf.ln(10)
+    pdf.set_font("Arial", 'B', 22)
+    pdf.cell(200, 10, nombre_alumno.upper(), ln=True, align='C')
+    
+    pdf.ln(10)
+    pdf.set_font("Arial", '', 14)
+    pdf.multi_cell(200, 10, f"Ha participado exitosamente en el Entrenamiento de Simulación de Perforación Avanzada y Control de Pozos, operando en el entorno interactivo 'Vaca Muerta' con un desempeño de: {desempeño}.", align='C')
+    
+    pdf.ln(20)
+    pdf.cell(200, 10, f"Mendoza, Argentina - {fecha}", ln=True, align='C')
+    
+    return pdf.output(dest='S').encode('latin-1')
+
+# --- INTERFAZ EN EL SIMULADOR ---
+with st.expander("🎓 Finalizar Sesión y Emitir Certificado"):
+    nombre = st.text_input("Nombre Completo del Alumno:")
+    if st.button("📜 Generar Certificado de Participación"):
+        if nombre:
+            # Calculamos el desempeño basado en si hubo fallas sin resolver
+            status = "EXCELENTE" if piz.get("evento_activo") is None else "EN PROCESO"
+            pdf_bytes = generar_pdf(nombre, "17/04/2026", status)
+            
+            st.download_button(
+                label="📥 Descargar Certificado (PDF)",
+                data=pdf_bytes,
+                file_name=f"Certificado_{nombre.replace(' ', '_')}.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.warning("Por favor, ingrese el nombre del alumno.")
+
+import qrcode
+from io import BytesIO
+from fpdf import FPDF
+
+def generar_certificado_pro(nombre_alumno, desempeño):
+    pdf = FPDF()
+    pdf.add_page()
+    fecha_emision = "17/04/2026"
+    id_validacion = f"MENFA-{random.randint(1000, 9999)}"
+    
+    # --- Estética del Certificado ---
+    pdf.set_draw_color(0, 82, 155) # Azul institucional
+    pdf.rect(5, 5, 200, 287) # Marco externo
+    
+    # Encabezado
+    pdf.set_font("Arial", 'B', 26)
+    pdf.set_text_color(0, 82, 155)
+    pdf.cell(200, 30, "INSTITUTO MENFA - IPCL", ln=True, align='C')
+    
+    pdf.set_font("Arial", 'B', 14)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(200, 10, "Certificado de Competencia Técnica en Perforación", ln=True, align='C')
+    
+    pdf.ln(20)
+    pdf.set_font("Arial", '', 16)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(200, 10, "Se otorga el presente a:", ln=True, align='C')
+    
+    # Nombre del Alumno
+    pdf.ln(10)
+    pdf.set_font("Arial", 'B', 24)
+    pdf.cell(200, 15, nombre_alumno.upper(), ln=True, align='C')
+    
+    # Cuerpo del texto
+    pdf.ln(15)
+    pdf.set_font("Arial", '', 12)
+    texto = (f"Por haber completado con éxito el entrenamiento intensivo en el 'Simulador de Perforación Avanzada'. "
+             f"El alumno demostró habilidades de control de pozo ante eventos de KICK y PERDIDA en formación "
+             f"Vaca Muerta, con una calificación de desempeño: {desempeño}.")
+    pdf.multi_cell(180, 8, texto, align='C')
+    
+    # --- Generación de Código QR de Validación ---
+    # El QR contiene la URL de validación o los datos del alumno
+    datos_qr = f"Validación IPCL MENFA\nAlumno: {nombre_alumno}\nFecha: {fecha_emision}\nID: {id_validacion}"
+    qr = qrcode.make(datos_qr)
+    qr_img_path = "qr_temp.png"
+    qr.save(qr_img_path)
+    
+    # Insertar QR y Firmas
+    pdf.image(qr_img_path, x=20, y=230, w=35)
+    
+    pdf.set_font("Arial", 'I', 10)
+    pdf.text(20, 270, f"ID de Validación: {id_validacion}")
+    
+    # Firma Digital (Simulada con fuente cursiva)
+    pdf.set_font("Times", 'I', 15)
+    pdf.text(140, 250, "Ing. Fabricio") # Tu firma
+    pdf.set_font("Arial", '', 10)
+    pdf.line(130, 252, 185, 252)
+    pdf.text(138, 257, "Director Técnico - IPCL MENFA")
+    
+    pdf.text(150, 275, f"Mendoza, {fecha_emision}")
+    
+    return pdf.output(dest='S').encode('latin-1')
+
+# --- BOTÓN DE DESCARGA EN STREAMLIT ---
+if st.button("🎓 Emitir Certificado con QR"):
+    if nombre:
+        # Evaluamos el desempeño
+        desempeño_final = "DISTINGUIDO" if st.session_state.tiempo_respuesta < 20 else "APROBADO"
+        pdf_final = generar_certificado_pro(nombre, desempeño_final)
+        
+        st.download_button(
+            label="📥 Descargar Certificado Oficial PDF",
+            data=pdf_final,
+            file_name=f"Certificado_Oficial_{nombre}.pdf",
+            mime="application/pdf"
+        )
+        
