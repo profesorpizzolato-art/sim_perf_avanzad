@@ -629,16 +629,19 @@ if st.session_state.get("tipo_evento") == "FALLA_BOMBA":
 
 # --- NUEVO MÓDULO: HIDRÁULICA ---
 def calcular_hidraulica(piz, res):
-    # Densidad base + incremento por fricción (simplificado)
-    friccion = (piz["caudal_maestro"] ** 1.8) / 100000 
-    ecd = piz["densidad_maestra"] + friccion
+    # Usamos .get para que si no existe 'densidad_maestra', use 10.0 por defecto
+    densidad = piz.get("densidad_maestra", 10.0) 
     
-    # Presión de Fondo (BHP) en PSI
-    bhp = 0.052 * ecd * (piz["profundidad_actual"] * 3.28) # Convertimos m a ft
-    return ecd, bhp
-
-# Uso en la Tab 1 o Tab 3:
-ecd_val, bhp_val = calcular_hidraulica(pizarra, res)
+    # Cálculo de fricción simplificado
+    friccion = (piz.get("caudal_maestro", 500) ** 1.8) / 100000 
+    ecd = densidad + friccion
+    
+    # Presión de Fondo (BHP) - Profundidad en metros a pies (* 3.28)
+    prof = piz.get("profundidad_actual", 2500)
+    bhp = 0.052 * ecd * (prof * 3.28)
+    
+    return round(ecd, 2), round(bhp, 2)
+    
 # --- NUEVO MÓDULO: LIMPIEZA ---
 with tab3:
     st.subheader("📊 Análisis de Limpieza (Cuttings)")
