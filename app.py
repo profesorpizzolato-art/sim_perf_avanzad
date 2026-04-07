@@ -670,10 +670,21 @@ st.sidebar.metric("💰 Costo Operativo", f"USD {st.session_state.costo_acumulad
 with tab4:
     st.subheader("🛰️ Navegación en el Target")
 # --- 4. INTERFAZ DE USUARIO (TABS) ---
+# --- 1. INICIALIZACIÓN DEL ESTADO ---
+if 'pizarra' not in st.session_state:
+    st.session_state.pizarra = {
+        "wob_maestro": 0.0,
+        "rpm_maestro": 0.0,
+        "caudal_maestro": 500.0,
+        "densidad_maestra": 10.2,
+        "presion_base": 1200.0,
+        "profundidad_actual": 2500.0,
+        "evento_activo": None
+    }
 
+piz = st.session_state.pizarra
 # 1. PRIMERO: Definimos la variable global para todos los tabs
-piz = st.session_state.pizarra 
-
+piz =  
 # 2. SEGUNDO: Creamos los tabs
 tab1, tab2, tab3, tab4 = st.tabs(["🎮 Consola", "🛡️ BOP", "🧪 Lodos", "🛰️ Geo"])
 
