@@ -665,16 +665,25 @@ st.session_state.costo_acumulado += costo_por_segundo
 
 st.sidebar.metric("💰 Costo Operativo", f"USD {st.session_state.costo_acumulado:.2f}")
 
-with tab4:
+   with tab4:
     st.subheader("🛰️ Navegación en el Target")
-    # Simulación de ventana de formación (Margen de Maniobra)
+    # Asegurate de que estas líneas tengan 4 espacios (o 1 tab) de sangría
+    actual = piz["profundidad_actual"]
     limite_superior = 2510 
     limite_inferior = 2540
-    actual = piz["profundidad_actual"]
-    # Vinculamos la variable 'piz' al objeto real en la memoria de Streamlit
-piz = st.session_state.pizarra
-actual = piz["profundidad_actual"]
-    col_geo1, col_geo2 = st.columns(2)
+
+    # ESTA ES LA LÍNEA 677: Debe estar alineada con las de arriba
+    col_geo1, col_geo2 = st.columns(2) 
+    
+    with col_geo1:
+        st.metric("Techo Formación", f"{limite_superior} m")
+        st.metric("Piso Formación", f"{limite_inferior} m")
+    
+    with col_geo2:
+        if actual > limite_inferior:
+            st.error("🚨 SALIDA POR EL PISO")
+        else:
+            st.success("🎯 DENTRO DEL TARGET")
     with col_geo1:
         st.metric("Techo Formación", f"{limite_superior} m")
         st.metric("Piso Formación", f"{limite_inferior} m")
