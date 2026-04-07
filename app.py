@@ -438,7 +438,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.plotly_chart(crear_reloj(pizarra["presion_base"], "Presión SPP", "PSI", 5000, "red"))
 with col2:
-    st.plotly_chart(crear_reloj(hhp_actual, "Potencia", "HHP", 2000, "purple"))
+    st.plotly_chart(crear_reloj(hhp_actual, "Potencia", "HHP", 2000, "purple"), key="reloj_hhp_principal")
 with col3:
     st.plotly_chart(crear_reloj(pizarra["rpm_maestro"], "Rotación", "RPM", 200, "green"))
 
