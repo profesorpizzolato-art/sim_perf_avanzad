@@ -743,27 +743,36 @@ if not piz.get("evento_activo"):
     
 # Ahora podés usar 'hook_load_real' en cualquier reloj de la Tab 1
 with st.sidebar:
-     st.header("🎮 Controles del Perforador")
+    st.header("🎮 Controles del Perforador")
+    st.info("Ajuste los parámetros de perforación en tiempo real.")
 
-# Forzamos que los valores estén en rango para evitar el error de StreamlitAPI
-valor_seguro_rpm = max(0, min(200, piz.get("rpm_maestro", 0)))
-valor_seguro_wob = max(0, min(50, piz.get("wob_maestro", 0)))
-valor_seguro_gpm = max(0, min(1000, piz.get("caudal_maestro", 500)))
+    # 1. SEGURIDAD Y BLINDAJE (Fuera de los sliders)
+    # Obtenemos valores limpios y enteros
+    rpm_val = int(max(0, min(200, piz.get("rpm_maestro", 0))))
+    wob_val = int(max(0, min(50, piz.get("wob_maestro", 0))))
+    gpm_val = int(max(0, min(1000, piz.get("caudal_maestro", 500))))
 
-piz["rpm_maestro"] = st.slider("Rotación (RPM)", 0, 200, valor_seguro_rpm)
-piz["wob_maestro"] = st.slider("Peso sobre Trépano (WOB klbs)", 0, 50, valor_seguro_wob)
-piz["caudal_maestro"] = st.slider("Bomba (GPM)", 0, 1000, valor_seguro_gpm)
+    # 2. SLIDERS ÚNICOS (Uno por cada parámetro)
+    piz["rpm_maestro"] = st.slider("Rotación (RPM)", 0, 200, rpm_val)
+    
+    piz["wob_maestro"] = st.slider("Peso sobre Trépano (WOB klbs)", 0, 50, wob_val)
+    
+    piz["caudal_maestro"] = st.slider(
+        label="Bomba (GPM)", 
+        min_value=0, 
+        max_value=1000, 
+        value=gpm_val,
+        step=10
+    )
 
-st.divider()
-# --- Lógica de Seguridad para el Caudal ---
-# 1. Obtenemos el valor (si no existe, usamos 500 por defecto)
-gpm_actual = piz.get("caudal_maestro", 500.0)
+    st.divider()
 
-# 2. Forzamos que sea un ENTERO y esté en el rango 0-1000
-valor_seguro_gpm = int(max(0, min(1000, gpm_actual)))
-
-# 3. Dibujamos el slider (Línea 755 corregida)
-piz["caudal_maestro"] = st.slider("Bomba (GPM)", 0, 1000, valor_seguro_gpm)
+    # 3. BOTÓN DE EMERGENCIA
+    if st.button("🚨 EMERGENCIA: PARADA TOTAL", use_container_width=True):
+        piz["rpm_maestro"] = 0
+        piz["caudal_maestro"] = 0
+        st.warning("SISTEMA DETENIDO")
+        st.rerun()
 
 if st.button("🚨 EMERGENCIA: PARADA TOTAL"):
     piz["rpm_maestro"] = 0
