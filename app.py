@@ -16,7 +16,31 @@ import bombas_de_lodo as bombas
 import sartas_perforacion as sartas
 import sys
 import os
+# --- 1. INICIALIZACIÓN BLINDADA (Colocar justo después de los imports) ---
+import time
+import random
 
+# Lista de variables necesarias para que la app no explote
+variables_necesarias = {
+    "pizarra": {
+        "wob_maestro": 0.0, "rpm_maestro": 0.0, "caudal_maestro": 500.0,
+        "densidad_maestra": 10.2, "presion_base": 1200.0,
+        "profundidad_actual": 2500.0, "evento_activo": None,
+        "piletas_nivel": 500.0, "bop_cerrado": False
+    },
+    "ultima_falla": time.time(),
+    "inicio_falla": None,
+    "tiempo_respuesta": 0,
+    "mensaje_alerta": "Operación Normal"
+}
+
+# Creamos las variables si no existen
+for clave, valor_defecto in variables_necesarias.items():
+    if clave not in st.session_state:
+        st.session_state[clave] = valor_defecto
+
+# Acceso directo para facilitar el código
+piz = st.session_state.pizarra
 # Esto le dice a Python que busque módulos en la carpeta donde está app.py
 sys.path.append(os.path.dirname(__file__))
 
