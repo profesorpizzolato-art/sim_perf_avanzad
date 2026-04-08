@@ -810,7 +810,7 @@ with tab2:
     
     with col_bop1:
         # CORREGIDO: Se agregó la comilla faltante al principio de la URL
-        st.image("https://img.freepik.com/vector-premium/icono-prevencion-reventones-bop_1120033-14.jpg", width=100) 
+        st.image("assest/BoP.png", width=100) 
         if st.button("🔒 CERRAR RAMS (Anular)", type="primary"):
             piz["bop_cerrado"] = True
             st.error("BOP CERRADO - Presión contenida")
