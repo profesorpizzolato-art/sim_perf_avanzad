@@ -807,12 +807,12 @@ with tab2:
     st.header("🛡️ Unidad de Cierre BOP")
     col_bop1, col_bop2 = st.columns(2)
     
-    with col_bop1:
+   # --- Línea 810 y 811 corregidas ---
+with st.container():  # O el 'with' que tengas en la línea 810
     try:
-    # Cambiamos 'assest' por 'assets' y ajustamos el width
-    st.image("assets/BoP.png", width="stretch", caption="Estado del Preventor")
-except:
-    st.warning("⚠️ No se encontró la imagen en 'assets/BoP.png'. Verificá el nombre de la carpeta.")
+        st.image("assets/BoP.png", width="stretch")
+    except:
+        st.warning("⚠️ No se pudo cargar la imagen del BOP.")
         st.image("assest/BoP.png", width=100) 
         if st.button("🔒 CERRAR RAMS (Anular)", type="primary"):
             piz["bop_cerrado"] = True
