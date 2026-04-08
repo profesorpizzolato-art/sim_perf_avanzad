@@ -2,24 +2,28 @@ import plotly.graph_objects as go
 import numpy as np
 
 def generar_grafico_trayectoria(profundidad_actual):
-    # Simulación de trayectoria: Vertical hasta 2500m, luego curva hacia horizontal
+    # 1. Simulación de trayectoria: Vertical hasta 2500m, luego curva
+    # Usamos np.linspace (no norte)
     z = np.linspace(0, profundidad_actual, 100)
-    # --- CORRECCIÓN MATEMÁTICA PARA EVITAR EL WARNING ---
-# Usamos np.maximum para asegurarnos de que el número nunca sea menor a 0 antes de elevarlo
-diferencia = np.maximum(0, z - 2500)
-x = diferencia**1.5 / 50  # Ahora ya no dará error con valores menores a 2500
     
+    # 2. Cálculo de la curva (TODO este bloque debe estar indentado)
+    # Usamos np.maximum (no máximo)
+    diferencia = np.maximum(0, z - 2500)
+    x = diferencia**1.5 / 50 
+    
+    # 3. Creación del gráfico (Usamos go, no ir)
     fig = go.Figure()
     
     # Dibujar el pozo
     fig.add_trace(go.Scatter(
-        x=x, y=z, 
-        mode='lines', 
+        x=x, 
+        y=z,
+        mode='lines',
         name='Trayectoria Real',
         line=dict(color='#00ff00', width=4)
     ))
     
-    # Formateo del gráfico para que parezca una consola de perforación
+    # Formateo del gráfico (diseño oscuro industrial)
     fig.update_layout(
         title="🛰️ Monitoreo de Geonavegación (LWD)",
         xaxis=dict(title="Desplazamiento Lateral (m)", gridcolor='gray'),
