@@ -792,8 +792,7 @@ with st.sidebar:
     st.divider()
 
     # 3. BOTÓN DE EMERGENCIA
-    if st.button("🚨("EMERGENCIA", width="stretch"):
-        piz["rpm_maestro"] = 0
+if st.button("🚨 EMERGENCIA: PARADA TOTAL", width="stretch"):
         piz["caudal_maestro"] = 0
         st.warning("SISTEMA DETENIDO")
         st.rerun()
