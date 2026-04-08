@@ -984,4 +984,24 @@ if st.button("🚀 PREPARAR DESCARGA"):
             )
     else:
         st.warning("Escribí un nombre primero.")
-
+# --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
+st.sidebar.divider()
+with st.sidebar.expander("🔐 Panel del Instructor"):
+    st.write("Uso exclusivo para finalizar la jornada de capacitación.")
+    if st.button("🏁 DAR POR TERMINADA LA CLASE", use_container_width=True, type="secondary"):
+        # 1. Limpiamos las variables críticas
+        st.session_state.pizarra["evento_activo"] = None
+        st.session_state.pizarra["rpm_maestro"] = 0
+        st.session_state.pizarra["caudal_maestro"] = 0
+        st.session_state.pizarra["piletas_nivel"] = 500.0
+        st.session_state.pizarra["profundidad_actual"] = 2500.0
+        
+        # 2. Reseteamos cronómetros
+        st.session_state.ultima_falla = time.time()
+        st.session_state.inicio_falla = None
+        st.session_state.tiempo_respuesta = 0
+        
+        # 3. Mensaje de despedida y reinicio
+        st.success("✅ Clase finalizada. Sistema reseteado para el próximo turno.")
+        time.sleep(2) # Pausa para que el instructor vea el mensaje
+        st.rerun()
