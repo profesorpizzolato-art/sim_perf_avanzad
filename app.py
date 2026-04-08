@@ -792,7 +792,7 @@ with st.sidebar:
     st.divider()
 
     # 3. BOTÓN DE EMERGENCIA
-    if st.button("🚨 EMERGENCIA: PARADA TOTAL", use_container_width=True):
+    if st.button("🚨("EMERGENCIA", width="stretch"):
         piz["rpm_maestro"] = 0
         piz["caudal_maestro"] = 0
         st.warning("SISTEMA DETENIDO")
@@ -809,7 +809,11 @@ with tab2:
     col_bop1, col_bop2 = st.columns(2)
     
     with col_bop1:
-        # CORREGIDO: Se agregó la comilla faltante al principio de la URL
+try:
+    # Cambiamos 'assest' por 'assets' y ajustamos el width
+    st.image("assets/BoP.png", width="stretch", caption="Estado del Preventor")
+except:
+    st.warning("⚠️ No se encontró la imagen en 'assets/BoP.png'. Verificá el nombre de la carpeta.")
         st.image("assest/BoP.png", width=100) 
         if st.button("🔒 CERRAR RAMS (Anular)", type="primary"):
             piz["bop_cerrado"] = True
