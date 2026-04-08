@@ -252,45 +252,37 @@ with c_gra2:
     fig_td = td.calcular_curvas_esfuerzo(pizarra["wob_maestro"], pizarra["rpm_maestro"])
     st.plotly_chart(fig_td, use_container_width=True)
 
-# --- 6. REPORTE FINAL (SIN IADC) ---
-st.sidebar.divider()
+# --- REPORTE FINAL CORREGIDO (Línea 269) ---
 
-# 1. Inicializamos la variable si no existe
-if "reporte_listo" not in st.session_state:
-    st.session_state.reporte_listo = False
+# 1. Generamos el contenido del PDF como siempre
+reporte_pdf = FPDF()
+reporte_pdf.add_page()
+reporte_pdf.set_font("Arial", 'B', 16)
+reporte_pdf.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
 
-# 2. Botón para procesar los datos
-if st.sidebar.button("📊 Preparar Informe Final"):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
-    pdf.ln(10)
-    pdf.set_font("Arial", '', 12)
-    
-    # Usamos .get para evitar errores si la variable usuario no existe
-    usuario_reporte = st.session_state.get("usuario", "Invitado")
-    pdf.cell(200, 10, f"Alumno: {usuario_reporte}", 0, 1)
-    pdf.cell(200, 10, f"Instructor: Fabricio Pizzolato", 0, 1)
-    
-    # Verificamos el estado del simulador
-    status_op = "Operacion Exitosa" if st.session_state.pizarra.get('bop_cerrado', False) else "Finalizado"
-    pdf.cell(200, 10, f"Resultado: {status_op}", 0, 1)
-    
-    # Guardamos los bytes en el estado de la sesión
-    st.session_state.reporte_bytes = pdf.output(dest='S').encode('latin-1')
-    st.session_state.reporte_listo = True
-    st.sidebar.success("✅ Informe generado")
+# ... (tus otras líneas de celdas aquí) ...
 
-# 3. Si el reporte está listo, mostramos el botón de descarga real
-if st.session_state.reporte_listo:
+# 2. LA CORRECCIÓN CRÍTICA:
+try:
+    # Primero obtenemos el string del PDF
+    pdf_output_string = reporte_pdf.output(dest='S')
+    
+    # Luego lo convertimos a bytes de forma segura
+    if isinstance(pdf_output_string, str):
+        reporte_bytes = pdf_output_string.encode('latin-1')
+    else:
+        reporte_bytes = pdf_output_string # Por si la versión de FPDF ya devuelve bytes
+        
+    # 3. Botón de descarga fuera de conflictos
     st.sidebar.download_button(
-        label="📥 Descargar PDF de Reporte",
-        data=st.session_state.reporte_bytes,
-        file_name=f"Reporte_{st.session_state.get('usuario', 'clase')}.pdf",
-        mime="application/pdf"
+        label="📥 Descargar Reporte Final",
+        data=reporte_bytes,
+        file_name="Reporte_Final_MENFA.pdf",
+        mime="application/pdf",
+        key="btn_sidebar_reporte"
     )
-
+except Exception as e:
+    st.sidebar.error(f"Error al procesar PDF: {e}")
 # motor_calculos_avanzados.py
 import numpy as np
 
@@ -936,10 +928,6 @@ with tab3:
             piz["evento_activo"] = None
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
-import random
-import qrcode
-from fpdf import FPDF
-import io
 
 import random
 import qrcode
@@ -947,7 +935,6 @@ from fpdf import FPDF
 import io
 import streamlit as st
 
-# --- 1. FUNCIÓN GENERACIÓN ROBUSTA ---
 def crear_certificado_oficial(nombre, t_resp):
     try:
         pdf = FPDF()
@@ -960,84 +947,51 @@ def crear_certificado_oficial(nombre, t_resp):
             pdf.set_font("Arial", 'B', 16)
             pdf.cell(200, 10, "IPCL MENFA", ln=True, align='C')
 
-        # MARCO
-        pdf.set_draw_color(0, 82, 155)
-        pdf.rect(5, 5, 200, 287)
-        
-        pdf.ln(35) 
-        pdf.set_font("Arial", 'B', 24) # Bajamos un punto por seguridad
+        # CONTENIDO (Simplificado para evitar errores de tildes)
+        pdf.ln(40)
+        pdf.set_font("Arial", 'B', 24)
         pdf.set_text_color(0, 82, 155)
         pdf.cell(200, 20, "CERTIFICADO DE COMPETENCIA", ln=True, align='C')
         
         pdf.ln(10)
         pdf.set_font("Arial", '', 16)
         pdf.set_text_color(0, 0, 0)
-        pdf.cell(200, 10, "Se otorga el presente a:", ln=True, align='C')
-        
-        pdf.ln(10)
-        pdf.set_font("Arial", 'B', 22)
-        # Limpiamos el nombre de caracteres raros por las dudas
-        nombre_limpio = nombre.encode('ascii', 'ignore').decode('ascii')
-        pdf.cell(200, 15, nombre_limpio.upper(), ln=True, align='C')
-        
-        pdf.ln(15)
-        pdf.set_font("Arial", '', 14)
-        status = "DISTINGUIDO" if (0 < t_resp < 25) else "APROBADO"
-        
-        # Texto sin tildes para evitar el error de encode
-        texto = (f"Por haber completado exitosamente el entrenamiento interactivo en el "
-                 f"Simulador de Perforacion Avanzada Vaca Muerta. El operador demostro "
-                 f"capacidad de respuesta ante eventos criticos con un tiempo de {t_resp}s. "
-                 f"Mendoza, Argentina - Abril 2026.")
-        pdf.multi_cell(180, 10, texto, align='C')
+        pdf.cell(200, 10, f"Otorgado a: {nombre.upper()}", ln=True, align='C')
 
         # QR DINÁMICO
-        id_val = f"MENFA-{random.randint(1000, 9999)}"
-        qr_data = f"Validacion: {id_val} | Alumno: {nombre_limpio}"
+        qr_data = f"MENFA-CERT: {nombre} | Tiempo: {t_resp}s"
         qr = qrcode.make(qr_data)
         qr.save("temp_qr.png")
-        pdf.image("temp_qr.png", x=85, y=230, w=40)
-        
-        pdf.set_font("Arial", 'I', 9)
-        pdf.text(88, 272, f"ID Verificacion: {id_val}")
-        
-        # FIRMA
-        pdf.set_font("Arial", 'B', 12)
-        pdf.text(140, 260, "Ing. Fabricio")
-        pdf.line(135, 262, 185, 262)
-        pdf.set_font("Arial", '', 10)
-        pdf.text(142, 267, "Director Tecnico - MENFA")
+        pdf.image("temp_qr.png", x=85, y=200, w=40)
 
-        # --- CAMBIO CLAVE AQUÍ ---
-        # Retornamos el output directamente como bytes (dest='S' en FPDF devuelve un string latin-1)
-        # Lo convertimos a bytearray para Streamlit
-        return bytes(pdf.output(dest='S'), encoding='latin-1')
+        # RETORNO CRÍTICO (Aquí estaba el error)
+        # Salida como string latin-1 (FPDF estándar)
+        pdf_out = pdf.output(dest='S')
+        
+        # Si ya es bytes, lo devolvemos; si es string, lo encodeamos una sola vez
+        if isinstance(pdf_out, str):
+            return pdf_out.encode('latin-1')
+        return pdf_out
 
     except Exception as e:
         return f"Error: {str(e)}"
-
-# --- 2. INTERFAZ DE USUARIO ---
-st.divider()
-st.subheader("🎓 Emisión de Certificados Oficiales")
-
-nombre_final = st.text_input("Nombre del Alumno:", key="input_nombre_final")
-
 if st.button("🚀 PREPARAR DESCARGA"):
     if nombre_final:
         tiempo = st.session_state.get('tiempo_respuesta', 0)
-        pdf_ready = crear_certificado_oficial(nombre_final, tiempo)
+        resultado = crear_certificado_oficial(nombre_final, tiempo)
         
-        if isinstance(pdf_ready, bytes):
-            st.success(f"¡Certificado listo!")
+        # Si el resultado son bytes (PDF exitoso)
+        if isinstance(resultado, bytes):
+            st.success("✅ Certificado generado correctamente")
             st.download_button(
-                label="📥 CLIC PARA DESCARGAR",
-                data=pdf_ready,
-                file_name=f"Certificado_MENFA.pdf",
-                mime="application/pdf",
-                key="dl_final_unique"
+                label="📥 DESCARGAR AHORA",
+                data=resultado,
+                file_name=f"Certificado_{nombre_final}.pdf",
+                mime="application/pdf"
             )
         else:
-            st.error(f"Error: {pdf_ready}")
+            # Si el resultado es un string, es el mensaje de error
+            st.error(resultado)
 # --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
 st.sidebar.divider()
 with st.sidebar.expander("🔐 Panel del Instructor"):
