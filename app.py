@@ -808,7 +808,7 @@ with tab2:
     col_bop1, col_bop2 = st.columns(2)
     
     with col_bop1:
-try:
+    try:
     # Cambiamos 'assest' por 'assets' y ajustamos el width
     st.image("assets/BoP.png", width="stretch", caption="Estado del Preventor")
 except:
