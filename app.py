@@ -919,47 +919,93 @@ import qrcode
 from fpdf import FPDF
 import io
 
-# --- 1. FUNCIÓN DE GENERACIÓN CORREGIDA ---
-def generar_certificado_final(nombre_alumno, t_resp):
+import random
+import qrcode
+from fpdf import FPDF
+import io
+
+def crear_pdf_completo(nombre, t_resp):
     try:
-        # Usamos FPDF estándar
         pdf = FPDF()
         pdf.add_page()
         
-        # Marco y Título
+        # 1. LOGO (Intentamos cargarlo, si falla sigue adelante)
+        try:
+            # Ubicación: x=80, y=10, ancho=50mm
+            pdf.image('logo_menfa.png', x=80, y=10, w=50)
+        except:
+            pdf.set_font("Arial", 'B', 16)
+            pdf.cell(200, 10, "IPCL MENFA", ln=True, align='C')
+
+        # 2. MARCO Y TÍTULO
         pdf.set_draw_color(0, 82, 155)
         pdf.rect(5, 5, 200, 287)
         
+        pdf.ln(35) # Espacio para el logo
         pdf.set_font("Arial", 'B', 26)
         pdf.set_text_color(0, 82, 155)
-        pdf.cell(200, 40, "INSTITUTO MENFA - IPCL", ln=True, align='C')
+        pdf.cell(200, 20, "CERTIFICADO DE COMPETENCIA", ln=True, align='C')
         
-        pdf.ln(10)
-        pdf.set_font("Arial", 'B', 22)
+        # 3. CONTENIDO PERSONALIZADO
+        pdf.ln(15)
+        pdf.set_font("Arial", '', 16)
         pdf.set_text_color(0, 0, 0)
-        pdf.cell(200, 15, nombre_alumno.upper(), ln=True, align='C')
+        pdf.cell(200, 10, "Se otorga el presente a:", ln=True, align='C')
         
         pdf.ln(10)
+        pdf.set_font("Arial", 'B', 24)
+        pdf.cell(200, 15, nombre.upper(), ln=True, align='C')
+        
+        pdf.ln(15)
         pdf.set_font("Arial", '', 14)
-        texto = f"Certificado de competencia en Simulador Vaca Muerta. Tiempo de reaccion: {t_resp} segundos."
+        status = "DISTINGUIDO" if (0 < t_resp < 25) else "APROBADO"
+        texto = (f"Por haber completado exitosamente el entrenamiento interactivo en el "
+                 f"'Simulador de Perforación Avanzada Vaca Muerta'. El operador demostró "
+                 f"capacidad de respuesta ante eventos críticos con un tiempo de {t_resp}s. "
+                 f"Mendoza, Argentina - Abril 2026.")
         pdf.multi_cell(180, 10, texto, align='C')
 
-        # Firma simple (sin imágenes para evitar errores de ruta)
-        pdf.ln(40)
-        pdf.set_font("Arial", 'I', 12)
-        pdf.cell(200, 10, f"ID Validacion: MENFA-{random.randint(1000,9999)}", ln=True, align='C')
-        pdf.cell(200, 10, "Mendoza, Argentina - 17/04/2026", ln=True, align='C')
-
-        # IMPORTANTE: Generar el PDF como string de bytes latinos
-        pdf_str = pdf.output(dest='S')
-        if isinstance(pdf_str, str):
-            return pdf_str.encode('latin-1')
-        return pdf_str
+        # 4. GENERACIÓN DE QR DINÁMICO
+        id_val = f"MENFA-{random.randint(1000, 9999)}"
+        qr_data = f"Validacion: {id_val} | Alumno: {nombre} | Status: {status}"
+        qr = qrcode.make(qr_data)
         
-    except Exception as e:
-        st.error(f"Error interno: {str(e)}")
-        return None
+        # Guardamos el QR en un archivo temporal para el PDF
+        qr.save("temp_qr.png")
+        pdf.image("temp_qr.png", x=85, y=230, w=40) # QR centrado abajo
+        
+        pdf.set_font("Arial", 'I', 9)
+        pdf.text(88, 272, f"ID Verificación: {id_val}")
+        
+        # 5. FIRMA DEL INSTRUCTOR (Fabricio)
+        pdf.set_font("Arial", 'B', 12)
+        pdf.text(140, 260, "Ing. Fabricio")
+        pdf.line(135, 262, 185, 262)
+        pdf.set_font("Arial", '', 10)
+        pdf.text(142, 267, "Director Técnico - MENFA")
 
+        # Retornamos los bytes codificados
+        return pdf.output(dest='S').encode('latin-1')
+
+    except Exception as e:
+        return f"Error técnico: {str(e)}"
+
+# --- LÓGICA DEL BOTÓN EN STREAMLIT ---
+# (Asegurate de que esta parte esté en tu bloque de UI)
+if st.button("🚀 GENERAR CERTIFICADO CON QR"):
+    if nombre_alumno:
+        t_final = st.session_state.get('tiempo_respuesta', 0)
+        pdf_bytes = crear_pdf_completo(nombre_alumno, t_final)
+        
+        if isinstance(pdf_bytes, bytes):
+            st.download_button(
+                label="📥 DESCARGAR PDF OFICIAL",
+                data=pdf_bytes,
+                file_name=f"Certificado_MENFA_{nombre_alumno}.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.error(pdf_bytes)
 # --- 2. INTERFAZ DE DESCARGA ---
 st.divider()
 st.subheader("🎓 Emisión de Certificados")
