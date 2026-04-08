@@ -254,20 +254,42 @@ with c_gra2:
 
 # --- 6. REPORTE FINAL (SIN IADC) ---
 st.sidebar.divider()
-if st.sidebar.button("📥 Generar Informe Final"):
+
+# 1. Inicializamos la variable si no existe
+if "reporte_listo" not in st.session_state:
+    st.session_state.reporte_listo = False
+
+# 2. Botón para procesar los datos
+if st.sidebar.button("📊 Preparar Informe Final"):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
     pdf.ln(10)
     pdf.set_font("Arial", '', 12)
-    pdf.cell(200, 10, f"Alumno: {st.session_state.usuario}", 0, 1)
-    pdf.cell(200, 10, f"Instructor: Fabricio Pizzolato", 0, 1)
-    pdf.cell(200, 10, f"Resultado: {'Operación Exitosa' if pizarra['bop_cerrado'] else 'Finalizado'}", 0, 1)
     
-    # Descarga directa
-    reporte_bytes = pdf.output(dest='S').encode('latin-1')
-    st.sidebar.download_button("Descargar PDF", data=reporte_bytes, file_name="Reporte_Final.pdf")
+    # Usamos .get para evitar errores si la variable usuario no existe
+    usuario_reporte = st.session_state.get("usuario", "Invitado")
+    pdf.cell(200, 10, f"Alumno: {usuario_reporte}", 0, 1)
+    pdf.cell(200, 10, f"Instructor: Fabricio Pizzolato", 0, 1)
+    
+    # Verificamos el estado del simulador
+    status_op = "Operacion Exitosa" if st.session_state.pizarra.get('bop_cerrado', False) else "Finalizado"
+    pdf.cell(200, 10, f"Resultado: {status_op}", 0, 1)
+    
+    # Guardamos los bytes en el estado de la sesión
+    st.session_state.reporte_bytes = pdf.output(dest='S').encode('latin-1')
+    st.session_state.reporte_listo = True
+    st.sidebar.success("✅ Informe generado")
+
+# 3. Si el reporte está listo, mostramos el botón de descarga real
+if st.session_state.reporte_listo:
+    st.sidebar.download_button(
+        label="📥 Descargar PDF de Reporte",
+        data=st.session_state.reporte_bytes,
+        file_name=f"Reporte_{st.session_state.get('usuario', 'clase')}.pdf",
+        mime="application/pdf"
+    )
 
 # motor_calculos_avanzados.py
 import numpy as np
