@@ -252,37 +252,48 @@ with c_gra2:
     fig_td = td.calcular_curvas_esfuerzo(pizarra["wob_maestro"], pizarra["rpm_maestro"])
     st.plotly_chart(fig_td, use_container_width=True)
 
-# --- REPORTE FINAL CORREGIDO (Línea 269) ---
+st.sidebar.divider()
 
-# 1. Generamos el contenido del PDF como siempre
-reporte_pdf = FPDF()
-reporte_pdf.add_page()
-reporte_pdf.set_font("Arial", 'B', 16)
-reporte_pdf.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
+# 1. Aseguramos que el estado del reporte exista
+if "bytes_reporte_final" not in st.session_state:
+    st.session_state.bytes_reporte_final = None
 
-# ... (tus otras líneas de celdas aquí) ...
-
-# 2. LA CORRECCIÓN CRÍTICA:
-try:
-    # Primero obtenemos el string del PDF
-    pdf_output_string = reporte_pdf.output(dest='S')
-    
-    # Luego lo convertimos a bytes de forma segura
-    if isinstance(pdf_output_string, str):
-        reporte_bytes = pdf_output_string.encode('latin-1')
-    else:
-        reporte_bytes = pdf_output_string # Por si la versión de FPDF ya devuelve bytes
+# 2. Botón para GENERAR el reporte
+if st.sidebar.button("📊 Preparar Informe Final"):
+    try:
+        pdf_rep = FPDF()
+        pdf_rep.add_page()
+        pdf_rep.set_font("Arial", 'B', 16)
+        pdf_rep.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
+        pdf_rep.ln(10)
         
-    # 3. Botón de descarga fuera de conflictos
+        pdf_rep.set_font("Arial", '', 12)
+        # Usamos get para que no falle si no hay usuario
+        nom_usuario = st.session_state.get('usuario', 'Alumno_Anonimo')
+        pdf_rep.cell(200, 10, f"Alumno: {nom_usuario}", 0, 1)
+        pdf_rep.cell(200, 10, "Instructor: Fabricio Pizzolato", 0, 1)
+        
+        # Guardamos el resultado en el session_state para que no se borre
+        output_temp = pdf_rep.output(dest='S')
+        
+        if isinstance(output_temp, str):
+            st.session_state.bytes_reporte_final = output_temp.encode('latin-1')
+        else:
+            st.session_state.bytes_reporte_final = output_temp
+            
+        st.sidebar.success("✅ Reporte listo para descargar")
+    except Exception as e:
+        st.sidebar.error(f"Error al crear PDF: {e}")
+
+# 3. Botón para DESCARGAR el reporte (Siempre visible si ya se generó)
+if st.session_state.bytes_reporte_final is not None:
     st.sidebar.download_button(
-        label="📥 Descargar Reporte Final",
-        data=reporte_bytes,
+        label="📥 DESCARGAR PDF",
+        data=st.session_state.bytes_reporte_final,
         file_name="Reporte_Final_MENFA.pdf",
         mime="application/pdf",
-        key="btn_sidebar_reporte"
+        key="download_reporte_sidebar"
     )
-except Exception as e:
-    st.sidebar.error(f"Error al procesar PDF: {e}")
 # motor_calculos_avanzados.py
 import numpy as np
 
@@ -929,25 +940,19 @@ with tab3:
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
 
-import random
-import qrcode
-from fpdf import FPDF
-import io
-import streamlit as st
-
-def crear_certificado_oficial(nombre, t_resp):
+# --- 1. FUNCIÓN GENERADORA ---
+def generar_pdf_persistente(nombre, t_resp):
     try:
         pdf = FPDF()
         pdf.add_page()
         
-        # LOGO
+        # Logo (con manejo de error silencioso)
         try:
             pdf.image('logo_menfa.png', x=80, y=10, w=50)
         except:
             pdf.set_font("Arial", 'B', 16)
             pdf.cell(200, 10, "IPCL MENFA", ln=True, align='C')
 
-        # CONTENIDO (Simplificado para evitar errores de tildes)
         pdf.ln(40)
         pdf.set_font("Arial", 'B', 24)
         pdf.set_text_color(0, 82, 155)
@@ -958,40 +963,58 @@ def crear_certificado_oficial(nombre, t_resp):
         pdf.set_text_color(0, 0, 0)
         pdf.cell(200, 10, f"Otorgado a: {nombre.upper()}", ln=True, align='C')
 
-        # QR DINÁMICO
+        # QR
         qr_data = f"MENFA-CERT: {nombre} | Tiempo: {t_resp}s"
         qr = qrcode.make(qr_data)
         qr.save("temp_qr.png")
         pdf.image("temp_qr.png", x=85, y=200, w=40)
 
-        # RETORNO CRÍTICO (Aquí estaba el error)
-        # Salida como string latin-1 (FPDF estándar)
+        # Salida segura
         pdf_out = pdf.output(dest='S')
-        
-        # Si ya es bytes, lo devolvemos; si es string, lo encodeamos una sola vez
         if isinstance(pdf_out, str):
             return pdf_out.encode('latin-1')
         return pdf_out
-
     except Exception as e:
         return f"Error: {str(e)}"
-if st.button("🚀 PREPARAR DESCARGA"):
-    if nombre_final:
-        tiempo = st.session_state.get('tiempo_respuesta', 0)
-        resultado = crear_certificado_oficial(nombre_final, tiempo)
-        
-        # Si el resultado son bytes (PDF exitoso)
-        if isinstance(resultado, bytes):
-            st.success("✅ Certificado generado correctamente")
-            st.download_button(
-                label="📥 DESCARGAR AHORA",
-                data=resultado,
-                file_name=f"Certificado_{nombre_final}.pdf",
-                mime="application/pdf"
-            )
+
+# --- 2. INTERFAZ EN EL CUERPO DE LA APP ---
+st.divider()
+st.subheader("🎓 Emisión de Certificados Oficiales")
+
+# Inicializamos el estado si no existe
+if "pdf_cert_bytes" not in st.session_state:
+    st.session_state.pdf_cert_bytes = None
+
+nombre_input = st.text_input("Nombre del Alumno:", key="n_final_input")
+
+col_b1, col_b2 = st.columns(2)
+
+with col_b1:
+    if st.button("🚀 PREPARAR DESCARGA", use_container_width=True):
+        if nombre_input:
+            tiempo_op = st.session_state.get('tiempo_respuesta', 0)
+            resultado = generar_pdf_persistente(nombre_input, tiempo_op)
+            
+            if isinstance(resultado, bytes):
+                # GUARDAMOS EN SESSION STATE (Esto es lo que evita el silencio)
+                st.session_state.pdf_cert_bytes = resultado
+                st.success(f"✅ Certificado de {nombre_input} preparado.")
+            else:
+                st.error(resultado)
         else:
-            # Si el resultado es un string, es el mensaje de error
-            st.error(resultado)
+            st.warning("⚠️ Ingresá un nombre.")
+
+# 3. EL BOTÓN DE DESCARGA APARECE SOLO SI EL PDF YA ESTÁ EN MEMORIA
+if st.session_state.pdf_cert_bytes is not None:
+    with col_b2:
+        st.download_button(
+            label="📥 DESCARGAR PDF AHORA",
+            data=st.session_state.pdf_cert_bytes,
+            file_name=f"Certificado_MENFA.pdf",
+            mime="application/pdf",
+            key="bot_descarga_final_persistente",
+            use_container_width=True
+        )
 # --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
 st.sidebar.divider()
 with st.sidebar.expander("🔐 Panel del Instructor"):
