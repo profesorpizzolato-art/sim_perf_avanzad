@@ -847,7 +847,7 @@ if 'inicio_falla' not in st.session_state:
 
 ultima_falla_segura = st.session_state.get("ultima_falla", time.time())
 
-if time.time() - ultima_falla_segura > 60:
+if time.time() - ultima_falla_segura > 300:
     if random.random() < 0.3: 
         fallas = ["KICK", "PERDIDA", "FALLA BOMBA", "PEGAMIENTO"]
         piz["evento_activo"] = random.choice(fallas)
