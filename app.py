@@ -911,148 +911,77 @@ with tab3:
             piz["evento_activo"] = None
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
-from fpdf import FPDF
-import base64
-
-def generar_pdf(nombre_alumno, fecha, desempeño):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Diseño del Certificado
-    pdf.set_font("Arial", 'B', 24)
-    pdf.cell(200, 20, "IPCL MENFA", ln=True, align='C')
-    pdf.set_font("Arial", 'I', 16)
-    pdf.cell(200, 10, "Instituto  privado de Capacitación Laboral", ln=True, align='C')
-    pdf.image('logo_menfa.png', x=80, y=10, w=50)
-    
-    pdf.ln(20)
-    pdf.set_font("Arial", '', 18)
-    pdf.cell(200, 10, "Certifica que:", ln=True, align='C')
-    
-    pdf.ln(10)
-    pdf.set_font("Arial", 'B', 22)
-    pdf.cell(200, 10, nombre_alumno.upper(), ln=True, align='C')
-    
-    pdf.ln(10)
-    pdf.set_font("Arial", '', 14)
-    pdf.multi_cell(200, 10, f"Ha participado exitosamente en el Entrenamiento de Simulación de Perforación Avanzada y Control de Pozos, operando en el entorno interactivo 'Vaca Muerta' con un desempeño de: {desempeño}.", align='C')
-    
-    pdf.ln(20)
-    pdf.cell(200, 10, f"Mendoza, Argentina - {fecha}", ln=True, align='C')
-    
-    return pdf.output(dest='S').encode('latin-1')
-
-# --- INTERFAZ EN EL SIMULADOR ---
-with st.expander("🎓 Finalizar Sesión y Emitir Certificado"):
-    nombre = st.text_input("Nombre Completo del Alumno:")
-    if st.button("📜 Generar Certificado de Participación"):
-        if nombre:
-            # Calculamos el desempeño basado en si hubo fallas sin resolver
-            status = "EXCELENTE" if piz.get("evento_activo") is None else "EN PROCESO"
-            pdf_bytes = generar_pdf(nombre, "17/04/2026", status)
-            
-            st.download_button(
-                label="📥 Descargar Certificado (PDF)",
-                data=pdf_bytes,
-                file_name=f"Certificado_{nombre.replace(' ', '_')}.pdf",
-                mime="application/pdf"
-            )
-        else:
-            st.warning("Por favor, ingrese el nombre del alumno.")
-
-import qrcode
 import random
 import qrcode
 from fpdf import FPDF
+import io
 
-# --- 1. FUNCIÓN MAESTRA DE GENERACIÓN ---
-def generar_certificado_completo(nombre_alumno, t_resp):
+# --- 1. FUNCIÓN DE GENERACIÓN CORREGIDA ---
+def generar_certificado_final(nombre_alumno, t_resp):
     try:
+        # Usamos FPDF estándar
         pdf = FPDF()
         pdf.add_page()
-        fecha_emision = "17/04/2026"
-        id_validacion = f"MENFA-{random.randint(1000, 9999)}"
-        status = "DISTINGUIDO" if (0 < t_resp < 25) else "APROBADO"
         
-        # Estética e Identidad MENFA
+        # Marco y Título
         pdf.set_draw_color(0, 82, 155)
-        pdf.rect(5, 5, 200, 287) # Marco
+        pdf.rect(5, 5, 200, 287)
         
-        # Manejo de Logo (Si no existe el archivo, no rompe la app)
-        try:
-            pdf.image('logo.menfa.png', x=80, y=10, w=50)
-        except:
-            pdf.set_font("Arial", 'B', 15)
-            pdf.text(75, 20, "INSTITUTO IPCL MENFA")
-
-        pdf.ln(35)
         pdf.set_font("Arial", 'B', 26)
         pdf.set_text_color(0, 82, 155)
-        pdf.cell(200, 20, "CERTIFICADO DE COMPETENCIA", ln=True, align='C')
+        pdf.cell(200, 40, "INSTITUTO MENFA - IPCL", ln=True, align='C')
         
         pdf.ln(10)
-        pdf.set_font("Arial", '', 16)
+        pdf.set_font("Arial", 'B', 22)
         pdf.set_text_color(0, 0, 0)
-        pdf.cell(200, 10, "Se otorga el presente a:", ln=True, align='C')
-        
-        pdf.ln(10)
-        pdf.set_font("Arial", 'B', 24)
         pdf.cell(200, 15, nombre_alumno.upper(), ln=True, align='C')
         
-        pdf.ln(15)
-        pdf.set_font("Arial", '', 12)
-        texto = (f"Por haber completado exitosamente el entrenamiento interactivo en el "
-                 f"'Simulador de Perforación Avanzada Vaca Muerta'. El operador demostró "
-                 f"capacidad de respuesta ante eventos críticos con un tiempo de {t_resp}s. "
-                 f"Calificación: {status}.")
-        pdf.multi_cell(180, 8, texto, align='C')
+        pdf.ln(10)
+        pdf.set_font("Arial", '', 14)
+        texto = f"Certificado de competencia en Simulador Vaca Muerta. Tiempo de reaccion: {t_resp} segundos."
+        pdf.multi_cell(180, 10, texto, align='C')
+
+        # Firma simple (sin imágenes para evitar errores de ruta)
+        pdf.ln(40)
+        pdf.set_font("Arial", 'I', 12)
+        pdf.cell(200, 10, f"ID Validacion: MENFA-{random.randint(1000,9999)}", ln=True, align='C')
+        pdf.cell(200, 10, "Mendoza, Argentina - 17/04/2026", ln=True, align='C')
+
+        # IMPORTANTE: Generar el PDF como string de bytes latinos
+        pdf_str = pdf.output(dest='S')
+        if isinstance(pdf_str, str):
+            return pdf_str.encode('latin-1')
+        return pdf_str
         
-        # Generación de QR de Validación
-        qr_data = f"Validación: {id_validacion} | Alumno: {nombre_alumno} | Mendoza"
-        qr = qrcode.make(qr_data)
-        qr_img_path = "qr_temp.png"
-        qr.save(qr_img_path)
-        pdf.image(qr_img_path, x=20, y=230, w=35)
-        
-        # Firmas
-        pdf.set_font("Arial", 'I', 10)
-        pdf.text(20, 270, f"ID Verificación: {id_validacion}")
-        pdf.set_font("Times", 'I', 15)
-        pdf.text(140, 250, "Ing. Fabricio") 
-        pdf.line(130, 252, 185, 252)
-        pdf.set_font("Arial", '', 10)
-        pdf.text(138, 257, "Director Técnico - MENFA")
-        
-        pdf.text(150, 275, f"Mendoza, {fecha_emision}")
-        
-        return pdf.output(dest='S').encode('latin-1')
     except Exception as e:
-        return str(e)
+        st.error(f"Error interno: {str(e)}")
+        return None
 
-# --- 2. INTERFAZ VISIBLE (FUERA DE CUALQUIER TABS SI ES POSIBLE) ---
+# --- 2. INTERFAZ DE DESCARGA ---
 st.divider()
-st.subheader("🎓 Centro de Certificación IPCL")
+st.subheader("🎓 Emisión de Certificados")
 
-with st.expander("Abrir Panel de Emisión de Títulos", expanded=False):
-    nombre_cert = st.text_input("Ingrese Nombre Completo del Alumno:", key="input_final_cert")
-    
-    # Usamos el tiempo guardado en session_state
-    tiempo_obra = st.session_state.get('tiempo_respuesta', 0)
-    
-    if st.button("🚀 Validar y Generar PDF"):
-        if nombre_cert:
-            resultado_pdf = generar_certificado_completo(nombre_cert, tiempo_obra)
-            
-            if isinstance(resultado_pdf, bytes):
-                st.success(f"✅ Certificado de {nombre_cert} listo para descarga.")
-                st.download_button(
-                    label="📥 DESCARGAR CERTIFICADO OFICIAL",
-                    data=resultado_pdf,
-                    file_name=f"Certificado_MENFA_{nombre_cert.replace(' ', '_')}.pdf",
-                    mime="application/pdf"
-                )
-            else:
-                st.error(f"Error técnico al generar PDF: {resultado_pdf}")
-        else:
-            st.warning("⚠️ Por favor, escriba un nombre antes de generar.")
+# Usamos una columna para centrar el proceso
+col_c1, col_c2 = st.columns([2,1])
+
+with col_c1:
+    nombre_usuario = st.text_input("Nombre del Alumno:", key="n_final")
+
+if st.button("🚀 PREPARAR DESCARGA"):
+    if nombre_usuario:
+        tiempo = st.session_state.get('tiempo_respuesta', 0)
+        pdf_ready = generar_certificado_final(nombre_usuario, tiempo)
+        
+        if pdf_ready:
+            st.success(f"¡Certificado de {nombre_usuario} listo!")
+            # El botón de descarga DEBE aparecer después de generar el PDF
+            st.download_button(
+                label="⬇️ HACER CLIC AQUÍ PARA DESCARGAR PDF",
+                data=pdf_ready,
+                file_name=f"Certificado_{nombre_usuario.replace(' ', '_')}.pdf",
+                mime="application/pdf",
+                key="download_btn_unique"
+            )
+    else:
+        st.warning("Escribí un nombre primero.")
 
