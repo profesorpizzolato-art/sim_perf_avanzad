@@ -947,7 +947,7 @@ from fpdf import FPDF
 import io
 import streamlit as st
 
-# 1. ÚNICA FUNCIÓN DE GENERACIÓN (CON LOGO Y QR)
+# --- 1. FUNCIÓN GENERACIÓN ROBUSTA ---
 def crear_certificado_oficial(nombre, t_resp):
     try:
         pdf = FPDF()
@@ -965,31 +965,35 @@ def crear_certificado_oficial(nombre, t_resp):
         pdf.rect(5, 5, 200, 287)
         
         pdf.ln(35) 
-        pdf.set_font("Arial", 'B', 26)
+        pdf.set_font("Arial", 'B', 24) # Bajamos un punto por seguridad
         pdf.set_text_color(0, 82, 155)
         pdf.cell(200, 20, "CERTIFICADO DE COMPETENCIA", ln=True, align='C')
         
-        pdf.ln(15)
+        pdf.ln(10)
         pdf.set_font("Arial", '', 16)
         pdf.set_text_color(0, 0, 0)
         pdf.cell(200, 10, "Se otorga el presente a:", ln=True, align='C')
         
         pdf.ln(10)
-        pdf.set_font("Arial", 'B', 24)
-        pdf.cell(200, 15, nombre.upper(), ln=True, align='C')
+        pdf.set_font("Arial", 'B', 22)
+        # Limpiamos el nombre de caracteres raros por las dudas
+        nombre_limpio = nombre.encode('ascii', 'ignore').decode('ascii')
+        pdf.cell(200, 15, nombre_limpio.upper(), ln=True, align='C')
         
         pdf.ln(15)
         pdf.set_font("Arial", '', 14)
         status = "DISTINGUIDO" if (0 < t_resp < 25) else "APROBADO"
+        
+        # Texto sin tildes para evitar el error de encode
         texto = (f"Por haber completado exitosamente el entrenamiento interactivo en el "
-                 f"'Simulador de Perforación Avanzada Vaca Muerta'. El operador demostro "
+                 f"Simulador de Perforacion Avanzada Vaca Muerta. El operador demostro "
                  f"capacidad de respuesta ante eventos criticos con un tiempo de {t_resp}s. "
                  f"Mendoza, Argentina - Abril 2026.")
         pdf.multi_cell(180, 10, texto, align='C')
 
         # QR DINÁMICO
         id_val = f"MENFA-{random.randint(1000, 9999)}"
-        qr_data = f"Validacion: {id_val} | Alumno: {nombre} | Status: {status}"
+        qr_data = f"Validacion: {id_val} | Alumno: {nombre_limpio}"
         qr = qrcode.make(qr_data)
         qr.save("temp_qr.png")
         pdf.image("temp_qr.png", x=85, y=230, w=40)
@@ -1004,41 +1008,36 @@ def crear_certificado_oficial(nombre, t_resp):
         pdf.set_font("Arial", '', 10)
         pdf.text(142, 267, "Director Tecnico - MENFA")
 
-        return pdf.output(dest='S').encode('latin-1')
+        # --- CAMBIO CLAVE AQUÍ ---
+        # Retornamos el output directamente como bytes (dest='S' en FPDF devuelve un string latin-1)
+        # Lo convertimos a bytearray para Streamlit
+        return bytes(pdf.output(dest='S'), encoding='latin-1')
+
     except Exception as e:
         return f"Error: {str(e)}"
 
-# 2. INTERFAZ DE USUARIO CORREGIDA
+# --- 2. INTERFAZ DE USUARIO ---
 st.divider()
 st.subheader("🎓 Emisión de Certificados Oficiales")
 
-col_c1, col_c2 = st.columns([2,1])
-
-with col_c1:
-    # Usamos una sola variable para el nombre
-    nombre_final = st.text_input("Nombre del Alumno:", key="input_nombre_final")
+nombre_final = st.text_input("Nombre del Alumno:", key="input_nombre_final")
 
 if st.button("🚀 PREPARAR DESCARGA"):
     if nombre_final:
-        # Obtenemos el tiempo del estado de sesión
         tiempo = st.session_state.get('tiempo_respuesta', 0)
-        
-        # Llamamos a la función correcta
         pdf_ready = crear_certificado_oficial(nombre_final, tiempo)
         
         if isinstance(pdf_ready, bytes):
-            st.success(f"¡Certificado de {nombre_final} listo!")
+            st.success(f"¡Certificado listo!")
             st.download_button(
-                label="📥 HACER CLIC AQUÍ PARA DESCARGAR PDF",
+                label="📥 CLIC PARA DESCARGAR",
                 data=pdf_ready,
-                file_name=f"Certificado_MENFA_{nombre_final.replace(' ', '_')}.pdf",
+                file_name=f"Certificado_MENFA.pdf",
                 mime="application/pdf",
-                key="download_btn_final"
+                key="dl_final_unique"
             )
         else:
-            st.error(f"Error al generar: {pdf_ready}")
-    else:
-        st.warning("⚠️ Por favor, ingrese el nombre del alumno.")
+            st.error(f"Error: {pdf_ready}")
 # --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
 st.sidebar.divider()
 with st.sidebar.expander("🔐 Panel del Instructor"):
