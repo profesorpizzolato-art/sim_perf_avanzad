@@ -630,9 +630,6 @@ def obtener_pizarra():
     }
 
 pizarra = obtener_pizarra()
-
-# --- 3. AL FINAL LA LÓGICA QUE LLAMA A LAS FUNCIONES ---
-# Aquí es donde usas st.plotly_chart(crear_manometro(...))
 # --- SISTEMA DE EVENTOS CRÍTICOS ---
 
 # 1. Lógica de Surgencia (Kick)
@@ -642,11 +639,11 @@ if st.sidebar.button("🚨 ACTIVAR KICK (SURGENCIA)"):
 
 if st.session_state.get("tipo_evento") == "KICK":
     # La presión sube 5 psi por segundo si no cierran el BOP
-    
-if not pizarra["bop_cerrado"]:
-pizarra["presion_base"] = pizarra.get("presion_base", 0) + 5
+    if not pizarra["bop_cerrado"]:
+        # ESTAS LÍNEAS AHORA TIENEN LA SANGRÍA CORRECTA
+        pizarra["presion_base"] = pizarra.get("presion_base", 0) + 5
         st.error("⚠️ ¡AUMENTO DE PRESIÓN EN TUBING! ¡CERRAR BOP!")
-else:
+    else:
         st.success("✅ POZO CERRADO. CALCULAR KILL MUD WEIGHT.")
 
 # 2. Lógica de Pérdida de Circulación
@@ -654,7 +651,9 @@ if st.sidebar.button("📉 ACTIVAR PÉRDIDA DE RETORNO"):
     st.session_state.tipo_evento = "PERDIDA"
 
 if st.session_state.get("tipo_evento") == "PERDIDA":
-    res["AV"] = res["AV"] * 0.4 # Cae la velocidad anular
+    # Asumiendo que 'res' es el diccionario de tus resultados de cálculo
+    if "AV" in res:
+        res["AV"] = res["AV"] * 0.4 
     st.warning("📉 PÉRDIDA DE CIRCULACIÓN DETECTADA EN FORMACIÓN")
 
 # 3. Lógica de Falla de Bomba
@@ -662,46 +661,9 @@ if st.sidebar.button("⚙️ FALLA BOMBA 1"):
     st.session_state.tipo_evento = "FALLA_BOMBA"
 
 if st.session_state.get("tipo_evento") == "FALLA_BOMBA":
-    pizarra["caudal_maestro"] = pizarra["caudal_maestro"] * 0.5
+    pizarra["caudal_maestro"] = pizarra.get("caudal_maestro", 0) * 0.5
     st.error("💥 FALLA EN VÁLVULA DE BOMBA 1. CAUDAL REDUCIDO AL 50%")
 
-# --- NUEVO MÓDULO: HIDRÁULICA ---
-def calcular_hidraulica(piz, res):
-    # Usamos .get para que si no existe 'densidad_maestra', use 10.0 por defecto
-    densidad = piz.get("densidad_maestra", 10.0) 
-    
-    # Cálculo de fricción simplificado
-    friccion = (piz.get("caudal_maestro", 500) ** 1.8) / 100000 
-    ecd = densidad + friccion
-    
-    # Presión de Fondo (BHP) - Profundidad en metros a pies (* 3.28)
-    prof = piz.get("profundidad_actual", 2500)
-    bhp = 0.052 * ecd * (prof * 3.28)
-    
-    return round(ecd, 2), round(bhp, 2)
-    
-# --- NUEVO MÓDULO: LIMPIEZA ---
-with tab3:
-    st.subheader("📊 Análisis de Limpieza (Cuttings)")
-    vel_anular = res["AV"] # Viene de tu motor
-    vel_critica = 120.0    # ft/min (valor típico para Vaca Muerta)
-    
-    if vel_anular < vel_critica:
-        st.error(f"⚠️ VELOCIDAD BAJA ({vel_anular:.1f} ft/min). Riesgo de atascamiento.")
-    else:
-        st.success(f"✅ LIMPIEZA ÓPTIMA ({vel_anular:.1f} ft/min)")
-    
-    st.progress(min(1.0, vel_anular/200), text="Eficiencia de Transporte")
-
-# --- NUEVO MÓDULO: COSTOS ---
-if 'costo_acumulado' not in st.session_state:
-    st.session_state.costo_acumulado = 0.0
-
-# Costo ficticio: $2500 USD por hora de equipo
-costo_por_segundo = 2500 / 3600
-st.session_state.costo_acumulado += costo_por_segundo
-
-st.sidebar.metric("💰 Costo Operativo", f"USD {st.session_state.costo_acumulado:.2f}")
 
 # --- 4. INTERFAZ DE USUARIO (TABS) ---
 # Asegurate de que esto esté fuera de cualquier otro bloque 'with'
