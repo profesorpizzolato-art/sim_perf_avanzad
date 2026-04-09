@@ -269,45 +269,24 @@ from fpdf import FPDF
 # --- 1. FUNCIÓN DEL CERTIFICADO (Debe estar afuera de los botones) ---
 def crear_certificado_oficial(nombre, t_resp):
     try:
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", 'B', 16)
-        pdf.cell(200, 10, "IPCL MENFA - CERTIFICADO", ln=True, align='C')
-        
-        # ... (aquí iría el resto de tu diseño de certificado) ...
+      # --- DENTRO DEL BOTÓN DE INFORME ---
+pdf_rep = FPDF()
+pdf_rep.add_page()
+pdf_rep.set_font("Arial", 'B', 16)
 
-        pdf_str = pdf.output(dest='S')
-        buf = io.BytesIO()
-        buf.write(pdf_str.encode('latin-1'))
-        return buf.getvalue() # Devuelve bytes puros
-    except Exception as e:
-        return f"Error: {str(e)}"
+# USAR TEXTO PLANO (Sin tildes ni emojis como 📊 o 🚨)
+pdf_rep.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
+pdf_rep.ln(10)
+pdf_rep.set_font("Arial", '', 12)
+pdf_rep.cell(200, 10, f"Alumno: {st.session_state.get('usuario', 'Anonimo')}", 0, 1)
+pdf_rep.cell(200, 10, "Instructor: Fabricio Pizzolato", 0, 1)
 
-# --- 2. LÓGICA DE LA BARRA LATERAL (SIDEBAR) ---
-st.sidebar.divider()
-
-if st.sidebar.button("📊 Preparar Informe Final"):
-    try:
-        pdf_rep = FPDF()
-        pdf_rep.add_page()
-        pdf_rep.set_font("Arial", 'B', 16)
-        pdf_rep.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
-        
-        # Datos del reporte
-        pdf_rep.ln(10)
-        pdf_rep.set_font("Arial", '', 12)
-        pdf_rep.cell(200, 10, f"Instructor: Fabricio Pizzolato", ln=True)
-        
-        # Generación de bytes
-        pdf_str_rep = pdf_rep.output(dest='S')
-        reporte_fp = io.BytesIO()
-        reporte_fp.write(pdf_str_rep.encode('latin-1'))
-        
-        st.session_state.bytes_reporte_final = reporte_fp.getvalue()
-        st.sidebar.success("✅ Informe listo")
-    except Exception as e:
-        st.sidebar.error(f"Error: {e}")
-
+# Conversión final segura
+pdf_str_rep = pdf_rep.output(dest='S')
+if isinstance(pdf_str_rep, str):
+    st.session_state.bytes_reporte_final = pdf_str_rep.encode('latin-1', 'ignore')
+else:
+    st.session_state.bytes_reporte_final = pdf_str_rep
 # 3. BOTÓN DE DESCARGA ÚNICO
 if st.session_state.get('bytes_reporte_final') is not None:
     st.sidebar.download_button(
@@ -963,13 +942,17 @@ with tab3:
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
 
-# --- 1. FUNCIÓN GENERADORA ---
-def generar_pdf_persistente(nombre, t_resp):
+def crear_certificado_oficial(nombre, t_resp):
     try:
+        # 1. Limpieza de seguridad: quitamos tildes y caracteres raros del nombre
+        import unicodedata
+        nombre_limpio = ''.join(c for c in unicodedata.normalize('NFD', nombre)
+                               if unicodedata.category(c) != 'Mn').upper()
+        
         pdf = FPDF()
         pdf.add_page()
         
-        # Logo (con manejo de error silencioso)
+        # Logo (con try por si el archivo no está)
         try:
             pdf.image('logo_menfa.png', x=80, y=10, w=50)
         except:
@@ -979,24 +962,25 @@ def generar_pdf_persistente(nombre, t_resp):
         pdf.ln(40)
         pdf.set_font("Arial", 'B', 24)
         pdf.set_text_color(0, 82, 155)
+        # TEXTO SIN TILDES (Clave para evitar el error de uncode)
         pdf.cell(200, 20, "CERTIFICADO DE COMPETENCIA", ln=True, align='C')
         
         pdf.ln(10)
         pdf.set_font("Arial", '', 16)
         pdf.set_text_color(0, 0, 0)
-        pdf.cell(200, 10, f"Otorgado a: {nombre.upper()}", ln=True, align='C')
+        pdf.cell(200, 10, f"Otorgado a: {nombre_limpio}", ln=True, align='C')
 
-        # QR
-        qr_data = f"MENFA-CERT: {nombre} | Tiempo: {t_resp}s"
+        # QR DINAMICO
+        qr_data = f"VALIDACION MENFA: {nombre_limpio} | {t_resp}s"
         qr = qrcode.make(qr_data)
         qr.save("temp_qr.png")
         pdf.image("temp_qr.png", x=85, y=200, w=40)
 
-        # Salida segura
-        pdf_out = pdf.output(dest='S')
-        if isinstance(pdf_out, str):
-            return pdf_out.encode('latin-1')
-        return pdf_out
+        # SALIDA SEGURA EN BYTES
+        pdf_str = pdf.output(dest='S')
+        if isinstance(pdf_str, str):
+            return pdf_str.encode('latin-1', 'replace') # 'replace' evita que el código muera
+        return pdf_str
     except Exception as e:
         return f"Error: {str(e)}"
 
