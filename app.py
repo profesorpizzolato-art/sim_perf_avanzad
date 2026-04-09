@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 from fpdf import FPDF
 from streamlit_autorefresh import st_autorefresh
-
+import io
 # --- IMPORTACIÓN DE TUS MÓDULOS TÉCNICOS (FILES) ---
 import motor_calculos_avanzados as motor
 import geonavegacion_pro as geo
