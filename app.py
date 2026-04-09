@@ -678,7 +678,7 @@ if st.sidebar.button("🚨 ACTIVAR KICK (SURGENCIA)"):
 if st.session_state.get("tipo_evento") == "KICK":
     # La presión sube 5 psi por segundo si no cierran el BOP
     if not pizarra["bop_cerrado"]:
-        pizarra["presion_base"] += 5
+pizarra["presion_base"] = pizarra.get("presion_base", 0) + 5
         st.error("⚠️ ¡AUMENTO DE PRESIÓN EN TUBING! ¡CERRAR BOP!")
     else:
         st.success("✅ POZO CERRADO. CALCULAR KILL MUD WEIGHT.")
