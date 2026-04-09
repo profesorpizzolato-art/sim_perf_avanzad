@@ -7,5 +7,5 @@ streamlit-autorefresh
 qrcode
 pillow
 import io
-random
+import random
 fpdf
