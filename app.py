@@ -664,7 +664,6 @@ if st.session_state.get("tipo_evento") == "FALLA_BOMBA":
     pizarra["caudal_maestro"] = pizarra.get("caudal_maestro", 0) * 0.5
     st.error("💥 FALLA EN VÁLVULA DE BOMBA 1. CAUDAL REDUCIDO AL 50%")
 
-
 # --- 4. INTERFAZ DE USUARIO (TABS) ---
 # Asegurate de que esto esté fuera de cualquier otro bloque 'with'
 with tab4:
@@ -719,7 +718,6 @@ with tab4:
         else:
             st.success("🎯 DENTRO DE LA VENTANA PRODUCTIVA")
 
-# --- CÁLCULO DE CARGA EN EL GANCHO (Fuera de los Tabs para que sea global) ---
 # Cálculo físico para el simulador del MENFA
 peso_lineal = 0.02 # klbs por metro
 peso_sarta = piz["profundidad_actual"] * peso_lineal
@@ -727,17 +725,14 @@ hook_load_real = peso_sarta - piz["wob_maestro"]
 
 import time
 
-# Inicializamos el cronómetro en el estado de sesión
 if 'inicio_falla' not in st.session_state:
     st.session_state.inicio_falla = None
 if 'tiempo_respuesta' not in st.session_state:
     st.session_state.tiempo_respuesta = 0
 
-# Si hay una falla activa y el cronómetro no empezó, lo iniciamos
 if piz.get("evento_activo") and st.session_state.inicio_falla is None:
     st.session_state.inicio_falla = time.time()
 
-# Si no hay falla, reseteamos el inicio
 if not piz.get("evento_activo"):
     st.session_state.inicio_falla = None
     
@@ -890,26 +885,105 @@ with tab3:
             piz["evento_activo"] = None
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
-# --- DENTRO DEL BOTÓN DE INFORME ---
-pdf_rep = FPDF()
-pdf_rep.add_page()
-pdf_rep.set_font("Arial", 'B', 16)
+import io
+import unicodedata
+from fpdf import FPDF
+import qrcode
+import streamlit as st
 
-# USAR TEXTO PLANO (Sin tildes ni emojis como 📊 o 🚨)
-pdf_rep.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
-pdf_rep.ln(10)
-pdf_rep.set_font("Arial", '', 12)
-pdf_rep.cell(200, 10, f"Alumno: {st.session_state.get('usuario', 'Anonimo')}", 0, 1)
-pdf_rep.cell(200, 10, "Instructor: Fabricio Pizzolato", 0, 1)
+# --- 1. FUNCIÓN DE LIMPIEZA (Para evitar errores de encode) ---
+def limpiar_texto(texto):
+    if not texto: return "S/N"
+    # Quita tildes y eñes
+    return ''.join(c for c in unicodedata.normalize('NFD', str(texto))
+                  if unicodedata.category(c) != 'Mn')
 
-# Conversión final segura
-pdf_str_rep = pdf_rep.output(dest='S')
-if isinstance(pdf_str_rep, str):
-    st.session_state.bytes_reporte_final = pdf_str_rep.encode('latin-1', 'ignore')
-else:
-    st.session_state.bytes_reporte_final = pdf_str_rep
+# --- 2. SECCIÓN DE CERTIFICADOS (Cuerpo principal) ---
+st.divider()
+st.header("🎓 Certificación MENFA")
 
+# Inicializamos el contenedor de bytes si no existe
+if "cert_bytes" not in st.session_state:
+    st.session_state.cert_bytes = None
+
+# Input de nombre
+nombre_alumno = st.text_input("Nombre completo del cursante:", key="cert_name_input")
+
+col_a, col_b = st.columns(2)
+
+with col_a:
+    if st.button("🚀 Generar Certificado", use_container_width=True):
+        if nombre_alumno:
+            try:
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", 'B', 20)
+                pdf.cell(200, 20, "IPCL MENFA - MENDOZA", ln=True, align='C')
+                
+                pdf.ln(10)
+                pdf.set_font("Arial", '', 16)
+                pdf.cell(200, 10, "Se certifica a:", ln=True, align='C')
+                
+                # Nombre limpio sin tildes para evitar el error de encode
+                pdf.set_font("Arial", 'B', 22)
+                pdf.cell(200, 20, limpiar_texto(nombre_alumno).upper(), ln=True, align='C')
+                
+                # QR
+                qr_data = f"MENFA-VALID: {limpiar_texto(nombre_alumno)}"
+                qr = qrcode.make(qr_data)
+                qr.save("temp_qr.png")
+                pdf.image("temp_qr.png", x=85, y=200, w=40)
+
+                # Convertimos a bytes usando Buffer (lo más seguro)
+                pdf_str = pdf.output(dest='S')
+                buf = io.BytesIO()
+                buf.write(pdf_str.encode('latin-1', 'replace'))
+                st.session_state.cert_bytes = buf.getvalue()
+                
+                st.success("✅ Certificado listo")
+            except Exception as e:
+                st.error(f"Error técnico: {e}")
+        else:
+            st.warning("Escribí el nombre del alumno.")
+
+with col_b:
+    if st.session_state.cert_bytes:
+        st.download_button(
+            label="📥 Descargar Título (PDF)",
+            data=st.session_state.cert_bytes,
+            file_name=f"Certificado_{limpiar_texto(nombre_alumno)}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
+# --- 3. SECCIÓN DE REPORTE (Barra Lateral) ---
+# Buscá tu st.sidebar y poné esto:
+st.sidebar.divider()
+st.sidebar.subheader("📄 Reporte de Operación")
+
+if st.sidebar.button("📊 Preparar Informe Final"):
+    try:
+        pdf_rep = FPDF()
+        pdf_rep.add_page()
+        pdf_rep.set_font("Arial", 'B', 16)
+        pdf_rep.cell(200, 10, "REPORTE DE ENTRENAMIENTO - VACA MUERTA", ln=True, align='C')
         
+        # Generación de bytes
+        pdf_s = pdf_rep.output(dest='S')
+        buf_rep = io.BytesIO()
+        buf_rep.write(pdf_s.encode('latin-1', 'replace'))
+        st.session_state.reporte_final_bytes = buf_rep.getvalue()
+        st.sidebar.success("✅ Informe generado")
+    except Exception as e:
+        st.sidebar.error(f"Error: {e}")
+
+if st.session_state.get("reporte_final_bytes"):
+    st.sidebar.download_button(
+        label="📥 Descargar Informe",
+        data=st.session_state.reporte_final_bytes,
+        file_name="Reporte_Simulacion.pdf",
+        mime="application/pdf"
+    )
 # --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
 st.sidebar.divider()
 with st.sidebar.expander("🔐 Panel del Instructor"):
