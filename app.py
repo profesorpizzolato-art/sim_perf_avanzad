@@ -885,104 +885,78 @@ with tab3:
             piz["evento_activo"] = None
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
-import io
-import unicodedata
-from fpdf import FPDF
-import qrcode
-import streamlit as st
+# --- SISTEMA DE EMISIÓN DE DOCUMENTOS MENFA ---
+st.write("---") # Esto crea una línea divisoria física
+st.header("🎓 Gestión de Certificados y Reportes")
 
-# --- 1. FUNCIÓN DE LIMPIEZA (Para evitar errores de encode) ---
-def limpiar_texto(texto):
-    if not texto: return "S/N"
-    # Quita tildes y eñes
-    return ''.join(c for c in unicodedata.normalize('NFD', str(texto))
-                  if unicodedata.category(c) != 'Mn')
+# 1. Aseguramos que existan las variables de memoria
+if "pdf_cert_final" not in st.session_state:
+    st.session_state.pdf_cert_final = None
+if "pdf_repo_final" not in st.session_state:
+    st.session_state.pdf_repo_final = None
 
-# --- 2. SECCIÓN DE CERTIFICADOS (Cuerpo principal) ---
-st.divider()
-st.header("🎓 Certificación MENFA")
+# 2. SECCIÓN CERTIFICADO
+col1, col2 = st.columns(2)
 
-# Inicializamos el contenedor de bytes si no existe
-if "cert_bytes" not in st.session_state:
-    st.session_state.cert_bytes = None
-
-# Input de nombre
-nombre_alumno = st.text_input("Nombre completo del cursante:", key="cert_name_input")
-
-col_a, col_b = st.columns(2)
-
-with col_a:
-    if st.button("🚀 Generar Certificado", use_container_width=True):
-        if nombre_alumno:
+with col1:
+    alumno = st.text_input("Nombre del Alumno para Certificado:", key="input_cert_nombre")
+    if st.button("📌 1. Preparar Certificado"):
+        if alumno:
             try:
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("Arial", 'B', 20)
-                pdf.cell(200, 20, "IPCL MENFA - MENDOZA", ln=True, align='C')
+                # Limpieza de nombre (sin tildes para evitar errores)
+                import unicodedata
+                n_limpio = ''.join(c for c in unicodedata.normalize('NFD', alumno) if unicodedata.category(c) != 'Mn').upper()
                 
-                pdf.ln(10)
-                pdf.set_font("Arial", '', 16)
-                pdf.cell(200, 10, "Se certifica a:", ln=True, align='C')
+                f_pdf = FPDF()
+                f_pdf.add_page()
+                f_pdf.set_font("Arial", 'B', 20)
+                f_pdf.cell(200, 20, "IPCL MENFA - CERTIFICADO", ln=True, align='C')
+                f_pdf.ln(10)
+                f_pdf.set_font("Arial", '', 16)
+                f_pdf.cell(200, 10, f"Otorgado a: {n_limpio}", ln=True, align='C')
                 
-                # Nombre limpio sin tildes para evitar el error de encode
-                pdf.set_font("Arial", 'B', 22)
-                pdf.cell(200, 20, limpiar_texto(nombre_alumno).upper(), ln=True, align='C')
-                
-                # QR
-                qr_data = f"MENFA-VALID: {limpiar_texto(nombre_alumno)}"
-                qr = qrcode.make(qr_data)
-                qr.save("temp_qr.png")
-                pdf.image("temp_qr.png", x=85, y=200, w=40)
-
-                # Convertimos a bytes usando Buffer (lo más seguro)
-                pdf_str = pdf.output(dest='S')
-                buf = io.BytesIO()
-                buf.write(pdf_str.encode('latin-1', 'replace'))
-                st.session_state.cert_bytes = buf.getvalue()
-                
-                st.success("✅ Certificado listo")
+                # Conversión segura a bytes
+                out_str = f_pdf.output(dest='S')
+                st.session_state.pdf_cert_final = out_str.encode('latin-1', 'replace')
+                st.success(f"Certificado de {n_limpio} listo")
             except Exception as e:
-                st.error(f"Error técnico: {e}")
-        else:
-            st.warning("Escribí el nombre del alumno.")
+                st.error(f"Error en Certificado: {e}")
 
-with col_b:
-    if st.session_state.cert_bytes:
+with col2:
+    if st.session_state.pdf_cert_final is not None:
         st.download_button(
-            label="📥 Descargar Título (PDF)",
-            data=st.session_state.cert_bytes,
-            file_name=f"Certificado_{limpiar_texto(nombre_alumno)}.pdf",
+            label="📥 DESCARGAR CERTIFICADO",
+            data=st.session_state.pdf_cert_final,
+            file_name="Certificado_MENFA.pdf",
             mime="application/pdf",
-            use_container_width=True
+            key="dl_cert_btn"
         )
 
-# --- 3. SECCIÓN DE REPORTE (Barra Lateral) ---
-# Buscá tu st.sidebar y poné esto:
-st.sidebar.divider()
-st.sidebar.subheader("📄 Reporte de Operación")
+# 3. SECCIÓN REPORTE (SIDEBAR)
+st.sidebar.markdown("---")
+st.sidebar.subheader("📄 Reporte de Entrenamiento")
 
-if st.sidebar.button("📊 Preparar Informe Final"):
+if st.sidebar.button("⚙️ Preparar Reporte Final"):
     try:
-        pdf_rep = FPDF()
-        pdf_rep.add_page()
-        pdf_rep.set_font("Arial", 'B', 16)
-        pdf_rep.cell(200, 10, "REPORTE DE ENTRENAMIENTO - VACA MUERTA", ln=True, align='C')
+        r_pdf = FPDF()
+        r_pdf.add_page()
+        r_pdf.set_font("Arial", 'B', 14)
+        r_pdf.cell(200, 10, "REPORTE OPERATIVO - MENFA IPCL", ln=True, align='C')
         
         # Generación de bytes
-        pdf_s = pdf_rep.output(dest='S')
-        buf_rep = io.BytesIO()
-        buf_rep.write(pdf_s.encode('latin-1', 'replace'))
-        st.session_state.reporte_final_bytes = buf_rep.getvalue()
-        st.sidebar.success("✅ Informe generado")
+        r_str = r_pdf.output(dest='S')
+        st.session_state.pdf_repo_final = r_str.encode('latin-1', 'replace')
+        st.sidebar.success("Reporte preparado")
     except Exception as e:
-        st.sidebar.error(f"Error: {e}")
+        st.sidebar.error(f"Error en Reporte: {e}")
 
-if st.session_state.get("reporte_final_bytes"):
+if st.session_state.pdf_repo_final is not None:
     st.sidebar.download_button(
-        label="📥 Descargar Informe",
-        data=st.session_state.reporte_final_bytes,
-        file_name="Reporte_Simulacion.pdf",
-        mime="application/pdf"
+        label="📥 DESCARGAR INFORME",
+        data=st.session_state.pdf_repo_final,
+        file_name="Reporte_Final.pdf",
+        mime="application/pdf",
+        key="dl_repo_btn"
     )
 # --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
 st.sidebar.divider()
