@@ -263,13 +263,7 @@ import io  # Asegurate de tener este import arriba de todo
 
 st.sidebar.divider()
 
-import io
-from fpdf import FPDF
-
-# --- 1. FUNCIÓN DEL CERTIFICADO (Debe estar afuera de los botones) ---
-def crear_certificado_oficial(nombre, t_resp):
-    try:
-      # --- DENTRO DEL BOTÓN DE INFORME ---
+# --- DENTRO DEL BOTÓN DE INFORME ---
 pdf_rep = FPDF()
 pdf_rep.add_page()
 pdf_rep.set_font("Arial", 'B', 16)
@@ -287,15 +281,7 @@ if isinstance(pdf_str_rep, str):
     st.session_state.bytes_reporte_final = pdf_str_rep.encode('latin-1', 'ignore')
 else:
     st.session_state.bytes_reporte_final = pdf_str_rep
-# 3. BOTÓN DE DESCARGA ÚNICO
-if st.session_state.get('bytes_reporte_final') is not None:
-    st.sidebar.download_button(
-        label="📥 Descargar Reporte Final",
-        data=st.session_state.bytes_reporte_final,
-        file_name="Reporte_Final_MENFA.pdf",
-        mime="application/pdf",
-        key="btn_rep_sidebar_final"
-    )
+    
 # motor_calculos_avanzados.py
 import numpy as np
 
@@ -941,87 +927,26 @@ with tab3:
             piz["evento_activo"] = None
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
+# --- DENTRO DEL BOTÓN DE INFORME ---
+pdf_rep = FPDF()
+pdf_rep.add_page()
+pdf_rep.set_font("Arial", 'B', 16)
 
-def crear_certificado_oficial(nombre, t_resp):
-    try:
-        # 1. Limpieza de seguridad: quitamos tildes y caracteres raros del nombre
-        import unicodedata
-        nombre_limpio = ''.join(c for c in unicodedata.normalize('NFD', nombre)
-                               if unicodedata.category(c) != 'Mn').upper()
+# USAR TEXTO PLANO (Sin tildes ni emojis como 📊 o 🚨)
+pdf_rep.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
+pdf_rep.ln(10)
+pdf_rep.set_font("Arial", '', 12)
+pdf_rep.cell(200, 10, f"Alumno: {st.session_state.get('usuario', 'Anonimo')}", 0, 1)
+pdf_rep.cell(200, 10, "Instructor: Fabricio Pizzolato", 0, 1)
+
+# Conversión final segura
+pdf_str_rep = pdf_rep.output(dest='S')
+if isinstance(pdf_str_rep, str):
+    st.session_state.bytes_reporte_final = pdf_str_rep.encode('latin-1', 'ignore')
+else:
+    st.session_state.bytes_reporte_final = pdf_str_rep
+
         
-        pdf = FPDF()
-        pdf.add_page()
-        
-        # Logo (con try por si el archivo no está)
-        try:
-            pdf.image('logo_menfa.png', x=80, y=10, w=50)
-        except:
-            pdf.set_font("Arial", 'B', 16)
-            pdf.cell(200, 10, "IPCL MENFA", ln=True, align='C')
-
-        pdf.ln(40)
-        pdf.set_font("Arial", 'B', 24)
-        pdf.set_text_color(0, 82, 155)
-        # TEXTO SIN TILDES (Clave para evitar el error de uncode)
-        pdf.cell(200, 20, "CERTIFICADO DE COMPETENCIA", ln=True, align='C')
-        
-        pdf.ln(10)
-        pdf.set_font("Arial", '', 16)
-        pdf.set_text_color(0, 0, 0)
-        pdf.cell(200, 10, f"Otorgado a: {nombre_limpio}", ln=True, align='C')
-
-        # QR DINAMICO
-        qr_data = f"VALIDACION MENFA: {nombre_limpio} | {t_resp}s"
-        qr = qrcode.make(qr_data)
-        qr.save("temp_qr.png")
-        pdf.image("temp_qr.png", x=85, y=200, w=40)
-
-        # SALIDA SEGURA EN BYTES
-        pdf_str = pdf.output(dest='S')
-        if isinstance(pdf_str, str):
-            return pdf_str.encode('latin-1', 'replace') # 'replace' evita que el código muera
-        return pdf_str
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-# --- 2. INTERFAZ EN EL CUERPO DE LA APP ---
-st.divider()
-st.subheader("🎓 Emisión de Certificados Oficiales")
-
-# Inicializamos el estado si no existe
-if "pdf_cert_bytes" not in st.session_state:
-    st.session_state.pdf_cert_bytes = None
-
-nombre_input = st.text_input("Nombre del Alumno:", key="n_final_input")
-
-col_b1, col_b2 = st.columns(2)
-
-with col_b1:
-    if st.button("🚀 PREPARAR DESCARGA", use_container_width=True):
-        if nombre_input:
-            tiempo_op = st.session_state.get('tiempo_respuesta', 0)
-            resultado = generar_pdf_persistente(nombre_input, tiempo_op)
-            
-            if isinstance(resultado, bytes):
-                # GUARDAMOS EN SESSION STATE (Esto es lo que evita el silencio)
-                st.session_state.pdf_cert_bytes = resultado
-                st.success(f"✅ Certificado de {nombre_input} preparado.")
-            else:
-                st.error(resultado)
-        else:
-            st.warning("⚠️ Ingresá un nombre.")
-
-# 3. EL BOTÓN DE DESCARGA APARECE SOLO SI EL PDF YA ESTÁ EN MEMORIA
-if st.session_state.pdf_cert_bytes is not None:
-    with col_b2:
-        st.download_button(
-            label="📥 DESCARGAR PDF AHORA",
-            data=st.session_state.pdf_cert_bytes,
-            file_name=f"Certificado_MENFA.pdf",
-            mime="application/pdf",
-            key="bot_descarga_final_persistente",
-            use_container_width=True
-        )
 # --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
 st.sidebar.divider()
 with st.sidebar.expander("🔐 Panel del Instructor"):
