@@ -6,3 +6,6 @@ fpdf2
 streamlit-autorefresh
 qrcode
 pillow
+import io
+import random
+fpdf
