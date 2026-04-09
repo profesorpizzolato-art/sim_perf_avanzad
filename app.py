@@ -259,32 +259,51 @@ if "bytes_reporte_final" not in st.session_state:
     st.session_state.bytes_reporte_final = None
 
 # 2. Botón para GENERAR el reporte
+import io  # Asegurate de tener este import arriba de todo
+
+st.sidebar.divider()
+
 if st.sidebar.button("📊 Preparar Informe Final"):
     try:
         pdf_rep = FPDF()
         pdf_rep.add_page()
         pdf_rep.set_font("Arial", 'B', 16)
         pdf_rep.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
-        pdf_rep.ln(10)
         
-        pdf_rep.set_font("Arial", '', 12)
-        # Usamos get para que no falle si no hay usuario
-        nom_usuario = st.session_state.get('usuario', 'Alumno_Anonimo')
-        pdf_rep.cell(200, 10, f"Alumno: {nom_usuario}", 0, 1)
-        pdf_rep.cell(200, 10, "Instructor: Fabricio Pizzolato", 0, 1)
+        # ... tu contenido de celdas aquí ...
         
-        # Guardamos el resultado en el session_state para que no se borre
-        output_temp = pdf_rep.output(dest='S')
+        # --- LA SOLUCIÓN DEFINITIVA ---
+        # 1. Generamos el PDF como string
+        pdf_str = pdf_rep.output(dest='S')
         
-        if isinstance(output_temp, str):
-            st.session_state.bytes_reporte_final = output_temp.encode('latin-1')
-        else:
-            st.session_state.bytes_reporte_final = output_temp
-            
-        st.sidebar.success("✅ Reporte listo para descargar")
+        # 2. Lo convertimos a bytes REALES usando un Buffer
+        reporte_fp = io.BytesIO()
+        reporte_fp.write(pdf_str.encode('latin-1'))
+        reporte_fp.seek(0) # Volvemos al inicio del archivo en memoria
+        
+        st.session_state.bytes_reporte_final = reporte_fp.getvalue()
+        st.sidebar.success("✅ Informe listo")
     except Exception as e:
-        st.sidebar.error(f"Error al crear PDF: {e}")
+        st.sidebar.error(f"Error: {e}")
 
+if st.session_state.get('bytes_reporte_final'):
+    st.sidebar.download_button(
+        label="📥 Descargar PDF",
+        data=st.session_state.bytes_reporte_final,
+        file_name="Reporte_Final.pdf",
+        mime="application/pdf",
+        key="btn_rep_unique"
+    )
+    # ... (dentro de la función, al final) ...
+        
+        pdf_str = pdf.output(dest='S')
+        
+        # Buffer de memoria para evitar el StreamlitAPIException
+        buf = io.BytesIO()
+        buf.write(pdf_str.encode('latin-1'))
+        buf.seek(0)
+        
+        return buf.getvalue() # Esto devuelve BYTES puros
 # 3. Botón para DESCARGAR el reporte (Siempre visible si ya se generó)
 if st.session_state.bytes_reporte_final is not None:
     st.sidebar.download_button(
