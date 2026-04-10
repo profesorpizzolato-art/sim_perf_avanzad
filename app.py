@@ -124,22 +124,21 @@ if not st.session_state.autenticado:
     st.stop()
 # Buscá este bloque y fijate que estén estas 4 claves sí o sí
 # --- INICIALIZACIÓN COMPLETA (Para evitar KeyErrors) ---
+# --- REPARACIÓN FINAL (Líneas 130 a 141 aprox) ---
 if 'pizarra' not in st.session_state:
     st.session_state.pizarra = {
         "profundidad_actual": 2500.0,
         "presion_base": 1200.0,
         "alarma_activa": False,
         "evento_activo": None,
-        "wob_maestro": 0.0,      # <-- Faltaba este
-        "rpm_maestro": 0.0,      # <-- Faltaba este
-        "torque_maestro": 0.0,   # <-- ESTE ES EL QUE DIO EL ERROR EN LA 265
-        "caudal_maestro": 500.0  # <-- Faltaba este
+        "wob_maestro": 0.0,
+        "rpm_maestro": 0.0,
+        "torque_maestro": 0.0,
+        "caudal_maestro": 500.0
     }
 
-# Asignamos a la variable local para que las líneas de abajo funcionen
+# ESTA ES LA LÍNEA 141: Asegurate que no tenga espacios de más al inicio
 pizarra = st.session_state.pizarra
-    pizarra = st.session_state.pizarra
-# 2. AHORA entramos al sidebar con todo alineado
 with st.sidebar:
     st.title("👨‍🏫 Panel del Instructor")
     
