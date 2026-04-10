@@ -123,15 +123,21 @@ if not st.session_state.autenticado:
                         st.rerun()
     st.stop()
 # Buscá este bloque y fijate que estén estas 4 claves sí o sí
-if 'pizarra' in st.session_state:
-    pizarra = st.session_state.pizarra 
-else:
+# --- INICIALIZACIÓN COMPLETA (Para evitar KeyErrors) ---
+if 'pizarra' not in st.session_state:
     st.session_state.pizarra = {
         "profundidad_actual": 2500.0,
         "presion_base": 1200.0,
-        "alarma_activa": False,  # <-- ASEGURATE QUE ESTÉ ACÁ
-        "evento_activo": None    # <-- ASEGURATE QUE ESTÉ ACÁ
+        "alarma_activa": False,
+        "evento_activo": None,
+        "wob_maestro": 0.0,      # <-- Faltaba este
+        "rpm_maestro": 0.0,      # <-- Faltaba este
+        "torque_maestro": 0.0,   # <-- ESTE ES EL QUE DIO EL ERROR EN LA 265
+        "caudal_maestro": 500.0  # <-- Faltaba este
     }
+
+# Asignamos a la variable local para que las líneas de abajo funcionen
+pizarra = st.session_state.pizarra
     pizarra = st.session_state.pizarra
 # 2. AHORA entramos al sidebar con todo alineado
 with st.sidebar:
@@ -256,15 +262,13 @@ if pizarra.get("alarma_activa", False):
 
 # --- INTEGRACIÓN DE MÓDULOS TÉCNICOS (ALUMNO Y PROFE VEN ESTO) ---
 col1, col2, col3 = st.columns(3)
-
-# Datos calculados por tus otros archivos .py
-# 1. Llamamos a la función real del motor con sus 5 parámetros requeridos
-res_fisica = motor.calcular_fisica_perforacion(
-    wob=pizarra["wob_maestro"],
-    rpm=pizarra["rpm_maestro"],
-    torque=pizarra["torque_maestro"],
-    profundidad=pizarra["profundidad_actual"],
-    flow_rate=pizarra["caudal_maestro"]
+# Cambiá tu línea 265 por esta forma más segura:
+res = motor.calcular_fisica_perforacion(
+    wob=pizarra.get("wob_maestro", 0.0),
+    rpm=pizarra.get("rpm_maestro", 0.0),
+    torque=pizarra.get("torque_maestro", 0.0), # Si no lo encuentra, usa 0.0
+    profundidad=pizarra.get("profundidad_actual", 2500.0),
+    flow_rate=pizarra.get("caudal_maestro", 500.0)
 )
 
 # 2. Extraemos los valores del diccionario para los manómetros
