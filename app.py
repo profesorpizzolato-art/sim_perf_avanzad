@@ -65,6 +65,20 @@ def obtener_pizarra_maestra():
         "rpm_maestro": 60.0
     }
 
+import streamlit.components.v1 as components
+
+def disparar_alarma_sonora():
+    # Usamos un componente HTML invisible que reproduce el sonido una vez
+    # Puedes usar una URL de un sonido de sirena de perforación
+    audio_url = "assets/alarma.mp3" # Ejemplo de Beep
+    # Para una sirena real usa: "https://www.myinstants.com/media/sounds/siren.mp3"
+    
+    html_string = f"""
+        <audio autoplay>
+          <source src="{audio_url}" type="audio/mp3">
+        </audio>
+    """
+    components.html(html_string, height=0, width=0)
 pizarra = obtener_pizarra_maestra()
 
 # Latido del sistema para que el alumno vea los cambios del instructor cada 1 seg
@@ -155,7 +169,13 @@ with st.sidebar:
     val_r = max(0, min(200, val_r))
     nuevo_rpm = st.slider("RPM", 0, 200, val_r, step=1)
     pizarra["rpm_maestro"] = float(nuevo_rpm)
+    
+st.sidebar.divider()
+st.sidebar.subheader("🔊 Sistema de Audio")
+st.session_state.alarma_activa = st.sidebar.toggle("Activar Sirena de Emergencia", value=True)
 
+if st.sidebar.button("🔊 Probar Sonido"):
+    disparar_alarma_sonora()
 st.sidebar.subheader("🕹️ Simulación de Fallas")
 
 if st.sidebar.button("🚨 Provocar Kick"):
@@ -663,7 +683,39 @@ if st.sidebar.button("⚙️ FALLA BOMBA 1"):
 if st.session_state.get("tipo_evento") == "FALLA_BOMBA":
     pizarra["caudal_maestro"] = pizarra.get("caudal_maestro", 0) * 0.5
     st.error("💥 FALLA EN VÁLVULA DE BOMBA 1. CAUDAL REDUCIDO AL 50%")
+# --- LÓGICA DE DETECCIÓN DE KICK ---
+umbral_alarma = 5000  # Ejemplo: 5000 psi de presión de fondo crítica
 
+if pizarra["presion_base"] > umbral_alarma:
+    st.error("🚨 ¡ALERTA! PRESIÓN CRÍTICA EN BOCA DE POZO")
+    
+    # Solo disparamos el sonido si la alarma está activa en el estado
+    if st.session_state.get('alarma_activa', False):
+        disparar_alarma_sonora()
+        
+    # Visualmente podemos hacer que la pantalla "parpadee" usando markdown
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-color: #440000;
+            transition: background-color 0.5s;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    # Volver al color normal si la presión baja
+    st.markdown(
+        """
+        <style>
+        .stApp { background-color: transparent; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
 # --- 4. INTERFAZ DE USUARIO (TABS) ---
 # Asegurate de que esto esté fuera de cualquier otro bloque 'with'
 with tab4:
