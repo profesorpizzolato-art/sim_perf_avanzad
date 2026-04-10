@@ -122,25 +122,28 @@ if not st.session_state.autenticado:
                         st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, "Inst. Fabricio Pizzolato", "instructor"
                         st.rerun()
     st.stop()
-with st.sidebar:
-    st.title("👨‍🏫 Panel del Instructor")
-   # --- REPARACIÓN LÍNEA 127 ---
-# Nos aseguramos de que 'pizarra' exista apuntando al session_state
+# 1. PRIMERO reparamos la variable (AFUERA del sidebar)
 if 'pizarra' in st.session_state:
     pizarra = st.session_state.pizarra 
 else:
-    # Si por alguna razón no existe, la creamos para que no de NameError
     st.session_state.pizarra = {
         "profundidad_actual": 2500.0,
         "presion_base": 1200.0,
-        "alarma_activa": False
+        "alarma_activa": False,
+        "evento_activo": None
     }
     pizarra = st.session_state.pizarra
 
-# Ahora la línea 127 ya no fallará:
-st.write(f"Profundidad: {pizarra['profundidad_actual']:.2f} m")
+# 2. AHORA entramos al sidebar con todo alineado
+with st.sidebar:
+    st.title("👨‍🏫 Panel del Instructor")
+    
+    # Esta línea ahora tiene 4 espacios de sangría
+    st.write(f"Profundidad: {pizarra['profundidad_actual']:.2f} m")
+    
+    # El botón también tiene 4 espacios de sangría
     if st.button("🔄 Resetear Eventos"):
-        st.session_state.tipo_evento = None
+        st.session_state.evento_activo = None
         pizarra["alarma_activa"] = False
         st.rerun()
 # --- 5. INTERFAZ PRINCIPAL ---
