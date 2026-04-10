@@ -199,11 +199,13 @@ st.sidebar.divider()
 
 if st.session_state.get("evento_activo") == "KICK":
     # Acción obligatoria: La presión sube si el pozo no está cerrado
-    if not pizarra["bop_cerrado"]:
-        pizarra["presion_base"] += 2.5 
+    if not piz.get("bop_cerrado", False):
+        piz["presion_base"] = piz.get("presion_base", 1200.0) + 2.5 
+        piz["alarma_activa"] = True # Esto activa el sonido y el fondo rojo
         st.error("🚨 ¡ALERTA DE KICK! PRESIÓN EN AUMENTO")
     else:
-        st.success("✅ POZO CERRADO BAJO PRESIÓN (SIDPP)")
+        piz["alarma_activa"] = False # Apaga el sonido si cerraron el BOP
+        st.success("✅ POZO CERRADO BAJO PRESIÓN")
 
 elif st.session_state.get("evento_activo") == "PERDIDA":
     # Acción obligatoria: Bajamos el caudal de retorno simulado
@@ -685,14 +687,18 @@ if st.sidebar.button("⚙️ FALLA BOMBA 1"):
 if st.session_state.get("tipo_evento") == "FALLA_BOMBA":
     pizarra["caudal_maestro"] = pizarra.get("caudal_maestro", 0) * 0.5
     st.error("💥 FALLA EN VÁLVULA DE BOMBA 1. CAUDAL REDUCIDO AL 50%")
-# --- LÓGICA DE DETECCIÓN DE KICK ---
-umbral_alarma = 5000  # Ejemplo: 5000 psi de presión de fondo crítica
-
-if pizarra["presion_base"] > umbral_alarma:
-    st.error("🚨 ¡ALERTA! PRESIÓN CRÍTICA EN BOCA DE POZO")
     
-    # Solo disparamos el sonido si la alarma está activa en el estado
-    if st.session_state.get('alarma_activa', False):
+# --- LÓGICA DE DETECCIÓN DE KICK (Línea 689 Corregida) ---
+umbral_alarma = 5000  
+
+# Usamos .get() para que si no existe, devuelva 0 y no se rompa la app
+presion_actual = piz.get("presion_base", 0) 
+
+if presion_actual > umbral_alarma:
+    st.error(f"🚨 ¡ALERTA! PRESIÓN CRÍTICA EN BOCA DE POZO: {presion_actual} PSI")
+    
+    # IMPORTANTE: Usamos la variable de la pizarra para disparar el sonido
+    if piz.get('alarma_activa', False):
         disparar_alarma_sonora()
         
     # Visualmente podemos hacer que la pantalla "parpadee" usando markdown
@@ -733,7 +739,8 @@ if 'pizarra' not in st.session_state:
         "profundidad_actual": 2500.0,
         "evento_activo": None,    # <--- AQUÍ FALTABA LA COMA (Línea 682)
         "piletas_nivel": 500.0,   # Esta es la nueva que agregamos
-        "bop_cerrado": False      # Esta puede ir sin coma si es la última
+        "bop_cerrado": False       # Esta puede ir sin coma si es la última
+        "alarma_activa": False
     }
 piz = st.session_state.pizarra
 # 1. PRIMERO: Definimos la variable global para todos los tabs
