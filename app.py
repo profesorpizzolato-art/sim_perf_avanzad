@@ -122,18 +122,17 @@ if not st.session_state.autenticado:
                         st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, "Inst. Fabricio Pizzolato", "instructor"
                         st.rerun()
     st.stop()
-# 1. PRIMERO reparamos la variable (AFUERA del sidebar)
+# Buscá este bloque y fijate que estén estas 4 claves sí o sí
 if 'pizarra' in st.session_state:
     pizarra = st.session_state.pizarra 
 else:
     st.session_state.pizarra = {
         "profundidad_actual": 2500.0,
         "presion_base": 1200.0,
-        "alarma_activa": False,
-        "evento_activo": None
+        "alarma_activa": False,  # <-- ASEGURATE QUE ESTÉ ACÁ
+        "evento_activo": None    # <-- ASEGURATE QUE ESTÉ ACÁ
     }
     pizarra = st.session_state.pizarra
-
 # 2. AHORA entramos al sidebar con todo alineado
 with st.sidebar:
     st.title("👨‍🏫 Panel del Instructor")
@@ -197,7 +196,9 @@ if st.sidebar.button("🔊 Probar Sonido"):
 st.sidebar.subheader("🕹️ Simulación de Fallas")
 
 if st.sidebar.button("🚨 Provocar Kick"):
-    st.session_state.evento_activo = "KICK"
+    pizarra["evento_activo"] = "KICK"
+    pizarra["alarma_activa"] = True # Esto es lo que lee la línea 240
+    st.rerun()
     
 if st.sidebar.button("📉 Provocar Pérdida"):
     st.session_state.evento_activo = "PERDIDA"
@@ -237,7 +238,8 @@ elif st.session_state.get("evento_activo") == "FALLA_BOMBA":
 st.title("📟 Panel Integral de Operaciones")
 
 # Lógica de Alarma Sonora y Visual
-if pizarra["alarma_activa"]:
+# Si 'alarma_activa' no existe, devolverá False y la app seguirá funcionando
+if pizarra.get("alarma_activa", False):
     st.error(f"🔥 {pizarra['mensaje_evento']}")
     reproducir_alarma_critica()
     
