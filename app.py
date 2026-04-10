@@ -739,7 +739,7 @@ if 'pizarra' not in st.session_state:
         "profundidad_actual": 2500.0,
         "evento_activo": None,    # <--- AQUÍ FALTABA LA COMA (Línea 682)
         "piletas_nivel": 500.0,   # Esta es la nueva que agregamos
-        "bop_cerrado": False       # Esta puede ir sin coma si es la última
+        "bop_cerrado": False,       # Esta puede ir sin coma si es la última
         "alarma_activa": False
     }
 piz = st.session_state.pizarra
