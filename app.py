@@ -124,8 +124,21 @@ if not st.session_state.autenticado:
     st.stop()
 with st.sidebar:
     st.title("👨‍🏫 Panel del Instructor")
-    st.write(f"Profundidad: {pizarra['profundidad_actual']:.2f} m")
-    
+   # --- REPARACIÓN LÍNEA 127 ---
+# Nos aseguramos de que 'pizarra' exista apuntando al session_state
+if 'pizarra' in st.session_state:
+    pizarra = st.session_state.pizarra 
+else:
+    # Si por alguna razón no existe, la creamos para que no de NameError
+    st.session_state.pizarra = {
+        "profundidad_actual": 2500.0,
+        "presion_base": 1200.0,
+        "alarma_activa": False
+    }
+    pizarra = st.session_state.pizarra
+
+# Ahora la línea 127 ya no fallará:
+st.write(f"Profundidad: {pizarra['profundidad_actual']:.2f} m")
     if st.button("🔄 Resetear Eventos"):
         st.session_state.tipo_evento = None
         pizarra["alarma_activa"] = False
