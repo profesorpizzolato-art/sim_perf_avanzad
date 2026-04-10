@@ -70,22 +70,22 @@ def obtener_pizarra_maestra():
 import streamlit.components.v1 as components
 
 def disparar_alarma_sonora():
-    # Usamos un componente HTML invisible que reproduce el sonido una vez
-    # Puedes usar una URL de un sonido de sirena de perforación
-    audio_url = "assets/alarma.mp3" # Ejemplo de Beep
-    # Para una sirena real usa: "https://www.myinstants.com/media/sounds/siren.mp3"
+    # Ajustá 'assets/alarma.mp3' según el nombre exacto de tu carpeta
+    ruta_audio = "assets/alarma.mp3" 
     
-    html_string = f"""
-        <audio autoplay>
-          <source src="{audio_url}" type="audio/mp3">
-        </audio>
-    """
-    components.html(html_string, height=0, width=0)
-pizarra = obtener_pizarra_maestra()
-
-# Latido del sistema para que el alumno vea los cambios del instructor cada 1 seg
-st_autorefresh(interval=1000, key="latido_sincro")
-
+    if os.path.exists(ruta_audio):
+        with open(ruta_audio, "rb") as f:
+            data = f.read()
+            b64 = base64.b64encode(data).decode()
+            # Creamos el HTML para reproducir el archivo local
+            html_audio = f"""
+                <audio autoplay loop>
+                    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                </audio>
+            """
+            components.html(html_audio, height=0, width=0)
+    else:
+        st.error(f"⚠️ No se encontró el archivo en {ruta_audio}")
 # --- 3. LÓGICA DE AUDIO (ALARMAS) ---
 def reproducir_alarma_critica():
     if os.path.exists("assets/alarma.mp3"):
@@ -737,10 +737,9 @@ if 'pizarra' not in st.session_state:
         "densidad_maestra": 10.2,
         "presion_base": 1200.0,
         "profundidad_actual": 2500.0,
-        "evento_activo": None,    # <--- AQUÍ FALTABA LA COMA (Línea 682)
-        "piletas_nivel": 500.0,   # Esta es la nueva que agregamos
-        "bop_cerrado": False,       # Esta puede ir sin coma si es la última
-        "alarma_activa": False
+        "evento_activo": None,     # <-- ACÁ TIENE QUE HABER UNA COMA
+        "piletas_nivel": 500.0,    # <-- ACÁ TAMBIÉN TIENE QUE HABER UNA COMA
+        "bop_cerrado": False       # Esta puede quedar sin coma porque es la última
     }
 piz = st.session_state.pizarra
 # 1. PRIMERO: Definimos la variable global para todos los tabs
