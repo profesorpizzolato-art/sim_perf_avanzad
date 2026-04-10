@@ -16,6 +16,8 @@ import bombas_de_lodo as bombas
 import sartas_perforacion as sartas
 import sys
 import os
+import plotly.graph_objects as go
+import streamlit.components.v1 as components
 # --- 1. INICIALIZACIÓN BLINDADA (Colocar justo después de los imports) ---
 import time
 import random
