@@ -192,6 +192,9 @@ with st.sidebar:
     nuevo_rpm = st.slider("RPM", 0, 200, val_r, step=1)
     pizarra["rpm_maestro"] = float(nuevo_rpm)
     
+ if st.sidebar.button("🧹 Limpiar Memoria"):
+    st.session_state.clear()
+    st.rerun()   
 st.sidebar.divider()
 st.sidebar.subheader("🔊 Sistema de Audio")
 st.session_state.alarma_activa = st.sidebar.toggle("Activar Sirena de Emergencia", value=True)
@@ -271,7 +274,7 @@ res_fisica = motor.calcular_fisica_perforacion(
 )
 
 # 2. Extraemos los valores del diccionario para los manómetros
-rop_actual = res_fisica["ROP"]
+rop_actual = res_fisica.get("ROP", 0.0) if 'res_fisica' in locals() else 0.0
 mse_actual = res_fisica["MSE"]
 hk_actual = res_fisica["HOOK_LOAD"]
 av_actual = res_fisica["AV"]
@@ -369,13 +372,12 @@ def generar_grafico_trayectoria(profundidad_actual):
 st.header("📊 Monitor de Perforación en Tiempo Real")
 
 # --- EN EL LÓGICA DEL ALUMNO ---
-# --- Lógica de renderizado en app.py ---
 
 # 1. Llamamos al motor de física (asegúrate de tener 'import motor_calculos_avanzados as motor')
 res = motor.calcular_fisica_perforacion(
     wob=pizarra["wob_maestro"],
     rpm=pizarra["rpm_maestro"],
-    torque=pizarra["torque_maestro"],
+    torque = pizarra.get("torque_maestro", 0.0),
     profundidad=pizarra["profundidad_actual"],
     flow_rate=pizarra["caudal_maestro"]
 )
@@ -752,16 +754,17 @@ with tab4:
     
 if 'pizarra' not in st.session_state:
     st.session_state.pizarra = {
+        "profundidad_actual": 2500.0,
+        "presion_base": 1200.0,
+        "alarma_activa": False,
+        "evento_activo": None,
         "wob_maestro": 0.0,
         "rpm_maestro": 0.0,
+        "torque_maestro": 0.0,  # <-- ESTA ES LA QUE FALTA EN LA 378
         "caudal_maestro": 500.0,
-        "densidad_maestra": 10.2,
-        "presion_base": 1200.0,
-        "profundidad_actual": 2500.0,
-        "evento_activo": None,     # <-- ACÁ TIENE QUE HABER UNA COMA
-        "piletas_nivel": 500.0,    # <-- ACÁ TAMBIÉN TIENE QUE HABER UNA COMA
-        "bop_cerrado": False       # Esta puede quedar sin coma porque es la última
+        "piletas_nivel": 450.0
     }
+pizarra = st.session_state.pizarra
 piz = st.session_state.pizarra
 # 1. PRIMERO: Definimos la variable global para todos los tabs
 piz = st.session_state.pizarra
