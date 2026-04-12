@@ -160,7 +160,15 @@ st.sidebar.title(f"Usuario: {st.session_state.usuario}")
 # --- PANEL DEL INSTRUCTOR (Línea 100 en adelante) ---
 with st.sidebar:
     st.title("👨‍🏫 Panel del Instructor")
+    # BOTÓN DE EMERGENCIA PARA EL PROGRAMADOR
+    if st.sidebar.button("🧹 Limpiar Memoria y Reiniciar"):
+        st.session_state.clear()
+        st.rerun()
     
+    st.divider() # Una línea para separar
+    
+    # Aquí siguen tus otros controles (Profundidad, Eventos, etc.)
+    st.write(f"Profundidad actual: {pizarra.get('profundidad_actual', 0):.2f} m")
     # 1. CAUDAL: Forzamos a que todo sea número entero
     try:
         val_c = int(float(pizarra.get("caudal_maestro", 500)))
@@ -192,9 +200,6 @@ with st.sidebar:
     nuevo_rpm = st.slider("RPM", 0, 200, val_r, step=1)
     pizarra["rpm_maestro"] = float(nuevo_rpm)
     
- if st.sidebar.button("🧹 Limpiar Memoria"):
-    st.session_state.clear()
-    st.rerun()   
 st.sidebar.divider()
 st.sidebar.subheader("🔊 Sistema de Audio")
 st.session_state.alarma_activa = st.sidebar.toggle("Activar Sirena de Emergencia", value=True)
