@@ -262,7 +262,7 @@ if pizarra.get("alarma_activa", False):
 # --- INTEGRACIÓN DE MÓDULOS TÉCNICOS (ALUMNO Y PROFE VEN ESTO) ---
 col1, col2, col3 = st.columns(3)
 # Cambiá tu línea 265 por esta forma más segura:
-res = motor.calcular_fisica_perforacion(
+res_fisica = motor.calcular_fisica_perforacion(
     wob=pizarra.get("wob_maestro", 0.0),
     rpm=pizarra.get("rpm_maestro", 0.0),
     torque=pizarra.get("torque_maestro", 0.0), # Si no lo encuentra, usa 0.0
