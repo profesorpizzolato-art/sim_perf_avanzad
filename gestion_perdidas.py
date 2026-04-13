@@ -66,7 +66,8 @@ def modulo_perdida_circulacion(pizarra):
                 ]
             }
         ))
-        st.plotly_chart(fig_tanque, use_container_width=True)
+       # Así debe quedar en tu archivo gestion_perdidas.py
+        st.plotly_chart(fig_tanque, use_container_width=True, key="sensor_nivel_total_menfa")
 
     with col2:
         st.subheader("Mitigación")
