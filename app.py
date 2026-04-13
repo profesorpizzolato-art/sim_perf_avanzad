@@ -253,7 +253,7 @@ st.title("📟 Panel Integral de Operaciones")
 # Lógica de Alarma Sonora y Visual
 # Si 'alarma_activa' no existe, devolverá False y la app seguirá funcionando
 if pizarra.get("alarma_activa", False):
-    st.error(f"🔥 {pizarra['mensaje_evento']}")
+    st.error(f"🔥 {pizarra.get('mensaje_evento', 'Sistema Operativo Normal')}")
     reproducir_alarma_critica()
     
     # PANEL BOP PARA EL ALUMNO
