@@ -1029,7 +1029,7 @@ with col1:
                 f_pdf.set_font("Arial", '', 18)
                 f_pdf.cell(0, 10, "Certificado de finalización", ln=True, align='C')
                 f_pdf.set_font("Arial", 'B', 20)
-                f_pdf.cell(0, 10, "Participación en el Simulador", ln=True, align='C')
+                f_pdf.cell(0, 10, "Participación en el Simulador de Perforaciòn", ln=True, align='C')
                 
                 # --- NOMBRE DEL ALUMNO (Destacado en Blanco) ---
                 f_pdf.ln(15)
@@ -1053,7 +1053,7 @@ with col1:
                 f_pdf.set_font("Arial", 'B', 16)
                 f_pdf.cell(0, 10, "Fabricio Pizzolato", ln=True, align='C')
                 f_pdf.set_font("Arial", '', 11)
-                f_pdf.cell(0, 5, "Dirección General - IPCL MENFA", ln=True, align='C')
+                f_pdf.cell(0, 5, "Dirección General - MENFA", ln=True, align='C')
 
                 # --- PROCESAMIENTO DE BYTES (Anti-error bytearray) ---
                 pdf_out = f_pdf.output(dest='S')
