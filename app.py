@@ -390,7 +390,7 @@ res = motor.calcular_fisica_perforacion(
 res = motor.calcular_fisica_perforacion(
     wob=pizarra["wob_maestro"],
     rpm=pizarra["rpm_maestro"],
-    torque=pizarra["torque_maestro"],
+    torque=pizarra.get("torque_maestro", 0.0),
     profundidad=pizarra["profundidad_actual"],
     flow_rate=pizarra["caudal_maestro"]
 )
@@ -975,7 +975,7 @@ with tab3:
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
 # --- SISTEMA DE EMISIÓN DE DOCUMENTOS MENFA ---
-st.write("---") # Esto crea una línea divisoria física
+st.write("---") 
 st.header("🎓 Gestión de Certificados y Reportes")
 
 # 1. Aseguramos que existan las variables de memoria
@@ -992,8 +992,10 @@ with col1:
     if st.button("📌 1. Preparar Certificado"):
         if alumno:
             try:
-                # Limpieza de nombre (sin tildes para evitar errores)
                 import unicodedata
+                from fpdf import FPDF
+                
+                # Limpieza de nombre
                 n_limpio = ''.join(c for c in unicodedata.normalize('NFD', alumno) if unicodedata.category(c) != 'Mn').upper()
                 
                 f_pdf = FPDF()
@@ -1003,20 +1005,26 @@ with col1:
                 f_pdf.ln(10)
                 f_pdf.set_font("Arial", '', 16)
                 f_pdf.cell(200, 10, f"Otorgado a: {n_limpio}", ln=True, align='C')
+                f_pdf.ln(20)
+                f_pdf.set_font("Arial", 'I', 12)
+                f_pdf.multi_cell(0, 10, "Por haber completado satisfactoriamente el entrenamiento en el Simulador de Perforacion Avanzada.", align='C')
                 
-                # Conversión segura a bytes
-                out_str = f_pdf.output(dest='S')
-                st.session_state.pdf_cert_final = out_str.encode('latin-1', 'replace')
-                st.success(f"Certificado de {n_limpio} listo")
+                # Conversión corregida para Streamlit
+                pdf_output = f_pdf.output(dest='S').encode('latin-1', 'replace')
+                st.session_state.pdf_cert_final = pdf_output
+                st.success(f"✅ Certificado de {n_limpio} listo")
+                st.rerun() # Refresca para mostrar el botón de descarga
             except Exception as e:
                 st.error(f"Error en Certificado: {e}")
+        else:
+            st.warning("⚠️ Por favor, ingresá un nombre.")
 
 with col2:
     if st.session_state.pdf_cert_final is not None:
         st.download_button(
             label="📥 DESCARGAR CERTIFICADO",
             data=st.session_state.pdf_cert_final,
-            file_name="Certificado_MENFA.pdf",
+            file_name=f"Certificado_MENFA_{alumno.replace(' ', '_')}.pdf",
             mime="application/pdf",
             key="dl_cert_btn"
         )
@@ -1027,15 +1035,29 @@ st.sidebar.subheader("📄 Reporte de Entrenamiento")
 
 if st.sidebar.button("⚙️ Preparar Reporte Final"):
     try:
+        from fpdf import FPDF
         r_pdf = FPDF()
         r_pdf.add_page()
-        r_pdf.set_font("Arial", 'B', 14)
+        r_pdf.set_font("Arial", 'B', 16)
         r_pdf.cell(200, 10, "REPORTE OPERATIVO - MENFA IPCL", ln=True, align='C')
+        r_pdf.ln(10)
         
-        # Generación de bytes
-        r_str = r_pdf.output(dest='S')
-        st.session_state.pdf_repo_final = r_str.encode('latin-1', 'replace')
-        st.sidebar.success("Reporte preparado")
+        r_pdf.set_font("Arial", '', 12)
+        # Usamos .get() para evitar KeyErrors si el simulador no corrió
+        prof = pizarra.get('profundidad_actual', 0.0)
+        pres = pizarra.get('presion_base', 0.0)
+        trq = pizarra.get('torque_maestro', 0.0)
+        
+        r_pdf.cell(0, 10, f"Profundidad Final: {prof:.2f} m", ln=True)
+        r_pdf.cell(0, 10, f"Presion en Boca: {pres:.2f} PSI", ln=True)
+        r_pdf.cell(0, 10, f"Torque Final: {trq:.2f} ft-lbs", ln=True)
+        r_pdf.cell(0, 10, f"Evento registrado: {pizarra.get('evento_activo', 'Ninguno')}", ln=True)
+        
+        # Conversión corregida
+        repo_output = r_pdf.output(dest='S').encode('latin-1', 'replace')
+        st.session_state.pdf_repo_final = repo_output
+        st.sidebar.success("✅ Reporte listo")
+        st.rerun()
     except Exception as e:
         st.sidebar.error(f"Error en Reporte: {e}")
 
@@ -1043,7 +1065,7 @@ if st.session_state.pdf_repo_final is not None:
     st.sidebar.download_button(
         label="📥 DESCARGAR INFORME",
         data=st.session_state.pdf_repo_final,
-        file_name="Reporte_Final.pdf",
+        file_name="Reporte_Operativo_MENFA.pdf",
         mime="application/pdf",
         key="dl_repo_btn"
     )
