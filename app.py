@@ -570,9 +570,9 @@ with fila2_col3:
     st.plotly_chart(crear_manometro(pizarra["densidad_maestra"], "Densidad Lodo", "ppg", 20, "#ffffff"), use_container_width=True)
 
 # SI HAY ALERTA, MOSTRAR EL PANEL BOP ABAJO DE LOS RELOJES
-if pizarra["alarma_activa"]:
-    from bop_panel import render_bop_ui
-    render_bop_ui(pizarra)
+if pizarra.get("alarma_activa", False):
+    st.error("🚨 ¡ALERTA DE SEGURIDAD! Verifique los parámetros de presión.")
+    # Si tenés el código del audio de la alarma, iría aquí debajo
 
 import streamlit as st
 
