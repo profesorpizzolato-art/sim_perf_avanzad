@@ -981,109 +981,104 @@ with tab3:
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
             
-# --- SISTEMA DE EMISIÓN DE DOCUMENTOS MENFA ---
+# --- SISTEMA DE EMISIÓN DE DOCUMENTOS MENFA (ESTILO INSTITUCIONAL NARANJA) ---
 st.write("---") 
 st.header("🎓 Gestión de Certificados y Reportes")
 
 # 1. Aseguramos que existan las variables de memoria
 if "pdf_cert_final" not in st.session_state:
     st.session_state.pdf_cert_final = None
-if "pdf_repo_final" not in st.session_state:
-    st.session_state.pdf_repo_final = None
 
 # 2. SECCIÓN CERTIFICADO
 col1, col2 = st.columns(2)
 
 with col1:
-    alumno = st.text_input("Nombre del Alumno para Certificado:", key="input_cert_nombre")
-    if st.button("📌 1. Preparar Certificado"):
+    alumno = st.text_input("Nombre del Alumno:", key="input_cert_nombre", placeholder="Ej: JUAN PEREZ")
+    
+    if st.button("📌 1. Generar Certificado de Participación"):
         if alumno:
             try:
                 import unicodedata
                 from fpdf import FPDF
+                from datetime import datetime
                 
-                # Limpieza de nombre
+                # Limpieza de nombre (Mayúsculas y sin acentos para evitar errores de librería)
                 n_limpio = ''.join(c for c in unicodedata.normalize('NFD', alumno) if unicodedata.category(c) != 'Mn').upper()
                 
-                f_pdf = FPDF()
+                # Configuración: Horizontal (L), A4
+                f_pdf = FPDF(orientation='L', unit='mm', format='A4')
                 f_pdf.add_page()
-                f_pdf.set_font("Arial", 'B', 20)
-                f_pdf.cell(200, 20, "IPCL MENFA - CERTIFICADO", ln=True, align='C')
-                f_pdf.ln(10)
-                f_pdf.set_font("Arial", '', 16)
-                f_pdf.cell(200, 10, f"Otorgado a: {n_limpio}", ln=True, align='C')
-                f_pdf.ln(20)
-                f_pdf.set_font("Arial", 'I', 12)
-                f_pdf.multi_cell(0, 10, "Por haber completado satisfactoriamente el entrenamiento en el Simulador de Perforacion Avanzada.", align='C')
                 
-                # --- SOLUCIÓN AL ERROR DE BYTEARRAY ---
+                # --- FONDO DE COLOR (Simulando el naranja de la imagen) ---
+                f_pdf.set_fill_color(255, 120, 0)  # Naranja vibrante MENFA
+                f_pdf.rect(0, 0, 297, 210, 'F')
+                
+                # --- DETALLES DE DISEÑO (Triángulos oscuros en las esquinas como el modelo) ---
+                f_pdf.set_fill_color(10, 30, 60) # Azul muy oscuro
+                f_pdf.polygon([(0,0), (80,0), (0,80)], fill=True) # Esquina sup izq
+                f_pdf.polygon([(297,210), (217,210), (297,130)], fill=True) # Esquina inf der
+
+                # --- ENCABEZADO ---
+                f_pdf.ln(25)
+                f_pdf.set_font("Arial", 'B', 24)
+                f_pdf.set_text_color(255, 255, 255) # Texto Blanco
+                f_pdf.cell(0, 10, "MENFA CAPACITACIONES", ln=True, align='C')
+                
+                # --- TÍTULO ---
+                f_pdf.ln(15)
+                f_pdf.set_font("Arial", '', 18)
+                f_pdf.cell(0, 10, "Certificado de finalización", ln=True, align='C')
+                f_pdf.set_font("Arial", 'B', 20)
+                f_pdf.cell(0, 10, "Participación en el Simulador", ln=True, align='C')
+                
+                # --- NOMBRE DEL ALUMNO (Destacado en Blanco) ---
+                f_pdf.ln(15)
+                f_pdf.set_font("Arial", 'B', 45)
+                f_pdf.cell(0, 30, n_limpio, ln=True, align='C')
+                
+                # --- TEXTO DESCRIPTIVO ---
+                f_pdf.ln(10)
+                f_pdf.set_font("Arial", '', 15)
+                texto = "Entrenamiento práctico intensivo en el Simulador de Perforación Avanzada"
+                f_pdf.cell(0, 10, texto, ln=True, align='C')
+                
+                # --- FECHA ---
+                f_pdf.ln(5)
+                fecha_texto = datetime.now().strftime("%B %d, %Y").capitalize()
+                f_pdf.set_font("Arial", '', 12)
+                f_pdf.cell(0, 10, fecha_texto, ln=True, align='C')
+                
+                # --- FIRMA (ESTILO FABRICIO PIZZOLATO) ---
+                f_pdf.set_xy(0, 170)
+                f_pdf.set_font("Arial", 'B', 16)
+                f_pdf.cell(0, 10, "Fabricio Pizzolato", ln=True, align='C')
+                f_pdf.set_font("Arial", '', 11)
+                f_pdf.cell(0, 5, "Dirección General - IPCL MENFA", ln=True, align='C')
+
+                # --- PROCESAMIENTO DE BYTES (Anti-error bytearray) ---
                 pdf_out = f_pdf.output(dest='S')
                 if isinstance(pdf_out, str):
-                    # Si es string (fpdf viejo), codificamos
                     st.session_state.pdf_cert_final = pdf_out.encode('latin-1', 'replace')
                 else:
-                    # Si ya es bytes/bytearray (fpdf2), convertimos directo
                     st.session_state.pdf_cert_final = bytes(pdf_out)
                 
-                st.success(f"✅ Certificado de {n_limpio} listo")
+                st.success(f"✅ Certificado de {n_limpio} generado correctamente.")
                 st.rerun() 
+
             except Exception as e:
-                st.error(f"Error en Certificado: {e}")
+                st.error(f"Error técnico al crear el PDF: {e}")
         else:
-            st.warning("⚠️ Por favor, ingresá un nombre.")
+            st.warning("⚠️ Ingresá el nombre del alumno para habilitar la generación.")
 
 with col2:
     if st.session_state.pdf_cert_final is not None:
+        st.write("###") # Espaciador
         st.download_button(
-            label="📥 DESCARGAR CERTIFICADO",
+            label="📥 DESCARGAR CERTIFICADO PDF",
             data=st.session_state.pdf_cert_final,
             file_name=f"Certificado_MENFA_{alumno.replace(' ', '_')}.pdf",
             mime="application/pdf",
-            key="dl_cert_btn"
-        )
-
-# 3. SECCIÓN REPORTE (SIDEBAR)
-st.sidebar.markdown("---")
-st.sidebar.subheader("📄 Reporte de Entrenamiento")
-
-if st.sidebar.button("⚙️ Preparar Reporte Final"):
-    try:
-        from fpdf import FPDF
-        r_pdf = FPDF()
-        r_pdf.add_page()
-        r_pdf.set_font("Arial", 'B', 16)
-        r_pdf.cell(200, 10, "REPORTE OPERATIVO - MENFA IPCL", ln=True, align='C')
-        r_pdf.ln(10)
-        
-        r_pdf.set_font("Arial", '', 12)
-        prof = pizarra.get('profundidad_actual', 0.0)
-        pres = pizarra.get('presion_base', 0.0)
-        trq = pizarra.get('torque_maestro', 0.0)
-        
-        r_pdf.cell(0, 10, f"Profundidad Final: {prof:.2f} m", ln=True)
-        r_pdf.cell(0, 10, f"Presion en Boca: {pres:.2f} PSI", ln=True)
-        r_pdf.cell(0, 10, f"Torque Final: {trq:.2f} ft-lbs", ln=True)
-        r_pdf.cell(0, 10, f"Evento: {pizarra.get('evento_activo', 'Operacion Normal')}", ln=True)
-        
-        # --- SOLUCIÓN AL ERROR DE BYTEARRAY EN REPORTE ---
-        repo_out = r_pdf.output(dest='S')
-        if isinstance(repo_out, str):
-            st.session_state.pdf_repo_final = repo_out.encode('latin-1', 'replace')
-        else:
-            st.session_state.pdf_repo_final = bytes(repo_out)
-            
-        st.sidebar.success("✅ Reporte listo")
-        st.rerun()
-    except Exception as e:
-        st.sidebar.error(f"Error en Reporte: {e}")
-
-if st.session_state.pdf_repo_final is not None:
-    st.sidebar.download_button(
-        label="📥 DESCARGAR INFORME",
-        data=st.session_state.pdf_repo_final,
-        file_name="Reporte_Operativo_MENFA.pdf",
-        mime="application/pdf",
-        key="dl_repo_btn"
+            key="btn_desc
     )
 # --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
 st.sidebar.divider()
