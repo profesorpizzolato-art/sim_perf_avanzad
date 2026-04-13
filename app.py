@@ -552,8 +552,11 @@ with fila1_col2:
 
 with fila1_col3:
     # Manómetro de Torque (Puedes traerlo de torque_and_drag.py)
-    st.plotly_chart(crear_manometro(pizarra["torque_maestro"], "Torque en Mesa", "kft-lb", 40, "#ffcc00"), use_container_width=True)
-
+   st.plotly_chart(
+    crear_manometro(pizarra.get("torque_maestro", 0.0), "Torque en Mesa", "kft-lb", 40, "#ffcc00"), 
+    use_container_width=True, 
+    key="manometro_torque_principal"
+)
 fila2_col1, fila2_col2, fila2_col3 = st.columns(3)
 
 with fila2_col1:
