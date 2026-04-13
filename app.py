@@ -531,8 +531,11 @@ with col2:
 with col3:
     st.plotly_chart(crear_reloj(pizarra["rpm_maestro"], "Rotación", "RPM", 200, "green"), key="reloj_rpm_tab")
 
-# 3. Gráfico de Geonavegación sincronizado
-st.plotly_chart(geo.generar_grafico_trayectoria(pizarra["profundidad_actual"]))
+# --- ASÍ DEBE QUEDAR LA LÍNEA 535 ---
+st.plotly_chart(
+    geo.generar_grafico_trayectoria(pizarra["profundidad_actual"]), 
+    key="grafico_trayectoria_direccional" # Este es el DNI único
+)
 # --- DENTRO DEL LÓGICA DEL ALUMNO EN app.py ---
 
 st.markdown("### 📊 MONITOREO DE PARÁMETROS EN TIEMPO REAL")
