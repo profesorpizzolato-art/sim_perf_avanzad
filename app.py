@@ -980,6 +980,7 @@ with tab3:
             piz["evento_activo"] = None
             st.session_state.inicio_falla = None
             st.success("✅ Pérdida sellada exitosamente")
+            
 # --- SISTEMA DE EMISIÓN DE DOCUMENTOS MENFA ---
 st.write("---") 
 st.header("🎓 Gestión de Certificados y Reportes")
@@ -1015,11 +1016,17 @@ with col1:
                 f_pdf.set_font("Arial", 'I', 12)
                 f_pdf.multi_cell(0, 10, "Por haber completado satisfactoriamente el entrenamiento en el Simulador de Perforacion Avanzada.", align='C')
                 
-                # Conversión corregida para Streamlit
-                pdf_output = f_pdf.output(dest='S').encode('latin-1', 'replace')
-                st.session_state.pdf_cert_final = pdf_output
+                # --- SOLUCIÓN AL ERROR DE BYTEARRAY ---
+                pdf_out = f_pdf.output(dest='S')
+                if isinstance(pdf_out, str):
+                    # Si es string (fpdf viejo), codificamos
+                    st.session_state.pdf_cert_final = pdf_out.encode('latin-1', 'replace')
+                else:
+                    # Si ya es bytes/bytearray (fpdf2), convertimos directo
+                    st.session_state.pdf_cert_final = bytes(pdf_out)
+                
                 st.success(f"✅ Certificado de {n_limpio} listo")
-                st.rerun() # Refresca para mostrar el botón de descarga
+                st.rerun() 
             except Exception as e:
                 st.error(f"Error en Certificado: {e}")
         else:
@@ -1049,7 +1056,6 @@ if st.sidebar.button("⚙️ Preparar Reporte Final"):
         r_pdf.ln(10)
         
         r_pdf.set_font("Arial", '', 12)
-        # Usamos .get() para evitar KeyErrors si el simulador no corrió
         prof = pizarra.get('profundidad_actual', 0.0)
         pres = pizarra.get('presion_base', 0.0)
         trq = pizarra.get('torque_maestro', 0.0)
@@ -1057,11 +1063,15 @@ if st.sidebar.button("⚙️ Preparar Reporte Final"):
         r_pdf.cell(0, 10, f"Profundidad Final: {prof:.2f} m", ln=True)
         r_pdf.cell(0, 10, f"Presion en Boca: {pres:.2f} PSI", ln=True)
         r_pdf.cell(0, 10, f"Torque Final: {trq:.2f} ft-lbs", ln=True)
-        r_pdf.cell(0, 10, f"Evento registrado: {pizarra.get('evento_activo', 'Ninguno')}", ln=True)
+        r_pdf.cell(0, 10, f"Evento: {pizarra.get('evento_activo', 'Operacion Normal')}", ln=True)
         
-        # Conversión corregida
-        repo_output = r_pdf.output(dest='S').encode('latin-1', 'replace')
-        st.session_state.pdf_repo_final = repo_output
+        # --- SOLUCIÓN AL ERROR DE BYTEARRAY EN REPORTE ---
+        repo_out = r_pdf.output(dest='S')
+        if isinstance(repo_out, str):
+            st.session_state.pdf_repo_final = repo_out.encode('latin-1', 'replace')
+        else:
+            st.session_state.pdf_repo_final = bytes(repo_out)
+            
         st.sidebar.success("✅ Reporte listo")
         st.rerun()
     except Exception as e:
