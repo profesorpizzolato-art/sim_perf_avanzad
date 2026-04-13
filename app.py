@@ -1078,8 +1078,8 @@ with col2:
             data=st.session_state.pdf_cert_final,
             file_name=f"Certificado_MENFA_{alumno.replace(' ', '_')}.pdf",
             mime="application/pdf",
-            key="btn_desc
-    )
+            key="btn_descarga_final"  # <--- Asegurate que termine así
+        )
 # --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
 st.sidebar.divider()
 with st.sidebar.expander("🔐 Panel del Instructor"):
