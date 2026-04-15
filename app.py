@@ -133,8 +133,7 @@ if not st.session_state.autenticado:
                         st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, "Inst. Fabricio Pizzolato", "instructor"
                         st.rerun()
     st.stop()
-# Buscá este bloque y fijate que estén estas 4 claves sí o sí
-# --- INICIALIZACIÓN COMPLETA (Para evitar KeyErrors) ---
+
 # --- REPARACIÓN FINAL (Líneas 130 a 141 aprox) ---
 if 'pizarra' not in st.session_state:
     st.session_state.pizarra = {
@@ -147,7 +146,8 @@ if 'pizarra' not in st.session_state:
         "torque_maestro": 0.0,
         "caudal_maestro": 500.0
     }
-
+# LÍNEA CLAVE: Esta línea define la variable para que no dé NameError
+pizarra = st.session_state.pizarra
 
 # --- 5. INTERFAZ PRINCIPAL (SIDEBAR UNIFICADO) ---
 with st.sidebar:
@@ -764,10 +764,10 @@ if 'pizarra' not in st.session_state:
         "caudal_maestro": 500.0,
         "piletas_nivel": 450.0
     }
-pizarra = st.session_state.pizarra
-piz = st.session_state.pizarra
-# 1. PRIMERO: Definimos la variable global para todos los tabs
-piz = st.session_state.pizarra
+# --- 2. SEGUNDO: Asignamos la variable local (ESTO EVITA EL NAMEERROR) ---
+# Usamos el mismo nombre que intentas llamar en la línea 174
+pizarra = st.session_state.pizarra 
+piz = st.session_state.pizarra  # Creamos 'piz' también por si lo usas más abajo
 # 2. SEGUNDO: Creamos los tabs
 tab1, tab2, tab3, tab4 = st.tabs(["🎮 Consola", "🛡️ BOP", "🧪 Lodos", "🛰️ Geo"])
 
