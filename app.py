@@ -23,10 +23,14 @@ import time
 import random
 # --- BASE DE DATOS DE ALUMNOS (Agrégalo debajo de los imports) ---
 USUARIOS_ALUMNOS = {
-    "Juan Perez": "1234",
-    "Maria Garcia": "pass2026",
-    "Fabricio": "menfa2026",
-    "Estudiante_01": "ipcl_mendoza"
+    "Florencia Usubiaga": "8651",
+    "Agustin Flores ": "8652",
+    "Moya Lila ": "8653",
+    "Jonathan Emmanuel Perez ": "8654",
+    "Jonatan Sebastian Paredes ": "8655",
+    "Pilar Suárez Casanueva ": "8656",
+    "Renzo Pizzolato ": "8657",
+    "Abrahan Fermín Omar Villalba ":"8658"
 }
 # Lista de variables necesarias para que la app no explote
 variables_necesarias = {
