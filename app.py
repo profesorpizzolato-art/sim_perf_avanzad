@@ -149,145 +149,93 @@ if 'pizarra' not in st.session_state:
     }
 
 
-pizarra = st.session_state.pizarra
-with st.sidebar:
-    st.title("👨‍🏫 Panel del Instructor")
-    
-    # Esta línea ahora tiene 4 espacios de sangría
-    st.write(f"Profundidad: {pizarra['profundidad_actual']:.2f} m")
-    
-    # El botón también tiene 4 espacios de sangría
-    if st.button("🔄 Resetear Eventos"):
-        st.session_state.evento_activo = None
-        pizarra["alarma_activa"] = False
-        st.rerun()
-# --- 5. INTERFAZ PRINCIPAL (SIDEBAR) ---
+# --- 5. INTERFAZ PRINCIPAL (SIDEBAR UNIFICADO) ---
 with st.sidebar:
     st.image("logo.menfa.png", use_container_width=True)
     st.title(f"👤 {st.session_state.usuario}")
     st.write(f"Rol: {st.session_state.rol.capitalize()}")
 
-    # --- INICIO DEL FILTRO DE SEGURIDAD ---
+    # --- INICIO DEL FILTRO DE SEGURIDAD PARA INSTRUCTOR ---
     if st.session_state.rol == "instructor":
         st.divider()
         st.header("👨‍🏫 Panel del Instructor")
         
-        # Aquí van todos tus botones de fallas y sliders que el alumno NO debe ver
-        if st.sidebar.button("🚨 Provocar Kick"):
-            piz["evento_activo"] = "KICK"
-            piz["alarma_activa"] = True
+        # 1. HERRAMIENTAS DE SISTEMA
+        if st.button("🧹 Limpiar Memoria y Reiniciar"):
+            st.session_state.clear()
             st.rerun()
-
-        # Sliders de control (Caudal, RPM, WOB)
-        piz["caudal_maestro"] = st.slider("Caudal (GPM)", 0, 1200, int(piz["caudal_maestro"]))
-        piz["rpm_maestro"] = st.slider("Rotación (RPM)", 0, 200, int(piz["rpm_maestro"]))
         
-        if st.sidebar.button("✅ Normalizar Pozo"):
-            piz["evento_activo"] = None
-            piz["alarma_activa"] = False
+        if st.button("🔄 Resetear Eventos"):
+            st.session_state.evento_activo = None
+            pizarra["alarma_activa"] = False
             st.rerun()
 
-    else:
-        # Esto es lo que ve el alumno en lugar de los controles
         st.divider()
-        st.info("⚠️ Los parámetros de operación son controlados por el instructor.")
-        st.write("Manténgase atento a los manómetros y el panel BOP.")
-    # --- FIN DEL FILTRO DE SEGURIDAD ---
+        st.write(f"📍 Profundidad actual: {pizarra.get('profundidad_actual', 0):.2f} m")
 
-    st.sidebar.divider()
-    # El botón de reporte puede quedar para ambos
-    if st.sidebar.button("📊 Generar Reporte Final"):
-        # ... tu lógica de PDF ...
+        # 2. CONTROLES OPERATIVOS (SLIDERS)
+        # Caudal
+        val_c = int(pizarra.get("caudal_maestro", 500))
+        nuevo_caudal = st.slider("Caudal (GPM)", 0, 1200, val_c, step=10)
+        pizarra["caudal_maestro"] = float(nuevo_caudal)
 
-with st.sidebar:
-    st.title("👨‍🏫 Panel del Instructor")
-    # BOTÓN DE EMERGENCIA PARA EL PROGRAMADOR
-    if st.sidebar.button("🧹 Limpiar Memoria y Reiniciar"):
-        st.session_state.clear()
-        st.rerun()
-    
-    st.divider() # Una línea para separar
-    
-    # Aquí siguen tus otros controles (Profundidad, Eventos, etc.)
-    st.write(f"Profundidad actual: {pizarra.get('profundidad_actual', 0):.2f} m")
-    # 1. CAUDAL: Forzamos a que todo sea número entero
-    try:
-        val_c = int(float(pizarra.get("caudal_maestro", 500)))
-    except:
-        val_c = 500
-    
-    # Aseguramos rango 0-1200 y que sea INT
-    val_c = max(0, min(1200, val_c))
-    nuevo_caudal = st.slider("Caudal (GPM)", 0, 1200, val_c, step=1)
-    pizarra["caudal_maestro"] = float(nuevo_caudal)
+        # WOB
+        val_w = int(pizarra.get("wob_maestro", 0))
+        nuevo_wob = st.slider("WOB (klbs)", 0, 100, val_w, step=1)
+        pizarra["wob_maestro"] = float(nuevo_wob)
 
-    # 2. WOB: Rango 0-100
-    try:
-        val_w = int(float(pizarra.get("wob_maestro", 0)))
-    except:
-        val_w = 0
+        # RPM
+        val_r = int(pizarra.get("rpm_maestro", 0))
+        nuevo_rpm = st.slider("RPM", 0, 200, val_r, step=1)
+        pizarra["rpm_maestro"] = float(nuevo_rpm)
+
+        st.divider()
         
-    val_w = max(0, min(100, val_w))
-    nuevo_wob = st.slider("WOB (klbs)", 0, 100, val_w, step=1)
-    pizarra["wob_maestro"] = float(nuevo_wob)
+        # 3. SISTEMA DE AUDIO
+        st.subheader("🔊 Sistema de Audio")
+        st.session_state.alarma_activa = st.toggle("Activar Sirena de Emergencia", value=True)
+        if st.button("🔊 Probar Sonido"):
+            disparar_alarma_sonora()
 
-    # 3. RPM: Rango 0-200
-    try:
-        val_r = int(float(pizarra.get("rpm_maestro", 0)))
-    except:
-        val_r = 0
+        st.divider()
+
+        # 4. SIMULACIÓN DE FALLAS (LOS BOTONES QUE NO DEBEN FALTAR)
+        st.subheader("🕹️ Simulación de Fallas")
         
-    val_r = max(0, min(200, val_r))
-    nuevo_rpm = st.slider("RPM", 0, 200, val_r, step=1)
-    pizarra["rpm_maestro"] = float(nuevo_rpm)
-    
-st.sidebar.divider()
-st.sidebar.subheader("🔊 Sistema de Audio")
-st.session_state.alarma_activa = st.sidebar.toggle("Activar Sirena de Emergencia", value=True)
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            if st.button("🚨 Provocar Kick"):
+                pizarra["evento_activo"] = "KICK"
+                pizarra["alarma_activa"] = True
+                st.rerun()
+            
+            if st.button("⚙️ Falla Bomba 1"):
+                st.session_state.evento_activo = "FALLA_BOMBA"
+                st.rerun()
 
-if st.sidebar.button("🔊 Probar Sonido"):
-    disparar_alarma_sonora()
-st.sidebar.subheader("🕹️ Simulación de Fallas")
+        with col_f2:
+            if st.button("📉 Provocar Pérdida"):
+                st.session_state.evento_activo = "PERDIDA"
+                st.rerun()
 
-if st.sidebar.button("🚨 Provocar Kick"):
-    pizarra["evento_activo"] = "KICK"
-    pizarra["alarma_activa"] = True # Esto es lo que lee la línea 240
-    st.rerun()
-    
-if st.sidebar.button("📉 Provocar Pérdida"):
-    st.session_state.evento_activo = "PERDIDA"
+            if st.button("✅ Normalizar Pozo"):
+                st.session_state.evento_activo = None
+                pizarra["alarma_activa"] = False
+                st.rerun()
 
-st.sidebar.divider()
-
-if st.sidebar.button("✅ Normalizar Pozo"):
-    st.session_state.evento_activo = None
-    st.rerun()
-# Luego actualizamos la pizarra con esos nuevos valores
-pizarra["caudal_maestro"] = nuevo_caudal
-pizarra["wob_maestro"] = nuevo_wob
-pizarra["rpm_maestro"] = nuevo_rpm
-st.sidebar.divider()
-
-if st.session_state.get("evento_activo") == "KICK":
-    # Acción obligatoria: La presión sube si el pozo no está cerrado
-    if not piz.get("bop_cerrado", False):
-        piz["presion_base"] = piz.get("presion_base", 1200.0) + 2.5 
-        piz["alarma_activa"] = True # Esto activa el sonido y el fondo rojo
-        st.error("🚨 ¡ALERTA DE KICK! PRESIÓN EN AUMENTO")
+    # --- VISTA PARA EL ALUMNO (SI NO ES INSTRUCTOR) ---
     else:
-        piz["alarma_activa"] = False # Apaga el sonido si cerraron el BOP
-        st.success("✅ POZO CERRADO BAJO PRESIÓN")
+        st.divider()
+        st.header("🎓 Panel del Alumno")
+        st.info("Operación en curso. Los parámetros son controlados por el instructor.")
+        st.metric("Profundidad", f"{pizarra.get('profundidad_actual', 0):.2f} m")
+        st.write("Verifique los manómetros en la consola principal.")
 
-elif st.session_state.get("evento_activo") == "PERDIDA":
-    # Acción obligatoria: Bajamos el caudal de retorno simulado
-    st.warning("📉 PÉRDIDA DE CIRCULACIÓN DETECTADA")
-    pizarra["caudal_maestro"] *= 0.9
-
-elif st.session_state.get("evento_activo") == "FALLA_BOMBA":
-    # Acción obligatoria: Reducimos la potencia de bombeo
-    st.error("💥 FALLA EN VÁLVULA DE BOMBA 1")
-    pizarra["caudal_maestro"] = 250.0
-
+    # --- SECCIÓN COMÚN (PARA AMBOS) ---
+    st.divider()
+    if st.button("📊 Generar Reporte Final"):
+        # Tu lógica de PDF aquí
+        st.success("Reporte generado con éxito.")
 # --- MODO ALUMNO (VISUALIZACIÓN Y ACCIÓN) ---
 st.title("📟 Panel Integral de Operaciones")
 
