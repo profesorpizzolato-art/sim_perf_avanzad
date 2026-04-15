@@ -864,23 +864,29 @@ if st.button("🚨 EMERGENCIA: PARADA TOTAL"):
 # --- PESTAÑAS INTERACTIVAS ---
 with tab2:
     st.header("🛡️ Unidad de Cierre BOP")
-    col_bop1, col_bop2 = st.columns(2)
     
-   # --- Línea 810 y 811 corregidas ---
-with st.container():  # O el 'with' que tengas en la línea 810
-    try:
-        st.image("assets/BoP.png", width="stretch")
-    except:
-        st.warning("⚠️ No se pudo cargar la imagen del BOP.")
-        st.image("assest/BoP.png", width=100) 
-        if st.button("🔒 CERRAR RAMS (Anular)", type="primary"):
-            piz["bop_cerrado"] = True
-            st.error("BOP CERRADO - Presión contenida")
-            
-    with col_bop2:
-        if st.button("🔓 ABRIR RAMS"):
-            piz["bop_cerrado"] = False
-            st.success("BOP ABIERTO - Circulación libre")
+    # Verificamos el estado actual en la pizarra
+    bop_cerrado = pizarra.get("bop_cerrado", False)
+    
+    if not bop_cerrado:
+        # SI ESTÁ ABIERTO: Mostrar botón para cerrar
+        if st.button("🔴 CERRAR RAMS (EMERGENCIA)", use_container_width=True):
+            pizarra["bop_cerrado"] = True
+            pizarra["alarma_activa"] = False  # Apagamos la sirena al cerrar
+            st.success("✅ BOP Cerrado exitosamente")
+            st.rerun()
+    else:
+        # SI ESTÁ CERRADO: Mostrar botón para abrir
+        if st.button("🔓 ABRIR RAMS", use_container_width=True):
+            pizarra["bop_cerrado"] = False
+            st.warning("⚠️ BOP Abierto - Pozo en comunicación")
+            st.rerun()
+
+    # Indicador visual de estado
+    if bop_cerrado:
+        st.error("ESTADO: BLOQUEADO / CERRADO")
+    else:
+        st.success("ESTADO: ABIERTO / FLUJO LIBRE")
 
 with tab3:
     st.header("🧪 Control de Densidad")
@@ -1094,3 +1100,156 @@ with st.sidebar.expander("🔐 Panel del Instructor"):
         st.success("✅ Clase finalizada. Sistema reseteado para el próximo turno.")
         time.sleep(2) # Pausa para que el instructor vea el mensaje
         st.rerun()
+
+from weasyprint import HTML
+import os
+
+# Definición del contenido HTML para el manual técnico
+html_content = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+            background-color: #ffffff;
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 9pt;
+                color: #555;
+            }
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        .header-banner {
+            background-color: #1a3c5e;
+            color: white;
+            padding: 30pt;
+            text-align: center;
+            margin-bottom: 30pt;
+        }
+        h1 { margin: 0; font-size: 24pt; text-transform: uppercase; letter-spacing: 2px; }
+        h2 { 
+            color: #1a3c5e; 
+            border-left: 5px solid #1a3c5e; 
+            padding-left: 10pt; 
+            margin-top: 25pt;
+            font-size: 16pt;
+            page-break-after: avoid;
+        }
+        h3 { color: #2c5d8f; font-size: 13pt; margin-top: 15pt; }
+        .info-box {
+            background-color: #f4f7f9;
+            border: 1px solid #d1d9e1;
+            padding: 15pt;
+            margin: 15pt 0;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15pt 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10pt;
+            text-align: left;
+            font-size: 10pt;
+        }
+        th { background-color: #f2f2f2; color: #1a3c5e; }
+        .formula {
+            font-family: 'Courier New', monospace;
+            background-color: #222;
+            color: #00ff00;
+            padding: 12pt;
+            display: block;
+            margin: 10pt 0;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 50pt;
+            text-align: center;
+            font-size: 10pt;
+            color: #777;
+            border-top: 1px solid #eee;
+            padding-top: 20pt;
+        }
+        .logo-text {
+            font-weight: bold;
+            font-size: 18pt;
+            color: #1a3c5e;
+            margin-bottom: 5pt;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-banner">
+        <div class="logo-text" style="color: white;">IPCL MENFA</div>
+        <h1>Manual Técnico del Simulador</h1>
+        <p>Normas, Fórmulas de Perforación y Control de Pozos</p>
+    </div>
+
+    <div class="info-box">
+        <strong>Instructor:</strong> Fabricio<br>
+        <strong>Institución:</strong> IPCL MENFA - Mendoza, Argentina<br>
+        <strong>Materia:</strong> Simulación de Operaciones de Perforación y Control de Pozos
+    </div>
+
+    <h2>1. Marco Normativo Internacional</h2>
+    <p>El simulador integra los procedimientos estandarizados por las organizaciones líderes de la industria petrolera mundial para garantizar operaciones seguras en yacimientos convencionales y no convencionales (Vaca Muerta).</p>
+    <ul>
+        <li><strong>API RP 59:</strong> Prácticas recomendadas para operaciones de control de pozos.</li>
+        <li><strong>API Standard 53:</strong> Requisitos para sistemas de equipos de control de presión (BOP).</li>
+        <li><strong>ISO 13533:</strong> Especificaciones para equipos de cabezal de pozo y árboles de navidad.</li>
+        <li><strong>Estándares IADC:</strong> Protocolos de reporte y seguridad en el equipo de perforación.</li>
+    </ul>
+
+    <h2>2. Fórmulas de Perforación (Drilling)</h2>
+    <p>Utilizadas para el cálculo de los parámetros operativos que el alumno debe ajustar en la consola.</p>
+    
+    <h3>Factor de Flotación (FF)</h3>
+    <div class="formula">FF = (65.5 - Densidad Lodo ppg) / 65.5</div>
+    
+    <h3>Peso sobre el Trépano Real (WOB)</h3>
+    <div class="formula">WOB_real = Peso_Sarta_Aire * FF</div>
+
+    <h3>Caudal de Bomba Triplex (GPM)</h3>
+    <div class="formula">GPM = 0.000243 * (ID_Camisa^2) * Carrera * Eficiencia * SPM</div>
+
+    <h2>3. Control de Pozos (Well Control)</h2>
+    <p>Cálculos críticos ante la detección de un ingreso de fluido de formación (Kick).</p>
+
+    <h3>Presión Hidrostática (Ph)</h3>
+    <div class="formula">Ph (psi) = Densidad (ppg) * 0.052 * TVD (ft)</div>
+
+    <h3>Presión de Fondo de Pozo (BHP)</h3>
+    <div class="formula">BHP = Ph + SIDPP (Presión de Cierre en TP)</div>
+
+    <h3>Densidad de Matar (KMW)</h3>
+    <div class="formula">KMW = (SIDPP / (0.052 * TVD)) + Densidad_Actual</div>
+
+    <h2>4. Geonavegación (Geonav)</h2>
+    <p>Cálculos para el mantenimiento de la trayectoria en la ventana productiva.</p>
+    
+    <h3>Severidad de Pata de Perro (DLS)</h3>
+    <div class="formula">DLS = (Grados de Cambio / Longitud) * 100</div>
+
+    <div class="footer">
+        <p>Este documento es propiedad académica de IPCL MENFA.<br>
+        Prohibida su reproducción total o parcial sin autorización del instructor.</p>
+    </div>
+</body>
+</html>
+"""
+
+# Generación del PDF
+output_filename = "manual_tecnico_simulador_menfa_v1.pdf"
+HTML(string=html_content).write_pdf(output_filename)
