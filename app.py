@@ -21,7 +21,13 @@ import streamlit.components.v1 as components
 # --- 1. INICIALIZACIÓN BLINDADA (Colocar justo después de los imports) ---
 import time
 import random
-
+# --- BASE DE DATOS DE ALUMNOS (Agrégalo debajo de los imports) ---
+USUARIOS_ALUMNOS = {
+    "Juan Perez": "1234",
+    "Maria Garcia": "pass2026",
+    "Fabricio": "menfa2026",
+    "Estudiante_01": "ipcl_mendoza"
+}
 # Lista de variables necesarias para que la app no explote
 variables_necesarias = {
     "pizarra": {
@@ -108,12 +114,17 @@ if not st.session_state.autenticado:
         tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Instructor"])
         with tab1:
             with st.form("alumno_login"):
-                u = st.text_input("Nombre y Apellido")
-                c = st.text_input("Clave de Curso", type="password")
+                u = st.text_input("Nombre y Apellido (Tal cual figura en lista)")
+                c = st.text_input("Contraseña Individual", type="password")
                 if st.form_submit_button("Ingresar"):
-                    if c == "alumno2026":
-                        st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, u, "alumno"
+                    # Verificamos si el nombre existe y la clave coincide
+                    if u in USUARIOS_ALUMNOS and USUARIOS_ALUMNOS[u] == c:
+                        st.session_state.autenticado = True
+                        st.session_state.usuario = u
+                        st.session_state.rol = "alumno"
                         st.rerun()
+                    else:
+                        st.error("❌ Nombre o Clave incorrectos. Contacte al instructor.")
         with tab2:
             with st.form("profe_login"):
                 cp = st.text_input("Clave Maestro", type="password")
@@ -137,7 +148,7 @@ if 'pizarra' not in st.session_state:
         "caudal_maestro": 500.0
     }
 
-# ESTA ES LA LÍNEA 141: Asegurate que no tenga espacios de más al inicio
+
 pizarra = st.session_state.pizarra
 with st.sidebar:
     st.title("👨‍🏫 Panel del Instructor")
@@ -150,14 +161,44 @@ with st.sidebar:
         st.session_state.evento_activo = None
         pizarra["alarma_activa"] = False
         st.rerun()
-# --- 5. INTERFAZ PRINCIPAL ---
+# --- 5. INTERFAZ PRINCIPAL (SIDEBAR) ---
+with st.sidebar:
+    st.image("logo.menfa.png", use_container_width=True)
+    st.title(f"👤 {st.session_state.usuario}")
+    st.write(f"Rol: {st.session_state.rol.capitalize()}")
 
-# SIDEBAR COMÚN
-st.sidebar.image("logo.menfa.png", use_container_width=True)
-st.sidebar.title(f"Usuario: {st.session_state.usuario}")
+    # --- INICIO DEL FILTRO DE SEGURIDAD ---
+    if st.session_state.rol == "instructor":
+        st.divider()
+        st.header("👨‍🏫 Panel del Instructor")
+        
+        # Aquí van todos tus botones de fallas y sliders que el alumno NO debe ver
+        if st.sidebar.button("🚨 Provocar Kick"):
+            piz["evento_activo"] = "KICK"
+            piz["alarma_activa"] = True
+            st.rerun()
 
-# --- PANEL DEL INSTRUCTOR (Aproximadamente línea 100) ---
-# --- PANEL DEL INSTRUCTOR (Línea 100 en adelante) ---
+        # Sliders de control (Caudal, RPM, WOB)
+        piz["caudal_maestro"] = st.slider("Caudal (GPM)", 0, 1200, int(piz["caudal_maestro"]))
+        piz["rpm_maestro"] = st.slider("Rotación (RPM)", 0, 200, int(piz["rpm_maestro"]))
+        
+        if st.sidebar.button("✅ Normalizar Pozo"):
+            piz["evento_activo"] = None
+            piz["alarma_activa"] = False
+            st.rerun()
+
+    else:
+        # Esto es lo que ve el alumno en lugar de los controles
+        st.divider()
+        st.info("⚠️ Los parámetros de operación son controlados por el instructor.")
+        st.write("Manténgase atento a los manómetros y el panel BOP.")
+    # --- FIN DEL FILTRO DE SEGURIDAD ---
+
+    st.sidebar.divider()
+    # El botón de reporte puede quedar para ambos
+    if st.sidebar.button("📊 Generar Reporte Final"):
+        # ... tu lógica de PDF ...
+
 with st.sidebar:
     st.title("👨‍🏫 Panel del Instructor")
     # BOTÓN DE EMERGENCIA PARA EL PROGRAMADOR
