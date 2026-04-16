@@ -21,6 +21,22 @@ import streamlit.components.v1 as components
 # --- 1. INICIALIZACIÓN BLINDADA (Colocar justo después de los imports) ---
 import time
 import random
+import streamlit as st
+from streamlit_autorefresh import st_autorefresh
+# ... tus otros imports (pandas, math, etc.)
+@st.cache_resource
+def obtener_pizarra_global():
+    # Este diccionario es compartido por TODOS los usuarios
+    return {
+        "profundidad_actual": 2500.0,
+        "caudal_maestro": 500.0,
+        "evento_activo": None,
+        "alarma_activa": False,
+        "bop_cerrado": False
+    }
+
+# Llamada obligatoria antes del Sidebar
+pizarra = obtener_pizarra_global()
 # --- BASE DE DATOS DE ALUMNOS (Agrégalo debajo de los imports) ---
 USUARIOS_ALUMNOS = {
     "Florencia Usubiaga": "8651",
@@ -60,7 +76,11 @@ import streamlit as st
 import bombas_de_lodo as bombas  # Ahora debería encontrarlo
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="MENFA 3.0 - Mendoza Oil Industry", layout="wide", page_icon="🏗️")
+st.set_page_config(page_title="Simulador IPCL MENFA", layout="wide")
 
+# ESTO ES LO QUE HACE QUE EL ALUMNO VEA TUS CAMBIOS SIN TOCAR NADA
+# Refresca la pantalla automáticamente cada 2 segundos
+st_autorefresh(interval=2000, key="f5_simulador")
 # --- 2. PIZARRA GLOBAL (SINCRONIZACIÓN MAESTRO-ALUMNO) ---
 @st.cache_resource
 def obtener_pizarra_maestra():
