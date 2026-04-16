@@ -82,8 +82,10 @@ import bombas_de_lodo as bombas  # Ahora debería encontrarlo
 st.set_page_config(page_title="MENFA 3.0 - Mendoza Oil Industry", layout="wide", page_icon="🏗️")
 st.set_page_config(page_title="Simulador IPCL MENFA", layout="wide")
 
-
-st_autorefresh(interval=1000, key="f5_simulador")
+# --- OPTIMIZACIÓN DE LATENCIA ---
+if st.session_state.rol == "alumno":
+    # Bajamos a 1 segundo (1000ms) para respuesta rápida
+    st_autorefresh(interval=1000, key="latido_alumno")
 
 import streamlit.components.v1 as components
 
@@ -243,8 +245,6 @@ with st.sidebar:
 # --- MODO ALUMNO (VISUALIZACIÓN Y ACCIÓN) ---
 st.title("📟 Panel Integral de Operaciones")
 
-# Lógica de Alarma Sonora y Visual
-# Si 'alarma_activa' no existe, devolverá False y la app seguirá funcionando
 if pizarra.get("alarma_activa", False):
     st.error(f"🔥 {pizarra.get('mensaje_evento', 'Sistema Operativo Normal')}")
     reproducir_alarma_critica()
@@ -260,17 +260,27 @@ if pizarra.get("alarma_activa", False):
     with col_b2:
         st.button("🔴 CERRAR RAMS CIEGOS", type="secondary", use_container_width=True)
 
-# --- INTEGRACIÓN DE MÓDULOS TÉCNICOS (ALUMNO Y PROFE VEN ESTO) ---
-col1, col2, col3 = st.columns(3)
-# Cambiá tu línea 265 por esta forma más segura:
-res_fisica = motor.calcular_fisica_perforacion(
-    wob=pizarra.get("wob_maestro", 0.0),
-    rpm=pizarra.get("rpm_maestro", 0.0),
-    torque=pizarra.get("torque_maestro", 0.0), # Si no lo encuentra, usa 0.0
-    profundidad=pizarra.get("profundidad_actual", 2500.0),
-    flow_rate=pizarra.get("caudal_maestro", 500.0)
-)
+@st.fragment
+def renderizar_consola_rapida():
+    # Solo recalculamos lo esencial para los relojes
+    res_f = motor.calcular_fisica_perforacion(
+        wob=piz["wob_maestro"],
+        rpm=piz["rpm_maestro"],
+        torque=piz.get("torque_maestro", 0.0),
+        profundidad=piz["profundidad_actual"],
+        flow_rate=piz["caudal_maestro"]
+    )
+    
+    col_a, col_b, col_c = st.columns(3)
+    with col_a:
+        st.plotly_chart(crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), use_container_width=True, key="m1")
+    with col_b:
+        st.plotly_chart(crear_manometro(res_f["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True, key="m2")
+    with col_c:
+        st.plotly_chart(crear_manometro(piz["caudal_maestro"], "Caudal", "GPM", 1200, "cyan"), use_container_width=True, key="m3")
 
+# Llamada a la consola rápida
+renderizar_consola_rapida()
 # 2. Extraemos los valores del diccionario para los manómetros
 rop_actual = res_fisica.get("ROP", 0.0) if 'res_fisica' in locals() else 0.0
 mse_actual = res_fisica["MSE"]
