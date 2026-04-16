@@ -1090,155 +1090,36 @@ with st.sidebar.expander("🔐 Panel del Instructor"):
         time.sleep(2) # Pausa para que el instructor vea el mensaje
         st.rerun()
 
-from weasyprint import HTML
-import os
+from fpdf import FPDF
+import io
 
-# Definición del contenido HTML para el manual técnico
-html_content = """
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <style>
-        @page {
-            size: A4;
-            margin: 20mm;
-            background-color: #ffffff;
-            @bottom-right {
-                content: "Página " counter(page) " de " counter(pages);
-                font-size: 9pt;
-                color: #555;
-            }
-        }
-        body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            color: #333;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-        }
-        .header-banner {
-            background-color: #1a3c5e;
-            color: white;
-            padding: 30pt;
-            text-align: center;
-            margin-bottom: 30pt;
-        }
-        h1 { margin: 0; font-size: 24pt; text-transform: uppercase; letter-spacing: 2px; }
-        h2 { 
-            color: #1a3c5e; 
-            border-left: 5px solid #1a3c5e; 
-            padding-left: 10pt; 
-            margin-top: 25pt;
-            font-size: 16pt;
-            page-break-after: avoid;
-        }
-        h3 { color: #2c5d8f; font-size: 13pt; margin-top: 15pt; }
-        .info-box {
-            background-color: #f4f7f9;
-            border: 1px solid #d1d9e1;
-            padding: 15pt;
-            margin: 15pt 0;
-            border-radius: 4px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15pt 0;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10pt;
-            text-align: left;
-            font-size: 10pt;
-        }
-        th { background-color: #f2f2f2; color: #1a3c5e; }
-        .formula {
-            font-family: 'Courier New', monospace;
-            background-color: #222;
-            color: #00ff00;
-            padding: 12pt;
-            display: block;
-            margin: 10pt 0;
-            border-radius: 3px;
-            font-weight: bold;
-        }
-        .footer {
-            margin-top: 50pt;
-            text-align: center;
-            font-size: 10pt;
-            color: #777;
-            border-top: 1px solid #eee;
-            padding-top: 20pt;
-        }
-        .logo-text {
-            font-weight: bold;
-            font-size: 18pt;
-            color: #1a3c5e;
-            margin-bottom: 5pt;
-        }
-    </style>
-</head>
-<body>
-    <div class="header-banner">
-        <div class="logo-text" style="color: white;">IPCL MENFA</div>
-        <h1>Manual Técnico del Simulador</h1>
-        <p>Normas, Fórmulas de Perforación y Control de Pozos</p>
-    </div>
-
-    <div class="info-box">
-        <strong>Instructor:</strong> Fabricio<br>
-        <strong>Institución:</strong> IPCL MENFA - Mendoza, Argentina<br>
-        <strong>Materia:</strong> Simulación de Operaciones de Perforación y Control de Pozos
-    </div>
-
-    <h2>1. Marco Normativo Internacional</h2>
-    <p>El simulador integra los procedimientos estandarizados por las organizaciones líderes de la industria petrolera mundial para garantizar operaciones seguras en yacimientos convencionales y no convencionales (Vaca Muerta).</p>
-    <ul>
-        <li><strong>API RP 59:</strong> Prácticas recomendadas para operaciones de control de pozos.</li>
-        <li><strong>API Standard 53:</strong> Requisitos para sistemas de equipos de control de presión (BOP).</li>
-        <li><strong>ISO 13533:</strong> Especificaciones para equipos de cabezal de pozo y árboles de navidad.</li>
-        <li><strong>Estándares IADC:</strong> Protocolos de reporte y seguridad en el equipo de perforación.</li>
-    </ul>
-
-    <h2>2. Fórmulas de Perforación (Drilling)</h2>
-    <p>Utilizadas para el cálculo de los parámetros operativos que el alumno debe ajustar en la consola.</p>
+def generar_reporte_menfa(datos_piz, nombre_usuario):
+    pdf = FPDF()
+    pdf.add_page()
     
-    <h3>Factor de Flotación (FF)</h3>
-    <div class="formula">FF = (65.5 - Densidad Lodo ppg) / 65.5</div>
+    # Encabezado
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, "IPCL MENFA - MENDOZA", 0, 1, 'C')
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, "Reporte de Entrenamiento de Perforacion", 0, 1, 'C')
     
-    <h3>Peso sobre el Trépano Real (WOB)</h3>
-    <div class="formula">WOB_real = Peso_Sarta_Aire * FF</div>
-
-    <h3>Caudal de Bomba Triplex (GPM)</h3>
-    <div class="formula">GPM = 0.000243 * (ID_Camisa^2) * Carrera * Eficiencia * SPM</div>
-
-    <h2>3. Control de Pozos (Well Control)</h2>
-    <p>Cálculos críticos ante la detección de un ingreso de fluido de formación (Kick).</p>
-
-    <h3>Presión Hidrostática (Ph)</h3>
-    <div class="formula">Ph (psi) = Densidad (ppg) * 0.052 * TVD (ft)</div>
-
-    <h3>Presión de Fondo de Pozo (BHP)</h3>
-    <div class="formula">BHP = Ph + SIDPP (Presión de Cierre en TP)</div>
-
-    <h3>Densidad de Matar (KMW)</h3>
-    <div class="formula">KMW = (SIDPP / (0.052 * TVD)) + Densidad_Actual</div>
-
-    <h2>4. Geonavegación (Geonav)</h2>
-    <p>Cálculos para el mantenimiento de la trayectoria en la ventana productiva.</p>
+    pdf.ln(10)
     
-    <h3>Severidad de Pata de Perro (DLS)</h3>
-    <div class="formula">DLS = (Grados de Cambio / Longitud) * 100</div>
+    # Datos del Alumno
+    pdf.set_font("Arial", '', 11)
+    pdf.cell(100, 10, f"Alumno: {nombre_usuario}", 0, 1)
+    pdf.cell(100, 10, f"Instructor: Fabricio Pizzolato", 0, 1)
+    pdf.cell(100, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", 0, 1)
+    
+    pdf.ln(5)
+    pdf.set_fill_color(230, 230, 230)
+    pdf.cell(200, 10, " PARAMETROS FINALES DE OPERACION", 1, 1, 'L', True)
+    
+    # Parámetros de la pizarra global (piz)
+    pdf.cell(100, 10, f"Profundidad Final: {datos_piz.get('profundidad_actual', 0):.2f} m", 1, 0)
+    pdf.cell(100, 10, f"Caudal: {datos_piz.get('caudal_maestro', 0)} GPM", 1, 1)
+    pdf.cell(100, 10, f"WOB: {datos_piz.get('wob_maestro', 0)} klbs", 1, 0)
+    pdf.cell(100, 10, f"RPM: {datos_piz.get('rpm_maestro', 0)}", 1, 1)
 
-    <div class="footer">
-        <p>Este documento es propiedad académica de IPCL MENFA.<br>
-        Prohibida su reproducción total o parcial sin autorización del instructor.</p>
-    </div>
-</body>
-</html>
-"""
-
-# Generación del PDF
-output_filename = "manual_tecnico_simulador_menfa_v1.pdf"
-HTML(string=html_content).write_pdf(output_filename)
+    # Retornar los bytes del PDF
+    return pdf.output(dest='S').encode('latin-1', 'ignore')
