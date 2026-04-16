@@ -6,4 +6,3 @@ fpdf2
 streamlit-autorefresh
 qrcode
 pillow
-weasyprint
