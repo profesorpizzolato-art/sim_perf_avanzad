@@ -36,6 +36,7 @@ def conectar_pizarra_maestra():
         "alarma_activa": False,
         "bop_cerrado": False,
         "mensaje_evento": "Operación Normal"
+        "alumnos_activos": {}
     }
 
 piz = conectar_pizarra_maestra()
@@ -95,6 +96,16 @@ sys.path.append(os.path.dirname(__file__))
 
 import streamlit as st
 import bombas_de_lodo as bombas  # Ahora debería encontrarlo
+# --- DENTRO DEL BLOQUE DEL ALUMNO ---
+if st.session_state.get("rol") == "alumno":
+    nombre_alumno = st.session_state.get("usuario", "Anónimo")
+    piz["alumnos_activos"][nombre_alumno] = {
+        "Profundidad": f"{piz['profundidad_actual']:.2f} m",
+        "BOP": "CERRADO" if piz["bop_cerrado"] else "ABIERTO",
+        "Estado": piz["mensaje_evento"],
+        "Última Conexión": datetime.now().strftime("%H:%M:%S")
+    }
+    st_autorefresh(interval=1000, key="latido_alumno")
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="MENFA 3.0 - Mendoza Oil Industry", layout="wide", page_icon="🏗️")
 st.set_page_config(page_title="Simulador IPCL MENFA", layout="wide")
@@ -175,7 +186,23 @@ with st.sidebar:
     if st.session_state.rol == "instructor":
         st.divider()
         st.header("👨‍🏫 Panel del Instructor")
+        # --- TORRE DE CONTROL: MONITOR DE ALUMNOS EN TIEMPO REAL ---
+    st.divider()
+    st.header("🖥️ Monitor de Pantallas (Alumnos)")
+    
+    if piz["alumnos_activos"]:
+        import pandas as pd
+        # Convertimos el diccionario en una tabla visual
+        df_radar = pd.DataFrame.from_dict(piz["alumnos_activos"], orient='index')
         
+        # Mostramos la tabla con colores según el estado
+        st.dataframe(df_radar, use_container_width=True)
+        
+        if st.button("🔴 Resetear Radar"):
+            piz["alumnos_activos"] = {}
+            st.rerun()
+    else:
+        st.warning("⚠️ No hay alumnos conectados actualmente.")
         # 1. HERRAMIENTAS DE SISTEMA
         if st.button("🧹 Limpiar Memoria"):
             piz.clear() # Limpia la pizarra global
