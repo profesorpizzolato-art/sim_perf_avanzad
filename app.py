@@ -152,39 +152,31 @@ with st.sidebar:
     st.image("logo.menfa.png", use_container_width=True)
     st.title(f"👤 {st.session_state.usuario}")
     st.write(f"Rol: {st.session_state.rol.capitalize()}")
-
-    # --- INICIO DEL FILTRO DE SEGURIDAD PARA INSTRUCTOR ---
+# --- PANEL DEL INSTRUCTOR (Asegúrate que este 'if' esté bien indentado) ---
     if st.session_state.rol == "instructor":
         st.divider()
         st.header("👨‍🏫 Panel del Instructor")
-        # Dentro del if st.session_state.rol == "instructor":
-# SLIDERS GLOBALES
-piz["caudal_maestro"] = st.slider("Caudal (GPM)", 0, 1200, int(piz["caudal_maestro"]))
-piz["wob_maestro"] = st.slider("WOB (klbs)", 0, 100, int(piz["wob_maestro"]))
-piz["rpm_maestro"] = st.slider("RPM", 0, 200, int(piz["rpm_maestro"]))
+        
         # 1. HERRAMIENTAS DE SISTEMA
-        if st.button("🧹 Limpiar Memoria y Reiniciar"):
-            st.session_state.clear()
+        if st.button("🧹 Limpiar Memoria"):
+            piz.clear() # Limpia la pizarra global
+            piz.update(conectar_pizarra_maestra()) # Recarga valores iniciales
             st.rerun()
         
         if st.button("🔄 Resetear Eventos"):
-            st.session_state.evento_activo = None
-            pizarra["alarma_activa"] = False
+            piz["evento_activo"] = None
+            piz["alarma_activa"] = False
+            piz["mensaje_evento"] = "Operación Normal"
             st.rerun()
 
         st.divider()
-        st.write(f"📍 Profundidad actual: {pizarra.get('profundidad_actual', 0):.2f} 
- if st.button("🚨 Provocar Kick"):
-    piz["evento_activo"] = "KICK"
-    piz["alarma_activa"] = True
-    piz["mensaje_evento"] = "¡SURGENCIA DETECTADA!"
-    st.rerun()
+        st.write(f"📍 Profundidad: {piz['profundidad_actual']:.2f} m")
 
-if st.button("✅ Normalizar Pozo"):
-    piz["evento_activo"] = None
-    piz["alarma_activa"] = False
-    piz["mensaje_evento"] = "Operación Normal"
-    st.rerun()
+        # 2. CONTROLES (SLIDERS GLOBALES)
+        piz["caudal_maestro"] = st.slider("Caudal (GPM)", 0, 1200, int(piz["caudal_maestro"]))
+        piz["wob_maestro"] = st.slider("WOB (klbs)", 0, 100, int(piz["wob_maestro"]))
+        piz["rpm_maestro"] = st.slider("RPM", 0, 200, int(piz["rpm_maestro"]))
+ 
 
         # 2. CONTROLES OPERATIVOS (SLIDERS)
         # Caudal
