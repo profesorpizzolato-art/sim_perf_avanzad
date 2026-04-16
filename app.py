@@ -81,11 +81,12 @@ import bombas_de_lodo as bombas  # Ahora debería encontrarlo
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="MENFA 3.0 - Mendoza Oil Industry", layout="wide", page_icon="🏗️")
 st.set_page_config(page_title="Simulador IPCL MENFA", layout="wide")
-
-# --- OPTIMIZACIÓN DE LATENCIA ---
-if st.session_state.rol == "alumno":
-    # Bajamos a 1 segundo (1000ms) para respuesta rápida
-    st_autorefresh(interval=1000, key="latido_alumno")
+# --- OPTIMIZACIÓN DE LATENCIA (VERSIÓN SEGURA) ---
+# Primero verificamos si las llaves existen para que no explote la app
+if "autenticado" in st.session_state and st.session_state.autenticado:
+    if st.session_state.get("rol") == "alumno":
+        # Solo refresca automáticamente si ya entró como alumno
+        st_autorefresh(interval=1000, key="latido_alumno")
 
 import streamlit.components.v1 as components
 
