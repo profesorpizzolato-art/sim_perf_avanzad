@@ -26,8 +26,6 @@ from streamlit_autorefresh import st_autorefresh
 # --- 1. MEMORIA COMPARTIDA ÚNICA (SERVIDOR) ---
 @st.cache_resource
 def conectar_pizarra_maestra():
-@st.cache_resource
-def conectar_pizarra_maestra():
     return {
         "profundidad_actual": 2500.0,
         "caudal_maestro": 500.0,
