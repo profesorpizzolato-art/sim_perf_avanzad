@@ -31,7 +31,7 @@ def conectar_pizarra_maestra():
         "torque_maestro": 0.0,
         "presion_base": 1200.0,
         "densidad_maestra": 10.2,
-        "piletas_nivel": 450.0,  # <--- AGREGA ESTA LÍNEA (Valor inicial)
+        "piletas_nivel": 450.0,
         "evento_activo": None,
         "alarma_activa": False,
         "bop_cerrado": False,
@@ -39,10 +39,9 @@ def conectar_pizarra_maestra():
         "alumnos_activos": {}
     }
 
+# Única forma de llamar a la pizarra en toda la app:
 piz = conectar_pizarra_maestra()
-# ESTO CONECTA A TODOS AL MISMO CABLE
-piz = conectar_pizarra_maestra()
-pizarra = piz
+pizarra = piz  # Por si usas este nombre en otros módulos
 # Contraseña única para la clase del 17 de abril
 PASSWORD_ALUMNO = "alumno2026"
 USUARIOS_ALUMNOS = {
