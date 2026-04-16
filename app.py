@@ -102,7 +102,7 @@ if st.session_state.get("rol") == "alumno":
     piz["alumnos_activos"][nombre_alumno] = {
         "Profundidad": f"{piz['profundidad_actual']:.2f} m",
         "BOP": "CERRADO" if piz["bop_cerrado"] else "ABIERTO",
-        "Estado": piz["mensaje_evento"],
+        "Estado": piz.get("mensaje_evento", "Operación Normal"),
         "Última Conexión": datetime.now().strftime("%H:%M:%S")
     }
     st_autorefresh(interval=1000, key="latido_alumno")
