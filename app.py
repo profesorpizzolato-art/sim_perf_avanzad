@@ -35,7 +35,7 @@ def conectar_pizarra_maestra():
         "evento_activo": None,
         "alarma_activa": False,
         "bop_cerrado": False,
-        "mensaje_evento": "Operación Normal"
+        "mensaje_evento": "Operación Normal",
         "alumnos_activos": {}
     }
 
