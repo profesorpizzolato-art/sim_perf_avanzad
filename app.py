@@ -23,21 +23,26 @@ import time
 import random
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-# ... tus otros imports (pandas, math, etc.)
+# --- 1. MEMORIA COMPARTIDA ÚNICA (SERVIDOR) ---
 @st.cache_resource
-def obtener_pizarra_global():
-    # Este diccionario es compartido por TODOS los usuarios
+def conectar_pizarra_maestra():
     return {
         "profundidad_actual": 2500.0,
         "caudal_maestro": 500.0,
+        "wob_maestro": 0.0,
+        "rpm_maestro": 0.0,
+        "torque_maestro": 0.0,# --- 1. MEMORIA COMPARTIDA ÚNICA (SERVIDOR) ---
+        "presion_base": 1200.0,
+        "densidad_maestra": 10.2,
         "evento_activo": None,
         "alarma_activa": False,
-        "bop_cerrado": False
+        "bop_cerrado": False,
+        "mensaje_evento": "Operación Normal"
     }
 
-# Llamada obligatoria antes del Sidebar
-pizarra = obtener_pizarra_global()
-# --- BASE DE DATOS DE ALUMNOS (Agrégalo debajo de los imports) ---
+# ESTO CONECTA A TODOS AL MISMO CABLE
+piz = conectar_pizarra_maestra()
+pizarra = piz
 USUARIOS_ALUMNOS = {
     "Florencia Usubiaga": "8651",
     "Agustin Flores ": "8652",
@@ -78,24 +83,8 @@ import bombas_de_lodo as bombas  # Ahora debería encontrarlo
 st.set_page_config(page_title="MENFA 3.0 - Mendoza Oil Industry", layout="wide", page_icon="🏗️")
 st.set_page_config(page_title="Simulador IPCL MENFA", layout="wide")
 
-# ESTO ES LO QUE HACE QUE EL ALUMNO VEA TUS CAMBIOS SIN TOCAR NADA
-# Refresca la pantalla automáticamente cada 2 segundos
-st_autorefresh(interval=2000, key="f5_simulador")
-# --- 2. PIZARRA GLOBAL (SINCRONIZACIÓN MAESTRO-ALUMNO) ---
-@st.cache_resource
-def obtener_pizarra_maestra():
-    return {
-        "alarma_activa": False,
-        "mensaje_evento": "Operación Normal",
-        "presion_base": 2500.0,
-        "caudal_maestro": 550.0,
-        "densidad_maestra": 10.2,
-        "profundidad_actual": 2800.0,
-        "bop_cerrado": False,
-        "torque_maestro": 12.0,
-        "wob_maestro": 15.0,
-        "rpm_maestro": 60.0
-    }
+
+st_autorefresh(interval=1000, key="f5_simulador")
 
 import streamlit.components.v1 as components
 
@@ -158,21 +147,6 @@ if not st.session_state.autenticado:
                         st.rerun()
     st.stop()
 
-# --- REPARACIÓN FINAL (Líneas 130 a 141 aprox) ---
-if 'pizarra' not in st.session_state:
-    st.session_state.pizarra = {
-        "profundidad_actual": 2500.0,
-        "presion_base": 1200.0,
-        "alarma_activa": False,
-        "evento_activo": None,
-        "wob_maestro": 0.0,
-        "rpm_maestro": 0.0,
-        "torque_maestro": 0.0,
-        "caudal_maestro": 500.0
-    }
-# LÍNEA CLAVE: Esta línea define la variable para que no dé NameError
-pizarra = st.session_state.pizarra
-
 # --- 5. INTERFAZ PRINCIPAL (SIDEBAR UNIFICADO) ---
 with st.sidebar:
     st.image("logo.menfa.png", use_container_width=True)
@@ -183,7 +157,11 @@ with st.sidebar:
     if st.session_state.rol == "instructor":
         st.divider()
         st.header("👨‍🏫 Panel del Instructor")
-        
+        # Dentro del if st.session_state.rol == "instructor":
+# SLIDERS GLOBALES
+piz["caudal_maestro"] = st.slider("Caudal (GPM)", 0, 1200, int(piz["caudal_maestro"]))
+piz["wob_maestro"] = st.slider("WOB (klbs)", 0, 100, int(piz["wob_maestro"]))
+piz["rpm_maestro"] = st.slider("RPM", 0, 200, int(piz["rpm_maestro"]))
         # 1. HERRAMIENTAS DE SISTEMA
         if st.button("🧹 Limpiar Memoria y Reiniciar"):
             st.session_state.clear()
@@ -195,7 +173,18 @@ with st.sidebar:
             st.rerun()
 
         st.divider()
-        st.write(f"📍 Profundidad actual: {pizarra.get('profundidad_actual', 0):.2f} m")
+        st.write(f"📍 Profundidad actual: {pizarra.get('profundidad_actual', 0):.2f} 
+ if st.button("🚨 Provocar Kick"):
+    piz["evento_activo"] = "KICK"
+    piz["alarma_activa"] = True
+    piz["mensaje_evento"] = "¡SURGENCIA DETECTADA!"
+    st.rerun()
+
+if st.button("✅ Normalizar Pozo"):
+    piz["evento_activo"] = None
+    piz["alarma_activa"] = False
+    piz["mensaje_evento"] = "Operación Normal"
+    st.rerun()
 
         # 2. CONTROLES OPERATIVOS (SLIDERS)
         # Caudal
@@ -776,18 +765,6 @@ else:
 with tab4:
     st.subheader("🛰️ Navegación en el Target")
     
-if 'pizarra' not in st.session_state:
-    st.session_state.pizarra = {
-        "profundidad_actual": 2500.0,
-        "presion_base": 1200.0,
-        "alarma_activa": False,
-        "evento_activo": None,
-        "wob_maestro": 0.0,
-        "rpm_maestro": 0.0,
-        "torque_maestro": 0.0,  # <-- ESTA ES LA QUE FALTA EN LA 378
-        "caudal_maestro": 500.0,
-        "piletas_nivel": 450.0
-    }
 # --- 2. SEGUNDO: Asignamos la variable local (ESTO EVITA EL NAMEERROR) ---
 # Usamos el mismo nombre que intentas llamar en la línea 174
 pizarra = st.session_state.pizarra 
