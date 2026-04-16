@@ -15,13 +15,10 @@ import torque_and_drag as td
 import bombas_de_lodo as bombas
 import sartas_perforacion as sartas
 import sys
-import os
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
 # --- 1. INICIALIZACIÓN BLINDADA (Colocar justo después de los imports) ---
-import time
 import random
-import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 # --- 1. MEMORIA COMPARTIDA ÚNICA (SERVIDOR) ---
 @st.cache_resource
