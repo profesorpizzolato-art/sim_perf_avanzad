@@ -539,19 +539,19 @@ caudal = pizarra.get("caudal_maestro", 0)
 hhp_actual = (presion * caudal) / 1714
 
 # Ahora sí, el reloj de la línea 433 va a funcionar:
-st.plotly_chart(crear_reloj(hhp_actual, "Potencia", "HHP", 2000, "purple"))
+st.plotly_chart(crear_manometro(hhp_actual, "Potencia", "HHP", 2000, "purple"), key="hhp_gauge")
 # Actualizamos la profundidad en la pizarra automáticamente (Simulando el avance)
 if not pizarra["bop_cerrado"] and res["ROP"] > 1:
     pizarra["profundidad_actual"] += (res["ROP"] / 3600) # Avance por segundo
 # 2. Mostramos los Gauges (Relojes)
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.plotly_chart(crear_reloj(pizarra["presion_base"], "Presión SPP", "PSI", 5000, "red"), key="reloj_spp_tab")
+    st.plotly_chart(crear_manometro(pizarra["presion_base"], "Presión SPP", "PSI", 5000, "red"), key="p1_main")
 with col2:
-    st.plotly_chart(crear_reloj(hhp_actual, "Potencia", "HHP", 2000, "purple"), key="reloj_hhp_principal")
+    # Usamos hhp_actual que calculaste arriba
+    st.plotly_chart(crear_manometro(hhp_actual, "Potencia", "HHP", 2000, "purple"), key="hhp_main")
 with col3:
-    st.plotly_chart(crear_reloj(pizarra["rpm_maestro"], "Rotación", "RPM", 200, "green"), key="reloj_rpm_tab")
-
+    st.plotly_chart(crear_manometro(pizarra["rpm_maestro"], "Rotación", "RPM", 200, "green"), key="rpm_main")
 # --- ASÍ DEBE QUEDAR LA LÍNEA 535 ---
 st.plotly_chart(
     geo.generar_grafico_trayectoria(pizarra["profundidad_actual"]), 
@@ -591,9 +591,9 @@ with fila2_col3:
     st.plotly_chart(crear_manometro(pizarra["densidad_maestra"], "Densidad Lodo", "ppg", 20, "#ffffff"), use_container_width=True)
 
 # SI HAY ALERTA, MOSTRAR EL PANEL BOP ABAJO DE LOS RELOJES
-if pizarra.get("alarma_activa", False):
-    st.error("🚨 ¡ALERTA DE SEGURIDAD! Verifique los parámetros de presión.")
-    # Si tenés el código del audio de la alarma, iría aquí debajo
+if not pizarra["bop_cerrado"] and res["ROP"] > 1:
+    # Si ROP es m/hr, dividimos por 3600 para saber cuánto avanza por segundo
+    pizarra["profundidad_actual"] += (res["ROP"] / 3600)
 
 import streamlit as st
 
