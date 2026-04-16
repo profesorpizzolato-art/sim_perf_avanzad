@@ -45,17 +45,17 @@ piz = conectar_pizarra_maestra()
 pizarra = piz
 # Contraseña única para la clase del 17 de abril
 PASSWORD_ALUMNO = "alumno2026"
-
 USUARIOS_ALUMNOS = {
-    "Usubiaga": PASSWORD_ALUMNO,
-    "Flores": PASSWORD_ALUMNO,
-    "Moya": PASSWORD_ALUMNO,
-    "Perez": PASSWORD_ALUMNO,
-    "Paredes": PASSWORD_ALUMNO,
-    "Casanueva": PASSWORD_ALUMNO,
-    "Pizzolato": PASSWORD_ALUMNO,
-    "Villalba": PASSWORD_ALUMNO,
-    "Invitado": PASSWORD_ALUMNO # <--- Usuario comodín
+    "Usubiaga": "alumno2026",
+    "Flores": "alumno2026",
+    "Moya": "alumno2026",
+    "Moya": "alumno2026",
+    "Perez": "alumno2026",
+    "Paredes": "alumno2026",
+    "Casanueva": "alumno2026",
+    "Pizzolato": "alumno2026",
+    "Villalba": "alumno2026",
+    "Invitado": "alumno2026" # <--- Usuario comodín
 }
 # --- FUNCIONES DE APOYO (DEBEN IR ARRIBA) ---
 def crear_manometro(valor, titulo, unidad, max_val, color):
