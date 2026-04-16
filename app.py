@@ -26,20 +26,24 @@ from streamlit_autorefresh import st_autorefresh
 # --- 1. MEMORIA COMPARTIDA ÚNICA (SERVIDOR) ---
 @st.cache_resource
 def conectar_pizarra_maestra():
+@st.cache_resource
+def conectar_pizarra_maestra():
     return {
         "profundidad_actual": 2500.0,
         "caudal_maestro": 500.0,
         "wob_maestro": 0.0,
         "rpm_maestro": 0.0,
-        "torque_maestro": 0.0,# --- 1. MEMORIA COMPARTIDA ÚNICA (SERVIDOR) ---
+        "torque_maestro": 0.0,
         "presion_base": 1200.0,
         "densidad_maestra": 10.2,
+        "piletas_nivel": 450.0,  # <--- AGREGA ESTA LÍNEA (Valor inicial)
         "evento_activo": None,
         "alarma_activa": False,
         "bop_cerrado": False,
         "mensaje_evento": "Operación Normal"
     }
 
+piz = conectar_pizarra_maestra()
 # ESTO CONECTA A TODOS AL MISMO CABLE
 piz = conectar_pizarra_maestra()
 pizarra = piz
