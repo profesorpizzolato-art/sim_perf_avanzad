@@ -180,130 +180,109 @@ if not st.session_state.autenticado:
 # --- 5. INTERFAZ PRINCIPAL (SIDEBAR UNIFICADO) ---
 with st.sidebar:
     st.image("logo.menfa.png", use_container_width=True)
-    st.title(f"👤 {st.session_state.usuario}")
-    st.write(f"Rol: {st.session_state.rol.capitalize()}")
-# --- PANEL DEL INSTRUCTOR (Asegúrate que este 'if' esté bien indentado) ---
-    if st.session_state.rol == "instructor":
+    st.title(f"👤 {st.session_state.get('usuario', 'Invitado')}")
+    st.write(f"Rol: {st.session_state.get('rol', 'alumno').capitalize()}")
+
+    # --- CASO A: VISTA DEL INSTRUCTOR ---
+    if st.session_state.get("rol") == "instructor":
         st.divider()
         st.header("👨‍🏫 Panel del Instructor")
-        # --- TORRE DE CONTROL: MONITOR DE ALUMNOS EN TIEMPO REAL ---
-    st.divider()
-    st.header("🖥️ Monitor de Pantallas (Alumnos)")
-    
-    if piz["alumnos_activos"]:
-        import pandas as pd
-        # Convertimos el diccionario en una tabla visual
-        df_radar = pd.DataFrame.from_dict(piz["alumnos_activos"], orient='index')
         
-        # Mostramos la tabla con colores según el estado
-        st.dataframe(df_radar, use_container_width=True)
-        
-        if st.button("🔴 Resetear Radar"):
-            piz["alumnos_activos"] = {}
-            st.rerun()
-    else:
-        st.warning("⚠️ No hay alumnos conectados actualmente.")
-        # 1. HERRAMIENTAS DE SISTEMA
-        if st.button("🧹 Limpiar Memoria"):
-            piz.clear() # Limpia la pizarra global
-            piz.update(conectar_pizarra_maestra()) # Recarga valores iniciales
-            st.rerun()
-        
-        if st.button("🔄 Resetear Eventos"):
-            piz["evento_activo"] = None
-            piz["alarma_activa"] = False
-            piz["mensaje_evento"] = "Operación Normal"
-            st.rerun()
-
-        st.divider()
-        st.write(f"📍 Profundidad: {piz['profundidad_actual']:.2f} m")
-
-        # 2. CONTROLES (SLIDERS GLOBALES)
-        piz["caudal_maestro"] = st.slider("Caudal (GPM)", 0, 1200, int(piz["caudal_maestro"]))
-        piz["wob_maestro"] = st.slider("WOB (klbs)", 0, 100, int(piz["wob_maestro"]))
-        piz["rpm_maestro"] = st.slider("RPM", 0, 200, int(piz["rpm_maestro"]))
- 
-
-        # 2. CONTROLES OPERATIVOS (SLIDERS)
-        # Caudal
-        val_c = int(pizarra.get("caudal_maestro", 500))
-        nuevo_caudal = st.slider("Caudal (GPM)", 0, 1200, val_c, step=10)
-        pizarra["caudal_maestro"] = float(nuevo_caudal)
-
-        # WOB
-        val_w = int(pizarra.get("wob_maestro", 0))
-        nuevo_wob = st.slider("WOB (klbs)", 0, 100, val_w, step=1)
-        pizarra["wob_maestro"] = float(nuevo_wob)
-
-        # RPM
-        val_r = int(pizarra.get("rpm_maestro", 0))
-        nuevo_rpm = st.slider("RPM", 0, 200, val_r, step=1)
-        pizarra["rpm_maestro"] = float(nuevo_rpm)
-
-        st.divider()
-        
-        # 3. SISTEMA DE AUDIO
-        st.subheader("🔊 Sistema de Audio")
-        st.session_state.alarma_activa = st.toggle("Activar Sirena de Emergencia", value=True)
-        if st.button("🔊 Probar Sonido"):
-            disparar_alarma_sonora()
+        # 1. MONITOR DE ALUMNOS (TORRE DE CONTROL)
+        st.subheader("🖥️ Monitor de Alumnos")
+        if piz.get("alumnos_activos"):
+            import pandas as pd
+            df_radar = pd.DataFrame.from_dict(piz["alumnos_activos"], orient='index')
+            st.dataframe(df_radar, use_container_width=True)
+            if st.button("🔴 Resetear Radar"):
+                piz["alumnos_activos"] = {}
+                st.rerun()
+        else:
+            st.info("Esperando alumnos...")
 
         st.divider()
 
-        # 4. SIMULACIÓN DE FALLAS (LOS BOTONES QUE NO DEBEN FALTAR)
-        st.subheader("🕹️ Simulación de Fallas")
-        
+        # 2. HERRAMIENTAS DE SISTEMA
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            if st.button("🧹 Limpiar Memoria"):
+                piz.clear()
+                piz.update(conectar_pizarra_maestra())
+                st.rerun()
+        with col_s2:
+            if st.button("🔄 Reset Eventos"):
+                piz["evento_activo"] = None
+                piz["alarma_activa"] = False
+                piz["mensaje_evento"] = "Operación Normal"
+                st.rerun()
+
+        # 3. CONTROLES OPERATIVOS (SLIDERS ÚNICOS)
+        st.subheader("🕹️ Controles del Pozo")
+        piz["caudal_maestro"] = float(st.slider("Caudal (GPM)", 0, 1200, int(piz["caudal_maestro"]), 10))
+        piz["wob_maestro"] = float(st.slider("WOB (klbs)", 0, 100, int(piz["wob_maestro"]), 1))
+        piz["rpm_maestro"] = float(st.slider("RPM", 0, 200, int(piz["rpm_maestro"]), 1))
+
+        st.divider()
+
+        # 4. SIMULACIÓN DE FALLAS
+        st.subheader("⚠️ Disparar Fallas")
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             if st.button("🚨 Provocar Kick"):
-                pizarra["evento_activo"] = "KICK"
-                pizarra["alarma_activa"] = True
+                piz["evento_activo"] = "KICK"
+                piz["alarma_activa"] = True
+                piz["mensaje_evento"] = "¡SURGENCIA DETECTADA!"
                 st.rerun()
-            
-            if st.button("⚙️ Falla Bomba 1"):
-                st.session_state.evento_activo = "FALLA_BOMBA"
+            if st.button("⚙️ Falla Bomba"):
+                piz["evento_activo"] = "FALLA_BOMBA"
+                piz["mensaje_evento"] = "BAJA PRESIÓN EN BOMBAS"
                 st.rerun()
-
         with col_f2:
-            if st.button("📉 Provocar Pérdida"):
-                st.session_state.evento_activo = "PERDIDA"
+            if st.button("📉 Pérdida"):
+                piz["evento_activo"] = "PERDIDA"
+                piz["mensaje_evento"] = "PÉRDIDA DE CIRCULACIÓN"
+                st.rerun()
+            if st.button("✅ Normalizar"):
+                piz["evento_activo"] = None
+                piz["alarma_activa"] = False
+                piz["mensaje_evento"] = "Operación Normal"
                 st.rerun()
 
-            if st.button("✅ Normalizar Pozo"):
-                st.session_state.evento_activo = None
-                pizarra["alarma_activa"] = False
-                st.rerun()
-
-    # --- VISTA PARA EL ALUMNO (SI NO ES INSTRUCTOR) ---
+    # --- CASO B: VISTA DEL ALUMNO ---
     else:
         st.divider()
         st.header("🎓 Panel del Alumno")
-        st.info("Operación en curso. Los parámetros son controlados por el instructor.")
-        st.metric("Profundidad", f"{pizarra.get('profundidad_actual', 0):.2f} m")
-        st.write("Verifique los manómetros en la consola principal.")
+        st.info("Monitoreo activo. El instructor controla los parámetros.")
+        st.metric("Profundidad", f"{piz.get('profundidad_actual', 0):.2f} m")
+        st.metric("Estado", piz.get("mensaje_evento", "Normal"))
 
-    # --- SECCIÓN COMÚN (PARA AMBOS) ---
+    # BOTÓN COMÚN (PARA AMBOS)
     st.divider()
     if st.button("📊 Generar Reporte Final"):
-        # Tu lógica de PDF aquí
-        st.success("Reporte generado con éxito.")
-# --- MODO ALUMNO (VISUALIZACIÓN Y ACCIÓN) ---
-st.title("📟 Panel Integral de Operaciones")
+        st.info("Generando reporte PDF...")
+        # Aquí llamarías a tu función de PDF
 
-if pizarra.get("alarma_activa", False):
-    st.error(f"🔥 {pizarra.get('mensaje_evento', 'Sistema Operativo Normal')}")
-    reproducir_alarma_critica()
-    
-    # PANEL BOP PARA EL ALUMNO
-    st.markdown("### 🛡️ PANEL DE EMERGENCIA (BOP)")
+# --- CUERPO PRINCIPAL DE LA APP ---
+st.title("📟 Consola de Perforación Avanzada")
+
+# Alarma visual y sonora
+if piz.get("alarma_activa", False):
+    st.error(f"🔥 {piz.get('mensaje_evento', 'ALERTA CRÍTICA')}")
+    # reproducir_alarma_critica() # Asegúrate de que esta función exista
+
+    # Panel de Emergencia para el Alumno
+    st.markdown("### 🛡️ CONTROL DE BROTES (BOP)")
     col_b1, col_b2 = st.columns(2)
     with col_b1:
         if st.button("🔴 CERRAR BOP ANULAR", type="primary", use_container_width=True):
-            pizarra["bop_cerrado"] = True
-            pizarra["alarma_activa"] = False
-            st.success("POZO CERRADO. Presión controlada.")
+            piz["bop_cerrado"] = True
+            piz["alarma_activa"] = False
+            piz["mensaje_evento"] = "POZO CERRADO SEGURO"
+            st.success("BOP Cerrado con éxito.")
     with col_b2:
-        st.button("🔴 CERRAR RAMS CIEGOS", type="secondary", use_container_width=True)
+        if st.button("🔴 CERRAR RAMS", type="secondary", use_container_width=True):
+            piz["bop_cerrado"] = True
+            st.warning("Rams de tubería cerrados.")
 
 @st.fragment
 def renderizar_consola_rapida():
