@@ -280,8 +280,8 @@ if pizarra.get("alarma_activa", False):
 
 @st.fragment
 def renderizar_consola_rapida():
-    # Solo recalculamos lo esencial para los relojes
-    res_f = motor.calcular_fisica_perforacion(
+    # 1. Ejecutamos el motor (Variable unificada: res_fisica)
+    res_fisica = motor.calcular_fisica_perforacion(
         wob=piz["wob_maestro"],
         rpm=piz["rpm_maestro"],
         torque=piz.get("torque_maestro", 0.0),
@@ -289,27 +289,37 @@ def renderizar_consola_rapida():
         flow_rate=piz["caudal_maestro"]
     )
     
+    # 2. Cálculos adicionales inmediatos
+    hhp = (piz["presion_base"] * piz["caudal_maestro"]) / 1714
+    
+    # 3. Visualización de Manómetros (Fila 1)
     col_a, col_b, col_c = st.columns(3)
     with col_a:
         st.plotly_chart(crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), use_container_width=True, key="m1")
     with col_b:
-        st.plotly_chart(crear_manometro(res_f["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True, key="m2")
+        st.plotly_chart(crear_manometro(res_fisica["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True, key="m2")
     with col_c:
         st.plotly_chart(crear_manometro(piz["caudal_maestro"], "Caudal", "GPM", 1200, "cyan"), use_container_width=True, key="m3")
+    
+    # 4. Visualización de Manómetros (Fila 2 - Parámetros Críticos)
+    col_d, col_e, col_f = st.columns(3)
+    with col_d:
+        st.plotly_chart(crear_manometro(res_fisica["MSE"], "Eficiencia MSE", "kpsi", 100, "orange"), use_container_width=True, key="m4")
+    with col_e:
+        st.plotly_chart(crear_manometro(hhp, "Potencia HHP", "hp", 2000, "purple"), use_container_width=True, key="m5")
+    with col_f:
+        st.plotly_chart(crear_manometro(res_fisica["HOOK_LOAD"], "Hook Load", "klbs", 600, "white"), use_container_width=True, key="m6")
 
-# Llamada a la consola rápida
-renderizar_consola_rapida()
-# 2. Extraemos los valores del diccionario para los manómetros
-rop_actual = res_fisica.get("ROP", 0.0) if 'res_fisica' in locals() else 0.0
-mse_actual = res_fisica["MSE"]
-hk_actual = res_fisica["HOOK_LOAD"]
-av_actual = res_fisica["AV"]
-kmw_actual = res_fisica["KMW"]
+    # Retornamos los datos por si los necesitas fuera del fragmento
+    return res_fisica
+
+# Llamada a la función
+res_fisica = renderizar_consola_rapida()
 
 # 3. (Opcional) Si necesitas HHP e Impact Force para otros gráficos:
-hhp = (pizarra["presion_base"] * pizarra["caudal_maestro"]) / 1714
-if_force = 0.0182 * pizarra["caudal_maestro"] * (pizarra["presion_base"] * pizarra["densidad_maestra"])**0.5
-
+# Úsala así para evitar errores de raíz cuadrada
+densidad = piz.get("densidad_maestra", 10.0)
+if_force = 0.0182 * piz["caudal_maestro"] * (piz["presion_base"] * densidad)**0.5
 # --- GRÁFICOS DINÁMICOS DE TUS ARCHIVOS ---
 st.divider()
 c_gra1, c_gra2 = st.columns(2)
