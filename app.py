@@ -52,6 +52,23 @@ USUARIOS_ALUMNOS = {
     "Renzo Pizzolato ": "8657",
     "Abrahan Fermín Omar Villalba ":"8658"
 }
+# --- FUNCIONES DE APOYO (DEBEN IR ARRIBA) ---
+def crear_manometro(valor, titulo, unidad, max_val, color):
+    import plotly.graph_objects as go
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=valor,
+        title={'text': f"{titulo} ({unidad})"},
+        gauge={
+            'axis': {'range': [0, max_val]},
+            'bar': {'color': color},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "gray",
+        }
+    ))
+    fig.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20))
+    return fig
 # Lista de variables necesarias para que la app no explote
 variables_necesarias = {
     "pizarra": {
