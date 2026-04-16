@@ -43,18 +43,19 @@ piz = conectar_pizarra_maestra()
 # ESTO CONECTA A TODOS AL MISMO CABLE
 piz = conectar_pizarra_maestra()
 pizarra = piz
-# Contraseña única para todos los alumnos
-PASSWORD_UNICA = "Pyc2026"
+# Contraseña única para la clase del 17 de abril
+PASSWORD_ALUMNO = "alumno2026"
 
 USUARIOS_ALUMNOS = {
-    "F_Usubiaga": PASSWORD_UNICA,
-    "A_Flores": PASSWORD_UNICA,
-    "L_Moya": PASSWORD_UNICA,
-    "J_E_Perez": PASSWORD_UNICA,
-    "J_S_Paredes": PASSWORD_UNICA,
-    "P_S_Casanueva": PASSWORD_UNICA,
-    "R_Pizzolato": PASSWORD_UNICA,
-    "A_F_O_Villalba": PASSWORD_UNICA  # Nombre acortado para evitar errores de tipeo
+    "Usubiaga": PASSWORD_ALUMNO,
+    "Flores": PASSWORD_ALUMNO,
+    "Moya": PASSWORD_ALUMNO,
+    "Perez": PASSWORD_ALUMNO,
+    "Paredes": PASSWORD_ALUMNO,
+    "Casanueva": PASSWORD_ALUMNO,
+    "Pizzolato": PASSWORD_ALUMNO,
+    "Villalba": PASSWORD_ALUMNO,
+    "Invitado": PASSWORD_ALUMNO # <--- Usuario comodín
 }
 # --- FUNCIONES DE APOYO (DEBEN IR ARRIBA) ---
 def crear_manometro(valor, titulo, unidad, max_val, color):
