@@ -722,19 +722,6 @@ def render_bop_ui(pizarra):
             st.warning("Sarta Cortada - Pozo Sellado")
 
 import plotly.graph_objects as go
-# --- 2. DESPUÉS LA PIZARRA ---
-@st.cache_resource
-def obtener_pizarra():
-    return {
-        "wob_maestro": 0.0,
-        "rpm_maestro": 0.0,
-        "torque_maestro": 0.0,
-        "caudal_maestro": 500.0,
-        "profundidad_actual": 2500.0,
-        "alarma_activa": False,
-        "bop_cerrado": False
-    }
-
 pizarra = obtener_pizarra()
 # --- SISTEMA DE EVENTOS CRÍTICOS ---
 
