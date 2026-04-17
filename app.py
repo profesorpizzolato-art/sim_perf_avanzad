@@ -20,6 +20,8 @@ import streamlit.components.v1 as components
 # --- 1. INICIALIZACIÓN BLINDADA (Colocar justo después de los imports) ---
 import random
 from streamlit_autorefresh import st_autorefresh
+
+
 # --- 1. MEMORIA COMPARTIDA ÚNICA (SERVIDOR) ---
 @st.cache_resource
 def conectar_pizarra_maestra():
@@ -96,7 +98,6 @@ for clave, valor_defecto in variables_necesarias.items():
 piz = st.session_state.pizarra
 # Esto le dice a Python que busque módulos en la carpeta donde está app.py
 sys.path.append(os.path.dirname(__file__))
-
 import streamlit as st
 import bombas_de_lodo as bombas  # Ahora debería encontrarlo
 # --- DENTRO DEL BLOQUE DEL ALUMNO ---
