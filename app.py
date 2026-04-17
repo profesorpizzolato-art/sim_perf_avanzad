@@ -194,7 +194,30 @@ if not st.session_state.autenticado:
                         st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, "Inst. Fabricio Pizzolato", "instructor"
                         st.rerun()
     st.stop()
+# --- 5. ACTUALIZACIÓN DE RADAR Y CONEXIÓN (POST-LOGIN) ---
 
+# Si llegamos aquí, es porque pasaron el st.stop() y están autenticados
+if st.session_state.rol == "alumno":
+    nombre_alumno = st.session_state.usuario
+    
+    # El Alumno se anota en la pizarra compartida
+    # Usamos setdefault para asegurar que la carpeta existe sin borrar a otros
+    piz.setdefault("alumnos_activos", {})
+    
+    piz["alumnos_activos"][nombre_alumno] = {
+        "Ubicación": "Mendoza - IPCL",
+        "Profundidad": f"{piz.get('profundidad_actual', 0):.2f} m",
+        "BOP": "CERRADO" if piz.get("bop_cerrado", False) else "ABIERTO",
+        "Última Conexión": datetime.now().strftime("%H:%M:%S"),
+        "Estado": piz.get("mensaje_evento", "Normal")
+    }
+    
+    # REFRESCO AUTOMÁTICO: Para que el alumno reciba tus fallas/kicks
+    st_autorefresh(interval=2000, key=f"refresh_{nombre_alumno}")
+
+elif st.session_state.rol == "instructor":
+    # El instructor también necesita refrescar para ver a los alumnos llegar
+    st_autorefresh(interval=2000, key="refresh_instructor")
 # --- 5. INTERFAZ PRINCIPAL (SIDEBAR UNIFICADO) ---
 with st.sidebar:
     st.image("logo.menfa.png", use_container_width=True)
@@ -206,17 +229,24 @@ with st.sidebar:
         st.divider()
         st.header("👨‍🏫 Panel del Instructor")
         
-        # 1. MONITOR DE ALUMNOS (TORRE DE CONTROL)
+       # 1. MONITOR DE ALUMNOS (TORRE DE CONTROL)
         st.subheader("🖥️ Monitor de Alumnos")
-        if piz.get("alumnos_activos"):
-            import pandas as pd
-            df_radar = pd.DataFrame.from_dict(piz["alumnos_activos"], orient='index')
-            st.dataframe(df_radar, use_container_width=True)
-            if st.button("🔴 Resetear Radar"):
-                piz["alumnos_activos"] = {}
-                st.rerun()
-        else:
-            st.info("Esperando alumnos...")
+        
+        # Contenedor vacío para refresco limpio
+        placeholder_radar = st.empty()
+        
+        with placeholder_radar.container():
+            if piz.get("alumnos_activos"):
+                import pandas as pd
+                # Filtramos para mostrar solo los datos más importantes en la tabla
+                df_radar = pd.DataFrame.from_dict(piz["alumnos_activos"], orient='index')
+                st.dataframe(df_radar, use_container_width=True)
+                
+                if st.button("🔴 Resetear Radar"):
+                    piz["alumnos_activos"] = {}
+                    st.rerun()
+            else:
+                st.info("Esperando alumnos... (Pídales que ingresen con 'alumno2026')")
 
         st.divider()
 
@@ -297,6 +327,7 @@ if piz.get("alarma_activa", False):
             piz["alarma_activa"] = False
             piz["mensaje_evento"] = "POZO CERRADO SEGURO"
             st.success("BOP Cerrado con éxito.")
+            st.rerun()
     with col_b2:
         if st.button("🔴 CERRAR RAMS", type="secondary", use_container_width=True):
             piz["bop_cerrado"] = True
