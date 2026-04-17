@@ -696,13 +696,6 @@ with fila1_col2:
         key="gauge_caudal_alumno"
     )
 
-with fila1_col3:
-    st.plotly_chart(
-        crear_manometro(piz.get("torque_maestro", 0.0), "Torque en Mesa", "kft-lb", 40, "#ffcc00"), 
-        use_container_width=True, 
-        key="gauge_torque_alumno"
-    )
-
 fila2_col1, fila2_col2, fila2_col3 = st.columns(3)
 
 with fila2_col1:
@@ -727,31 +720,6 @@ with fila2_col3:
         use_container_width=True,
         key="gauge_densidad_alumno"
     )
-
-fila2_col1, fila2_col2, fila2_col3 = st.columns(3)
-
-with fila2_col1:
-    st.plotly_chart(
-        crear_manometro(pizarra["rpm_maestro"], "Rotación (RPM)", "rev/min", 200, "#00ff88"), 
-        use_container_width=True,
-        key="gauge_rpm_main" # <--- Key agregada
-    )
-
-with fila2_col2:
-    st.plotly_chart(
-        crear_manometro(pizarra["wob_maestro"], "Peso (WOB)", "klbs", 60, "#a64dff"), 
-        use_container_width=True,
-        key="gauge_wob_main" # <--- Key agregada
-    )
-
-with fila2_col3:
-    # Densidad del Lodo
-    st.plotly_chart(
-        crear_manometro(pizarra["densidad_maestra"], "Densidad Lodo", "ppg", 20, "#ffffff"), 
-        use_container_width=True,
-        key="gauge_densidad_main" # <--- Key agregada
-    )
-
 # --- Lógica de Profundidad ---
 if not pizarra["bop_cerrado"] and res.get("ROP", 0) > 1:
     pizarra["profundidad_actual"] += (res["ROP"] / 3600)
