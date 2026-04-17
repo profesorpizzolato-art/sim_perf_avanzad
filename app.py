@@ -100,16 +100,20 @@ piz = st.session_state.pizarra
 sys.path.append(os.path.dirname(__file__))
 import streamlit as st
 import bombas_de_lodo as bombas  # Ahora debería encontrarlo
-# --- DENTRO DEL BLOQUE DEL ALUMNO ---
+# --- REPORTE DEL ALUMNO AL RADAR ---
 if st.session_state.get("rol") == "alumno":
     nombre_alumno = st.session_state.get("usuario", "Invitado")
     
-    # Usamos .get() para CUALQUIER variable que venga de la pizarra
+    # ESTA LÍNEA ASEGURA QUE EL DICCIONARIO EXISTA (Evita el KeyError)
+    if "alumnos_activos" not in piz:
+        piz["alumnos_activos"] = {}
+
+    # Ahora guardamos los datos de forma segura
     piz["alumnos_activos"][nombre_alumno] = {
         "Profundidad": f"{piz.get('profundidad_actual', 0):.2f} m",
         "BOP": "CERRADO" if piz.get("bop_cerrado", False) else "ABIERTO",
-        "Estado": piz.get("mensaje_evento", "Operación Normal"), # <-- AQUÍ ESTABA EL ERROR
-        "Hora": datetime.now().strftime("%H:%M:%S")
+        "Estado": piz.get("mensaje_evento", "Operación Normal"),
+        "Última Conexión": datetime.now().strftime("%H:%M:%S")
     }
     st_autorefresh(interval=1000, key="latido_alumno")
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
