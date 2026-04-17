@@ -1163,19 +1163,27 @@ def generar_reporte_menfa(datos_piz, nombre_usuario):
     # Retornar los bytes del PDF
     return pdf.output(dest='S').encode('latin-1', 'ignore')
     # --- SECCIÓN DE REPORTE (Al final de la app) ---
+# --- SECCIÓN DE CIERRE Y REPORTE ---
 st.divider()
-st.subheader("📄 Finalizar Capacitación")
+st.subheader("🏁 Finalizar Sesión de Entrenamiento")
 
-if st.button("📊 Preparar Reporte Final"):
-    # Generamos los bytes usando tu función
-    pdf_bytes = generar_reporte_menfa(piz, st.session_state.usuario)
-    
-    # ESTO es lo que hace que aparezca en la pantalla
-    st.download_button(
-        label="📥 Descargar Reporte PDF",
-        data=pdf_bytes,
-        file_name=f"Reporte_MENFA_{st.session_state.usuario}.pdf",
-        mime="application/pdf",
-        use_container_width=True
-    )
-    st.success("¡Reporte listo! Hacé clic arriba para descargarlo.")
+# Creamos una columna para centrar el botón
+col_rep, _ = st.columns([1, 1])
+
+with col_rep:
+    if st.button("📊 Generar Certificado PDF", use_container_width=True):
+        try:
+            # 1. Llamamos a tu función para crear los datos
+            pdf_bytes = generar_reporte_menfa(piz, st.session_state.usuario)
+            
+            # 2. Mostramos el botón real de descarga (esto es lo que se ve)
+            st.download_button(
+                label="📥 DESCARGAR REPORTE AHORA",
+                data=pdf_bytes,
+                file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+            st.success("✅ ¡Reporte generado con éxito!")
+        except Exception as e:
+            st.error(f"Error al generar PDF: {e}")
