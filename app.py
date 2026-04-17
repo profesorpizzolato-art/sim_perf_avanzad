@@ -115,17 +115,21 @@ if st.session_state.get("rol") == "alumno":
         "Estado": piz.get("mensaje_evento", "Operación Normal"),
         "Última Conexión": datetime.now().strftime("%H:%M:%S")
     }
-    st_autorefresh(interval=1000, key="latido_alumno")
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="MENFA 3.0 - Mendoza Oil Industry", layout="wide", page_icon="🏗️")
 st.set_page_config(page_title="Simulador IPCL MENFA", layout="wide")
-# --- OPTIMIZACIÓN DE LATENCIA (VERSIÓN SEGURA) ---
+# --- SISTEMA DE LATIDO ÚNICO (Evita DuplicateElementKey) ---
+if st.session_state.get("autenticado"):
+    # Generamos una key única usando el nombre del usuario
+    nombre_seguro = st.session_state.get("usuario", "anonimo").replace(" ", "_")
+    key_refresco = f"latido_{nombre_seguro}"
+        # Solo un autorefresh en toda la app
+    st_autorefresh(interval=2000, key=key_refresco)
 # Primero verificamos si las llaves existen para que no explote la app
 if "autenticado" in st.session_state and st.session_state.autenticado:
     if st.session_state.get("rol") == "alumno":
         # Solo refresca automáticamente si ya entró como alumno
-        st_autorefresh(interval=1000, key="latido_alumno")
-
+       
 import streamlit.components.v1 as components
 
 def disparar_alarma_sonora():
@@ -424,7 +428,6 @@ def generar_grafico_trayectoria(profundidad_actual):
 st.header("📊 Monitor de Perforación en Tiempo Real")
 
 # --- EN EL LÓGICA DEL ALUMNO ---
-
 # 1. Llamamos al motor de física (asegúrate de tener 'import motor_calculos_avanzados as motor')
 res = motor.calcular_fisica_perforacion(
     wob=pizarra["wob_maestro"],
@@ -487,13 +490,27 @@ def crear_manometro(valor, titulo, unidad, max_val, color_linea):
 with tab1:
     st.subheader("Tablero de Perforación en Tiempo Real")
     col1, col2, col3 = st.columns(3)
+    
     with col1:
-        st.plotly_chart(crear_manometro(res["ROP"], "Velocidad ROP", "m/hr", 60, "lime"), use_container_width=True)
+        st.plotly_chart(
+            crear_manometro(res["ROP"], "Velocidad ROP", "m/hr", 60, "lime"), 
+            use_container_width=True, 
+            key="gauge_rop"  # <-- ID Único 1
+        )
+        
     with col2:
-        st.plotly_chart(crear_manometro(res["MSE"], "Eficiencia MSE", "kpsi", 100, "orange"), use_container_width=True)
+        st.plotly_chart(
+            crear_manometro(res["MSE"], "Eficiencia MSE", "kpsi", 100, "orange"), 
+            use_container_width=True, 
+            key="gauge_mse"  # <-- ID Único 2
+        )
+        
     with col3:
-        st.plotly_chart(crear_manometro(res["HOOK_LOAD"], "Peso en Gancho", "klbs", 600, "white"), use_container_width=True)
-
+        st.plotly_chart(
+            crear_manometro(res["HOOK_LOAD"], "Peso en Gancho", "klbs", 600, "white"), 
+            use_container_width=True, 
+            key="gauge_hook" # <-- ID Único 3
+        )
 with tab2:
     import bop_panel as bop # Importamos tu módulo de BOP
 with tab2:
@@ -550,13 +567,25 @@ def crear_reloj(valor, titulo, unidad, max_val, color_linea):
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.plotly_chart(crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True)
+    st.plotly_chart(
+        crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), 
+        use_container_width=True,
+        key="gauge_rop_main" # <--- AGREGAR ESTO
+    )
 
 with col2:
-    st.plotly_chart(crear_manometro(res["MSE"], "MSE", "kpsi", 100, "orange"), use_container_width=True)
+    st.plotly_chart(
+        crear_manometro(res["MSE"], "MSE", "kpsi", 100, "orange"), 
+        use_container_width=True,
+        key="gauge_mse_main" # <--- AGREGAR ESTO
+    )
 
 with col3:
-    st.plotly_chart(crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 600, "white"), use_container_width=True)
+    st.plotly_chart(
+        crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 600, "white"), 
+        use_container_width=True,
+        key="gauge_hook_main" # <--- AGREGAR ESTO
+    )
 # --- CÁLCULOS DE POTENCIA HIDRÁULICA (Antes de los relojes) ---
 # La fórmula es: (Presión * Caudal) / 1714
 presion = pizarra.get("presion_base", 0)
@@ -591,34 +620,54 @@ fila1_col1, fila1_col2, fila1_col3 = st.columns(3)
 
 with fila1_col1:
     # Manómetro de Presión (SPP)
-    st.plotly_chart(crear_manometro(pizarra["presion_base"], "Presión Standpipe", "PSI", 5000, "#ff4b4b"), use_container_width=True)
+    st.plotly_chart(
+        crear_manometro(pizarra["presion_base"], "Presión Standpipe", "PSI", 5000, "#ff4b4b"), 
+        use_container_width=True,
+        key="gauge_spp_main" # <--- Key agregada
+    )
 
 with fila1_col2:
     # Manómetro de Caudal
-    st.plotly_chart(crear_manometro(pizarra["caudal_maestro"], "Caudal de Bomba", "GPM", 1200, "#00d4ff"), use_container_width=True)
+    st.plotly_chart(
+        crear_manometro(pizarra["caudal_maestro"], "Caudal de Bomba", "GPM", 1200, "#00d4ff"), 
+        use_container_width=True,
+        key="gauge_caudal_main" # <--- Key agregada
+    )
 
 with fila1_col3:
-    # Manómetro de Torque (Puedes traerlo de torque_and_drag.py)
-   st.plotly_chart(
-    crear_manometro(pizarra.get("torque_maestro", 0.0), "Torque en Mesa", "kft-lb", 40, "#ffcc00"), 
-    use_container_width=True, 
-    key="manometro_torque_principal"
-)
+    # Manómetro de Torque
+    st.plotly_chart(
+        crear_manometro(pizarra.get("torque_maestro", 0.0), "Torque en Mesa", "kft-lb", 40, "#ffcc00"), 
+        use_container_width=True, 
+        key="manometro_torque_principal"
+    )
+
 fila2_col1, fila2_col2, fila2_col3 = st.columns(3)
 
 with fila2_col1:
-    st.plotly_chart(crear_manometro(pizarra["rpm_maestro"], "Rotación (RPM)", "rev/min", 200, "#00ff88"), use_container_width=True)
+    st.plotly_chart(
+        crear_manometro(pizarra["rpm_maestro"], "Rotación (RPM)", "rev/min", 200, "#00ff88"), 
+        use_container_width=True,
+        key="gauge_rpm_main" # <--- Key agregada
+    )
 
 with fila2_col2:
-    st.plotly_chart(crear_manometro(pizarra["wob_maestro"], "Peso (WOB)", "klbs", 60, "#a64dff"), use_container_width=True)
+    st.plotly_chart(
+        crear_manometro(pizarra["wob_maestro"], "Peso (WOB)", "klbs", 60, "#a64dff"), 
+        use_container_width=True,
+        key="gauge_wob_main" # <--- Key agregada
+    )
 
 with fila2_col3:
     # Densidad del Lodo
-    st.plotly_chart(crear_manometro(pizarra["densidad_maestra"], "Densidad Lodo", "ppg", 20, "#ffffff"), use_container_width=True)
+    st.plotly_chart(
+        crear_manometro(pizarra["densidad_maestra"], "Densidad Lodo", "ppg", 20, "#ffffff"), 
+        use_container_width=True,
+        key="gauge_densidad_main" # <--- Key agregada
+    )
 
-# SI HAY ALERTA, MOSTRAR EL PANEL BOP ABAJO DE LOS RELOJES
-if not pizarra["bop_cerrado"] and res["ROP"] > 1:
-    # Si ROP es m/hr, dividimos por 3600 para saber cuánto avanza por segundo
+# --- Lógica de Profundidad ---
+if not pizarra["bop_cerrado"] and res.get("ROP", 0) > 1:
     pizarra["profundidad_actual"] += (res["ROP"] / 3600)
 
 import streamlit as st
