@@ -136,11 +136,9 @@ if "autenticado" in st.session_state and st.session_state.autenticado:
     else:
         # Si es instructor, no hace nada o puedes poner pass
         pass
-
 # 3. La función de la alarma (fuera de los if)
 def disparar_alarma_sonora():
     ruta_audio = "assets/alarma.mp3" 
-    
     if os.path.exists(ruta_audio):
         with open(ruta_audio, "rb") as f:
             data = f.read()
@@ -152,7 +150,7 @@ def disparar_alarma_sonora():
             """
             components.html(html_audio, height=0, width=0)
     else:
-        st.error(f"⚠️ No se encontró el archivo en {ruta_audio}")
+        st.error(f"⚠️ Archivo de audio no encontrado en: {ruta_audio}")
 # --- 3. LÓGICA DE AUDIO (ALARMAS) ---
 def reproducir_alarma_critica():
     if os.path.exists("assets/alarma.mp3"):
@@ -194,32 +192,26 @@ if not st.session_state.autenticado:
                         st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, "Inst. Fabricio Pizzolato", "instructor"
                         st.rerun()
     st.stop()
+# --- CONEXIÓN Y ALARMA ---
 if st.session_state.get("autenticado"):
-    if st.session_state.get("rol") == "alumno":
-        st_autorefresh(interval=2000, key=f"ref_alu_{st.session_state.usuario}")
-# --- 5. ACTUALIZACIÓN DE RADAR Y CONEXIÓN (POST-LOGIN) ---
-# Si llegamos aquí, es porque pasaron el st.stop() y están autenticados
-if st.session_state.rol == "alumno":
-    nombre_alumno = st.session_state.usuario
-    
-    # El Alumno se anota en la pizarra compartida
-    # Usamos setdefault para asegurar que la carpeta existe sin borrar a otros
-    piz.setdefault("alumnos_activos", {})
-    
-    piz["alumnos_activos"][nombre_alumno] = {
-        "Ubicación": "Mendoza - IPCL",
-        "Profundidad": f"{piz.get('profundidad_actual', 0):.2f} m",
-        "BOP": "CERRADO" if piz.get("bop_cerrado", False) else "ABIERTO",
-        "Última Conexión": datetime.now().strftime("%H:%M:%S"),
-        "Estado": piz.get("mensaje_evento", "Normal")
-    }
-    
-    # REFRESCO AUTOMÁTICO: Para que el alumno reciba tus fallas/kicks
-    st_autorefresh(interval=2000, key=f"refresh_{nombre_alumno}")
+    # 1. El alumno se reporta y escucha
+    if st.session_state.rol == "alumno":
+        nombre = st.session_state.usuario
+        piz.setdefault("alumnos_activos", {})
+        
+        # El alumno escribe su estado en la pizarra
+        piz["alumnos_activos"][nombre] = {
+            "Profundidad": f"{piz.get('profundidad_actual', 0):.2f} m",
+            "Estado": piz.get("mensaje_evento", "Normal"),
+            "Hora": datetime.now().strftime("%H:%M:%S")
+        }
+        # Refresco cada 2 segundos para recibir tus órdenes
+        st_autorefresh(interval=2000, key=f"ref_alu_{nombre}")
 
-elif st.session_state.rol == "instructor":
-    # El instructor también necesita refrescar para ver a los alumnos llegar
-    st_autorefresh(interval=2000, key="refresh_instructor")
+    # 2. DISPARADOR DE ALARMA (Para todos)
+    if piz.get("alarma_activa", False):
+        disparar_alarma_sonora()
+        st.warning(f"🚨 ¡ATENCIÓN! {piz.get('mensaje_evento', 'ALERTA EN POZO')}")
 # --- 5. INTERFAZ PRINCIPAL (SIDEBAR UNIFICADO) ---
 with st.sidebar:
     st.image("logo.menfa.png", use_container_width=True)
