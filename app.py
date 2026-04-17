@@ -41,22 +41,22 @@ def conectar_pizarra_maestra():
         "alumnos_activos": {}
     }
 
-# Única forma de llamar a la pizarra en toda la app:
+# ESTO DEBE IR FUERA DE LA FUNCIÓN
 piz = conectar_pizarra_maestra()
-pizarra = piz  # Por si usas este nombre en otros módulos
+pizarra = piz
 # Contraseña única para la clase del 17 de abril
 PASSWORD_ALUMNO = "alumno2026"
+
 USUARIOS_ALUMNOS = {
-    "Usubiaga": "alumno2026",
-    "Flores": "alumno2026",
-    "Moya": "alumno2026",
-    "Moya": "alumno2026",
-    "Perez": "alumno2026",
-    "Paredes": "alumno2026",
-    "Casanueva": "alumno2026",
-    "Pizzolato": "alumno2026",
-    "Villalba": "alumno2026",
-    "Invitado": "alumno2026" # <--- Usuario comodín
+    "Usubiaga": PASSWORD_ALUMNO,
+    "Flores": PASSWORD_ALUMNO,
+    "Moya": PASSWORD_ALUMNO,
+    "Perez": PASSWORD_ALUMNO,
+    "Paredes": PASSWORD_ALUMNO,
+    "Casanueva": PASSWORD_ALUMNO,
+    "Pizzolato": PASSWORD_ALUMNO,
+    "Villalba": PASSWORD_ALUMNO,
+    "Invitado": PASSWORD_ALUMNO
 }
 # --- FUNCIONES DE APOYO (DEBEN IR ARRIBA) ---
 def crear_manometro(valor, titulo, unidad, max_val, color):
@@ -102,12 +102,14 @@ import streamlit as st
 import bombas_de_lodo as bombas  # Ahora debería encontrarlo
 # --- DENTRO DEL BLOQUE DEL ALUMNO ---
 if st.session_state.get("rol") == "alumno":
-    nombre_alumno = st.session_state.get("usuario", "Anónimo")
+    nombre_alumno = st.session_state.get("usuario", "Invitado")
+    
+    # Usamos .get() para CUALQUIER variable que venga de la pizarra
     piz["alumnos_activos"][nombre_alumno] = {
-        "Profundidad": f"{piz['profundidad_actual']:.2f} m",
-        "BOP": "CERRADO" if piz["bop_cerrado"] else "ABIERTO",
-        "Estado": piz.get("mensaje_evento", "Operación Normal"),
-        "Última Conexión": datetime.now().strftime("%H:%M:%S")
+        "Profundidad": f"{piz.get('profundidad_actual', 0):.2f} m",
+        "BOP": "CERRADO" if piz.get("bop_cerrado", False) else "ABIERTO",
+        "Estado": piz.get("mensaje_evento", "Operación Normal"), # <-- AQUÍ ESTABA EL ERROR
+        "Hora": datetime.now().strftime("%H:%M:%S")
     }
     st_autorefresh(interval=1000, key="latido_alumno")
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
