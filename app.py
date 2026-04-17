@@ -722,9 +722,7 @@ def render_bop_ui(pizarra):
             st.warning("Sarta Cortada - Pozo Sellado")
 
 import plotly.graph_objects as go
-pizarra = obtener_pizarra()
 # --- SISTEMA DE EVENTOS CRÍTICOS ---
-
 # 1. Lógica de Surgencia (Kick)
 if st.sidebar.button("🚨 ACTIVAR KICK (SURGENCIA)"):
     pizarra["alarma_activa"] = True
