@@ -125,22 +125,26 @@ if st.session_state.get("autenticado"):
     key_refresco = f"latido_{nombre_seguro}"
         # Solo un autorefresh en toda la app
     st_autorefresh(interval=2000, key=key_refresco)
-# Primero verificamos si las llaves existen para que no explote la app
-if "autenticado" in st.session_state and st.session_state.autenticado:
-    if st.session_state.get("rol") == "alumno":
-        # Solo refresca automáticamente si ya entró como alumno
-       
+# 1. Los imports SIEMPRE al principio del bloque o del archivo
 import streamlit.components.v1 as components
 
+# 2. Corregimos el bloque de autenticación
+if "autenticado" in st.session_state and st.session_state.autenticado:
+    if st.session_state.get("rol") == "alumno":
+        # Agregamos el refresco para que no quede vacío el if
+        st_autorefresh(interval=2000, key=f"refresco_{st.session_state.usuario}")
+    else:
+        # Si es instructor, no hace nada o puedes poner pass
+        pass
+
+# 3. La función de la alarma (fuera de los if)
 def disparar_alarma_sonora():
-    # Ajustá 'assets/alarma.mp3' según el nombre exacto de tu carpeta
     ruta_audio = "assets/alarma.mp3" 
     
     if os.path.exists(ruta_audio):
         with open(ruta_audio, "rb") as f:
             data = f.read()
             b64 = base64.b64encode(data).decode()
-            # Creamos el HTML para reproducir el archivo local
             html_audio = f"""
                 <audio autoplay loop>
                     <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
