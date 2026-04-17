@@ -1162,3 +1162,20 @@ def generar_reporte_menfa(datos_piz, nombre_usuario):
 
     # Retornar los bytes del PDF
     return pdf.output(dest='S').encode('latin-1', 'ignore')
+    # --- SECCIÓN DE REPORTE (Al final de la app) ---
+st.divider()
+st.subheader("📄 Finalizar Capacitación")
+
+if st.button("📊 Preparar Reporte Final"):
+    # Generamos los bytes usando tu función
+    pdf_bytes = generar_reporte_menfa(piz, st.session_state.usuario)
+    
+    # ESTO es lo que hace que aparezca en la pantalla
+    st.download_button(
+        label="📥 Descargar Reporte PDF",
+        data=pdf_bytes,
+        file_name=f"Reporte_MENFA_{st.session_state.usuario}.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
+    st.success("¡Reporte listo! Hacé clic arriba para descargarlo.")
