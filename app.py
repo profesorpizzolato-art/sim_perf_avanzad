@@ -194,9 +194,9 @@ if not st.session_state.autenticado:
                         st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, "Inst. Fabricio Pizzolato", "instructor"
                         st.rerun()
     st.stop()
-    if st.session_state.autenticado:
-    # El alumno revisa la pizarra cada 2 segundos
-    st_autorefresh(interval=2000, key=f"refresco_{st.session_state.usuario}")
+if st.session_state.get("autenticado"):
+    if st.session_state.get("rol") == "alumno":
+        st_autorefresh(interval=2000, key=f"ref_alu_{st.session_state.usuario}")
 # --- 5. ACTUALIZACIÓN DE RADAR Y CONEXIÓN (POST-LOGIN) ---
 # Si llegamos aquí, es porque pasaron el st.stop() y están autenticados
 if st.session_state.rol == "alumno":
