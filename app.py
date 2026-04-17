@@ -222,10 +222,10 @@ with st.sidebar:
     if st.session_state.get("rol") == "instructor":
         st.divider()
         st.header("👨‍🏫 Panel del Instructor")
-    if st.session_state.rol == "instructor":
-    if st.sidebar.button("🔊 Probar Sonido de Alarma"):
-        piz["alarma_activa"] = True
-        st.rerun()   
+    if st.session_state.get("rol") == "instructor":
+        if st.sidebar.button("🔊 Probar Sonido de Alarma"):
+            piz["alarma_activa"] = True
+            st.rerun()  
        # 1. MONITOR DE ALUMNOS (TORRE DE CONTROL)
         st.subheader("🖥️ Monitor de Alumnos")
         
