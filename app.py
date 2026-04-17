@@ -117,7 +117,6 @@ if st.session_state.get("rol") == "alumno":
     }
 # --- 1. CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="MENFA 3.0 - Mendoza Oil Industry", layout="wide", page_icon="🏗️")
-st.set_page_config(page_title="Simulador IPCL MENFA", layout="wide")
 # --- SISTEMA DE LATIDO ÚNICO (Evita DuplicateElementKey) ---
 if st.session_state.get("autenticado"):
     # Generamos una key única usando el nombre del usuario
@@ -354,32 +353,6 @@ def renderizar_consola_rapida():
     # 2. Cálculos adicionales inmediatos
     hhp = (piz["presion_base"] * piz["caudal_maestro"]) / 1714
     
-    # 3. Visualización de Manómetros (Fila 1)
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        st.plotly_chart(crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), use_container_width=True, key="m1")
-    with col_b:
-        st.plotly_chart(crear_manometro(res_fisica["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True, key="m2")
-    with col_c:
-        st.plotly_chart(crear_manometro(piz["caudal_maestro"], "Caudal", "GPM", 1200, "cyan"), use_container_width=True, key="m3")
-    
-    # 4. Visualización de Manómetros (Fila 2 - Parámetros Críticos)
-    col_d, col_e, col_f = st.columns(3)
-    with col_d:
-        st.plotly_chart(crear_manometro(res_fisica["MSE"], "Eficiencia MSE", "kpsi", 100, "orange"), use_container_width=True, key="m4")
-    with col_e:
-        st.plotly_chart(crear_manometro(hhp, "Potencia HHP", "hp", 2000, "purple"), use_container_width=True, key="m5")
-    with col_f:
-        st.plotly_chart(crear_manometro(res_fisica["HOOK_LOAD"], "Hook Load", "klbs", 600, "white"), use_container_width=True, key="m6")
-
-    # Retornamos los datos por si los necesitas fuera del fragmento
-    return res_fisica
-
-# Llamada a la función
-res_fisica = renderizar_consola_rapida()
-
-# 3. (Opcional) Si necesitas HHP e Impact Force para otros gráficos:
-# Úsala así para evitar errores de raíz cuadrada
 densidad = piz.get("densidad_maestra", 10.0)
 if_force = 0.0182 * piz["caudal_maestro"] * (piz["presion_base"] * densidad)**0.5
 # --- GRÁFICOS DINÁMICOS DE TUS ARCHIVOS ---
@@ -749,76 +722,6 @@ def render_bop_ui(pizarra):
             st.warning("Sarta Cortada - Pozo Sellado")
 
 import plotly.graph_objects as go
-
-def crear_manometro(valor, titulo, unidad, max_val, color_linea):
-    fig = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = valor,
-        domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': f"<b>{titulo}</b><br><span style='font-size:0.8em;color:gray'>{unidad}</span>", 'font': {'size': 18}},
-        gauge = {
-            'axis': {'range': [None, max_val], 'tickwidth': 1, 'tickcolor': "white"},
-            'bar': {'color': color_linea},
-            'bgcolor': "rgba(0,0,0,0)",
-            'borderwidth': 2,
-            'bordercolor': "#333",
-            'steps': [
-                {'range': [0, max_val*0.8], 'color': 'rgba(0, 255, 0, 0.1)'},
-                {'range': [max_val*0.8, max_val], 'color': 'rgba(255, 0, 0, 0.2)'}
-            ],
-            'threshold': {
-                'line': {'color': "red", 'width': 4},
-                'thickness': 0.75,
-                'value': valor
-            }
-        }
-    ))
-    fig.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=20, r=20, t=50, b=20),
-        height=250,
-        font={'color': "white", 'family': "Arial"}
-    )
-    return fig
-
-import plotly.graph_objects as go
-import streamlit as st
-import plotly.graph_objects as go  # <-- IMPORTANTE
-# ... otros imports ...
-
-def crear_manometro(valor, titulo, unidad, max_val, color_linea):
-    fig = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = valor,
-        domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': f"<b>{titulo}</b><br><span style='font-size:0.8em;color:gray'>{unidad}</span>", 'font': {'size': 18}},
-        gauge = {
-            'axis': {'range': [None, max_val], 'tickwidth': 1, 'tickcolor': "white"},
-            'bar': {'color': color_linea},
-            'bgcolor': "rgba(0,0,0,0)",
-            'borderwidth': 2,
-            'bordercolor': "#555",
-            'steps': [
-                {'range': [0, max_val*0.8], 'color': 'rgba(0, 255, 0, 0.1)'},
-                {'range': [max_val*0.8, max_val], 'color': 'rgba(255, 0, 0, 0.3)'}
-            ],
-            'threshold': {
-                'line': {'color': "red", 'width': 4},
-                'thickness': 0.75,
-                'value': max_val * 0.8
-            }
-        }
-    ))
-    fig.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=20, r=20, t=50, b=20),
-        height=250,
-        font={'color': "white", 'family': "Arial"}
-    )
-    return fig
-
 # --- 2. DESPUÉS LA PIZARRA ---
 @st.cache_resource
 def obtener_pizarra():
