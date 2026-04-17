@@ -194,8 +194,10 @@ if not st.session_state.autenticado:
                         st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, "Inst. Fabricio Pizzolato", "instructor"
                         st.rerun()
     st.stop()
+    if st.session_state.autenticado:
+    # El alumno revisa la pizarra cada 2 segundos
+    st_autorefresh(interval=2000, key=f"refresco_{st.session_state.usuario}")
 # --- 5. ACTUALIZACIÓN DE RADAR Y CONEXIÓN (POST-LOGIN) ---
-
 # Si llegamos aquí, es porque pasaron el st.stop() y están autenticados
 if st.session_state.rol == "alumno":
     nombre_alumno = st.session_state.usuario
@@ -269,6 +271,8 @@ with st.sidebar:
         piz["caudal_maestro"] = float(st.slider("Caudal (GPM)", 0, 1200, int(piz["caudal_maestro"]), 10))
         piz["wob_maestro"] = float(st.slider("WOB (klbs)", 0, 100, int(piz["wob_maestro"]), 1))
         piz["rpm_maestro"] = float(st.slider("RPM", 0, 200, int(piz["rpm_maestro"]), 1))
+        piz["torque_maestro"] = float(st.slider("Torque (kft-lb)", 0, 40, int(piz.get("torque_maestro", 0)), 1)
+)
 
         st.divider()
 
@@ -312,7 +316,15 @@ with st.sidebar:
 
 # --- CUERPO PRINCIPAL DE LA APP ---
 st.title("📟 Consola de Perforación Avanzada")
+# --- SINCRONIZACIÓN DE LA PIZARRA CON LA PANTALLA ---
+# Aquí "bajamos" los datos de la nube a la pantalla actual
+caudal_actual = piz.get("caudal_maestro", 0.0)
+rpm_actual = piz.get("rpm_maestro", 0.0)
+wob_actual = piz.get("wob_maestro", 0.0)
+spp_actual = piz.get("presion_base", 0.0)
 
+# Si tienes motor de cálculos, úsalos aquí
+# res = motor.calcular_perforacion(caudal_actual, rpm_actual, wob_actual)
 # Alarma visual y sonora
 if piz.get("alarma_activa", False):
     st.error(f"🔥 {piz.get('mensaje_evento', 'ALERTA CRÍTICA')}")
@@ -653,28 +665,67 @@ st.markdown("### 📊 MONITOREO DE PARÁMETROS EN TIEMPO REAL")
 
 fila1_col1, fila1_col2, fila1_col3 = st.columns(3)
 
-with fila1_col1:
-    # Manómetro de Presión (SPP)
+with fila1_col3:
+    # Leemos el valor directamente de la pizarra
+    valor_torque = piz.get("torque_maestro", 0.0)
+    
     st.plotly_chart(
-        crear_manometro(pizarra["presion_base"], "Presión Standpipe", "PSI", 5000, "#ff4b4b"), 
+        crear_manometro(
+            valor_torque, 
+            "Torque en Mesa", 
+            "kft-lb", 
+            40,       # Límite del reloj
+            "#ffcc00" # Color ámbar/amarillo
+        ), 
+        use_container_width=True, 
+        key="gauge_torque_final" # Key única para que no se pise
+    )
+with fila1_col1:
+    # Manómetro de Presión (Usa la variable de la pizarra)
+    st.plotly_chart(
+        crear_manometro(spp_actual, "Presión Standpipe", "PSI", 5000, "#ff4b4b"), 
         use_container_width=True,
-        key="gauge_spp_main" # <--- Key agregada
+        key="gauge_spp_alumno" 
     )
 
 with fila1_col2:
-    # Manómetro de Caudal
+    # Manómetro de Caudal (Este reaccionará a tu slider de instructor)
     st.plotly_chart(
-        crear_manometro(pizarra["caudal_maestro"], "Caudal de Bomba", "GPM", 1200, "#00d4ff"), 
+        crear_manometro(caudal_actual, "Caudal de Bomba", "GPM", 1200, "#00d4ff"), 
         use_container_width=True,
-        key="gauge_caudal_main" # <--- Key agregada
+        key="gauge_caudal_alumno"
     )
 
 with fila1_col3:
-    # Manómetro de Torque
     st.plotly_chart(
-        crear_manometro(pizarra.get("torque_maestro", 0.0), "Torque en Mesa", "kft-lb", 40, "#ffcc00"), 
+        crear_manometro(piz.get("torque_maestro", 0.0), "Torque en Mesa", "kft-lb", 40, "#ffcc00"), 
         use_container_width=True, 
-        key="manometro_torque_principal"
+        key="gauge_torque_alumno"
+    )
+
+fila2_col1, fila2_col2, fila2_col3 = st.columns(3)
+
+with fila2_col1:
+    # Este reaccionará a tu slider de RPM
+    st.plotly_chart(
+        crear_manometro(rpm_actual, "Rotación (RPM)", "rev/min", 200, "#00ff88"), 
+        use_container_width=True,
+        key="gauge_rpm_alumno"
+    )
+
+with fila2_col2:
+    # Este reaccionará a tu slider de WOB
+    st.plotly_chart(
+        crear_manometro(wob_actual, "Peso (WOB)", "klbs", 60, "#a64dff"), 
+        use_container_width=True,
+        key="gauge_wob_alumno"
+    )
+
+with fila2_col3:
+    st.plotly_chart(
+        crear_manometro(piz.get("densidad_maestra", 10.0), "Densidad Lodo", "ppg", 20, "#ffffff"), 
+        use_container_width=True,
+        key="gauge_densidad_alumno"
     )
 
 fila2_col1, fila2_col2, fila2_col3 = st.columns(3)
