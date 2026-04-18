@@ -1136,63 +1136,56 @@ def generar_reporte_menfa(datos_piz, nombre_usuario):
     pdf = FPDF()
     pdf.add_page()
     
-    # Encabezado (Usamos latin-1 para que FPDF no sufra con acentos)
+    # Encabezado
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, "IPCL MENFA - MENDOZA".encode('latin-1', 'ignore').decode('latin-1'), 0, 1, 'C')
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, "Reporte de Entrenamiento de Perforacion".encode('latin-1', 'ignore').decode('latin-1'), 0, 1, 'C')
     
-    pdf.ln(10)
-    
-    # Datos del Alumno e Instructor
+    # ... (resto de tu código de celdas igual) ...
     pdf.set_font("Arial", '', 11)
     pdf.cell(100, 10, f"Alumno: {nombre_usuario}".encode('latin-1', 'ignore').decode('latin-1'), 0, 1)
-    # Aquí manejamos el parámetro como pediste (Instructor)
-    instructor = st.session_state.get('instructor', 'Fabricio Pizzolato')
-    pdf.cell(100, 10, f"Instructor: {instructor}".encode('latin-1', 'ignore').decode('latin-1'), 0, 1)
-    pdf.cell(100, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", 0, 1)
     
-    pdf.ln(5)
-    pdf.set_fill_color(230, 230, 230)
-    pdf.cell(200, 10, " PARAMETROS FINALES DE OPERACION", 1, 1, 'L', True)
+    # Usamos el instructor de la sesión
+    nom_instructor = st.session_state.get('instructor', 'Fabricio Pizzolato')
+    pdf.cell(100, 10, f"Instructor: {nom_instructor}".encode('latin-1', 'ignore').decode('latin-1'), 0, 1)
+
+    # OBTENCIÓN DE DATOS
+    pdf_output = pdf.output(dest='S')
     
-    # Parámetros (Aseguramos que sean números para evitar errores de formato)
-    prof = datos_piz.get('profundidad_actual', 0)
-    pdf.cell(100, 10, f"Profundidad Final: {prof:.2f} m", 1, 0)
-    pdf.cell(100, 10, f"Caudal: {datos_piz.get('caudal_maestro', 0)} GPM", 1, 1)
-    pdf.cell(100, 10, f"WOB: {datos_piz.get('wob_maestro', 0)} klbs", 1, 0)
-    pdf.cell(100, 10, f"RPM: {datos_piz.get('rpm_maestro', 0)}", 1, 1)
+    # LA CORRECCIÓN CLAVE: 
+    # Convertimos explícitamente a bytes para que Streamlit no proteste
+    if isinstance(pdf_output, bytearray):
+        return bytes(pdf_output)
+    return pdf_output
 
-    # EL CAMBIO CLAVE: pdf.output(dest='S') en versiones actuales ya puede devolver bytes
-    # Si te daba error de 'bytearray has no attribute encode', es porque YA eran bytes.
-    return pdf.output(dest='S')
-
-# --- SECCIÓN DE CIERRE Y REPORTE ---
+# --- SECCIÓN DE CIERRE Y REPORTE AL FINAL ---
 st.divider()
-st.subheader("🏁 Finalizar Sesión de Entrenamiento")
 
+# Aseguramos parámetro de instructor
 if 'instructor' not in st.session_state:
-    st.session_state['instructor'] = st.query_params.get("instructor", "Fabricio Pizzolato")
+    st.session_state['instructor'] = st.query_params.get("nombre", "Instructor")
 
 col_rep, col_logout = st.columns(2)
 
 with col_rep:
-    # Para evitar el error, generamos el PDF solo cuando se necesita
     try:
-        pdf_bytes = generar_reporte_menfa(piz, st.session_state.get('usuario', 'Alumno'))
+        # Generamos los bytes limpios
+        pdf_final = generar_reporte_menfa(piz, st.session_state.get('usuario', 'Alumno'))
+        
         st.download_button(
             label="📊 Descargar Reporte PDF",
-            data=pdf_bytes,
+            data=pdf_final, # Ahora sí son bytes puros
             file_name=f"Reporte_{st.session_state.get('usuario', 'Alumno')}.pdf",
             mime="application/pdf",
             use_container_width=True
         )
     except Exception as e:
-        st.error(f"Error al preparar PDF: {e}")
+        st.error(f"Error técnico: {e}")
 
 with col_logout:
-    if st.button("🔴 Cerrar Sesión", use_container_width=True):
+    if st.button("🔴 Finalizar Sesión", use_container_width=True):
+        # Limpieza total para evitar errores de encode al salir
         st.query_params.clear()
         for key in list(st.session_state.keys()):
-            del st.session_state[key]
+            st.session_state.pop(key, None)
         st.rerun()
+        
