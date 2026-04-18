@@ -1136,77 +1136,63 @@ def generar_reporte_menfa(datos_piz, nombre_usuario):
     pdf = FPDF()
     pdf.add_page()
     
-    # Encabezado
+    # Encabezado (Usamos latin-1 para que FPDF no sufra con acentos)
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "IPCL MENFA - MENDOZA", 0, 1, 'C')
+    pdf.cell(200, 10, "IPCL MENFA - MENDOZA".encode('latin-1', 'ignore').decode('latin-1'), 0, 1, 'C')
     pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, "Reporte de Entrenamiento de Perforacion", 0, 1, 'C')
+    pdf.cell(200, 10, "Reporte de Entrenamiento de Perforacion".encode('latin-1', 'ignore').decode('latin-1'), 0, 1, 'C')
     
     pdf.ln(10)
     
-    # Datos del Alumno
+    # Datos del Alumno e Instructor
     pdf.set_font("Arial", '', 11)
-    pdf.cell(100, 10, f"Alumno: {nombre_usuario}", 0, 1)
-    pdf.cell(100, 10, f"Instructor: Fabricio Pizzolato", 0, 1)
+    pdf.cell(100, 10, f"Alumno: {nombre_usuario}".encode('latin-1', 'ignore').decode('latin-1'), 0, 1)
+    # Aquí manejamos el parámetro como pediste (Instructor)
+    instructor = st.session_state.get('instructor', 'Fabricio Pizzolato')
+    pdf.cell(100, 10, f"Instructor: {instructor}".encode('latin-1', 'ignore').decode('latin-1'), 0, 1)
     pdf.cell(100, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", 0, 1)
     
     pdf.ln(5)
     pdf.set_fill_color(230, 230, 230)
     pdf.cell(200, 10, " PARAMETROS FINALES DE OPERACION", 1, 1, 'L', True)
     
-    # Parámetros de la pizarra global (piz)
-    pdf.cell(100, 10, f"Profundidad Final: {datos_piz.get('profundidad_actual', 0):.2f} m", 1, 0)
+    # Parámetros (Aseguramos que sean números para evitar errores de formato)
+    prof = datos_piz.get('profundidad_actual', 0)
+    pdf.cell(100, 10, f"Profundidad Final: {prof:.2f} m", 1, 0)
     pdf.cell(100, 10, f"Caudal: {datos_piz.get('caudal_maestro', 0)} GPM", 1, 1)
     pdf.cell(100, 10, f"WOB: {datos_piz.get('wob_maestro', 0)} klbs", 1, 0)
     pdf.cell(100, 10, f"RPM: {datos_piz.get('rpm_maestro', 0)}", 1, 1)
 
-    # Retornar los bytes del PDF
-    return pdf.output(dest='S').encode('latin-1', 'ignore')
-    # --- SECCIÓN DE REPORTE (Al final de la app) ---
+    # EL CAMBIO CLAVE: pdf.output(dest='S') en versiones actuales ya puede devolver bytes
+    # Si te daba error de 'bytearray has no attribute encode', es porque YA eran bytes.
+    return pdf.output(dest='S')
+
 # --- SECCIÓN DE CIERRE Y REPORTE ---
 st.divider()
 st.subheader("🏁 Finalizar Sesión de Entrenamiento")
 
-# Creamos una columna para centrar el botón
-col_rep, _ = st.columns([1, 1])
+if 'instructor' not in st.session_state:
+    st.session_state['instructor'] = st.query_params.get("instructor", "Fabricio Pizzolato")
+
+col_rep, col_logout = st.columns(2)
 
 with col_rep:
-    if st.button("📊 Generar Certificado PDF", use_container_width=True):
-        try:
-            # 1. Llamamos a tu función para crear los datos
-            pdf_bytes = generar_reporte_menfa(piz, st.session_state.usuario)
-            
-            # 2. Mostramos el botón real de descarga (esto es lo que se ve)
-            st.download_button(
-                label="📥 DESCARGAR REPORTE AHORA",
-                data=pdf_bytes,
-                file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-            st.success("✅ ¡Reporte generado con éxito!")
-        except Exception as e:
-            st.error(f"Error al generar PDF: {e}")
-# --- COPIAR Y PEGAR AL FINAL DE TU APP.PY ---
-
-# Manejo de parámetros de instructor (si no existen, evita el error)
-if 'instructor' not in st.session_state:
-    st.session_state['instructor'] = st.query_params.get("nombre", "Instructor")
-
-# Bloque de cierre de sesión
-if st.button("Finalizar Sesión"):
+    # Para evitar el error, generamos el PDF solo cuando se necesita
     try:
-        # 1. Limpiamos los parámetros de la URL
+        pdf_bytes = generar_reporte_menfa(piz, st.session_state.get('usuario', 'Alumno'))
+        st.download_button(
+            label="📊 Descargar Reporte PDF",
+            data=pdf_bytes,
+            file_name=f"Reporte_{st.session_state.get('usuario', 'Alumno')}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+    except Exception as e:
+        st.error(f"Error al preparar PDF: {e}")
+
+with col_logout:
+    if st.button("🔴 Cerrar Sesión", use_container_width=True):
         st.query_params.clear()
-        # 2. Vaciamos el estado de sesión
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-        
-        # 3. El truco maestro: un aviso rápido y reinicio inmediato
-        st.success("Sesión cerrada correctamente.")
-        st.rerun() 
-    except Exception as e:
-        # Si hay un error de encode, lo forzamos a ignorarlo y reiniciar
         st.rerun()
-
-# --- FIN DEL BLOQUE ---
