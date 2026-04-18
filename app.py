@@ -1187,3 +1187,26 @@ with col_rep:
             st.success("✅ ¡Reporte generado con éxito!")
         except Exception as e:
             st.error(f"Error al generar PDF: {e}")
+# --- COPIAR Y PEGAR AL FINAL DE TU APP.PY ---
+
+# Manejo de parámetros de instructor (si no existen, evita el error)
+if 'instructor' not in st.session_state:
+    st.session_state['instructor'] = st.query_params.get("nombre", "Instructor")
+
+# Bloque de cierre de sesión
+if st.button("Finalizar Sesión"):
+    try:
+        # 1. Limpiamos los parámetros de la URL
+        st.query_params.clear()
+        # 2. Vaciamos el estado de sesión
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        
+        # 3. El truco maestro: un aviso rápido y reinicio inmediato
+        st.success("Sesión cerrada correctamente.")
+        st.rerun() 
+    except Exception as e:
+        # Si hay un error de encode, lo forzamos a ignorarlo y reiniciar
+        st.rerun()
+
+# --- FIN DEL BLOQUE ---
