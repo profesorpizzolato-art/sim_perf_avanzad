@@ -29,17 +29,29 @@ def crear_manometro(valor, titulo, unidad, max_val, color_bar):
 
 def renderizar_cabina_perforador(piz, datos):
     """Esta es la pantalla que ve el alumno"""
-    st.header(f"🎮 Consola de Perforación - {piz['yacimiento']}")
+    # Usamos .get con un valor por defecto para evitar errores si la llave no existe
+    nombre_yacimiento = piz.get('yacimiento', 'Sin seleccionar')
+    st.header(f"🎮 Consola de Perforación - {nombre_yacimiento}")
     
     # --- FILA 1: CONTROLES DE OPERACIÓN ---
     with st.sidebar:
-        st.image("logo_menfa.png", width=200)
+        try:
+            st.image("logo_menfa.png", width=200)
+        except:
+            st.warning("Logo no encontrado")
+            
         st.subheader("🕹️ Mandos del Cuadro")
-        piz["rpm"] = st.slider("Rotación (RPM)", 0, 180, piz.get("rpm", 0))
-        piz["wob"] = st.slider("Peso en el Trépano (klbs)", 0, 60, piz.get("wob", 0))
-        piz["caudal"] = st.slider("Bombas (GPM)", 0, 1200, piz.get("caudal", 0))
         
-        if st.button("🚨 PARADA DE EMERGENCIA"):
+        # IMPORTANTE: Forzamos int() y usamos 'key' para evitar el StreamlitAPIException
+        val_rpm = int(piz.get("rpm", 0))
+        val_wob = int(piz.get("wob", 0))
+        val_caudal = int(piz.get("caudal", 0))
+
+        piz["rpm"] = st.slider("Rotación (RPM)", 0, 180, val_rpm, key="s_rpm")
+        piz["wob"] = st.slider("Peso en el Trépano (klbs)", 0, 60, val_wob, key="s_wob")
+        piz["caudal"] = st.slider("Bombas (GPM)", 0, 1200, val_caudal, key="s_caudal")
+        
+        if st.button("🚨 PARADA DE EMERGENCIA", key="btn_emergencia"):
             piz["rpm"] = 0
             piz["caudal"] = 0
             st.rerun()
@@ -48,17 +60,17 @@ def renderizar_cabina_perforador(piz, datos):
     c1, c2, c3 = st.columns(3)
     
     with c1:
-        st.plotly_chart(crear_manometro(datos["SPP"], "Presión de Bomba", "PSI", 5000, "#00ffcc"), use_container_width=True)
+        st.plotly_chart(crear_manometro(datos.get("SPP", 0), "Presión de Bomba", "PSI", 5000, "#00ffcc"), use_container_width=True)
     with c2:
-        st.plotly_chart(crear_manometro(datos["ROP"], "Penetración", "m/h", 80, "#ffcc00"), use_container_width=True)
+        st.plotly_chart(crear_manometro(datos.get("ROP", 0), "Penetración", "m/h", 80, "#ffcc00"), use_container_width=True)
     with c3:
-        st.plotly_chart(crear_manometro(datos["Carga_Gancho"], "Hook Load", "klbs", 400, "#ff3300"), use_container_width=True)
+        st.plotly_chart(crear_manometro(datos.get("Carga_Gancho", 150), "Hook Load", "klbs", 400, "#ff3300"), use_container_width=True)
 
     # --- FILA 3: DATOS TÉCNICOS ---
     col_a, col_b = st.columns(2)
     with col_a:
-        st.metric("Profundidad Actual", f"{piz['profundidad_actual']} m")
+        st.metric("Profundidad Actual", f"{piz.get('profundidad_actual', 0)} m")
         st.metric("Densidad de Lodo", f"{piz.get('densidad_lodo', 9.5)} ppg")
     with col_b:
-        st.metric("ECD (Dens. Equivalente)", f"{datos['ECD']} ppg")
-        st.metric("Presión Hidrostática", f"{datos['PH']} PSI")
+        st.metric("ECD (Dens. Equivalente)", f"{datos.get('ECD', 0)} ppg")
+        st.metric("Presión Hidrostática", f"{datos.get('PH', 0)} PSI")
