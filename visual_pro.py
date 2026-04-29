@@ -28,49 +28,41 @@ def crear_manometro(valor, titulo, unidad, max_val, color_bar):
     return fig
 
 def renderizar_cabina_perforador(piz, datos):
-    """Esta es la pantalla que ve el alumno"""
-    # Usamos .get con un valor por defecto para evitar errores si la llave no existe
-    nombre_yacimiento = piz.get('yacimiento', 'Sin seleccionar')
-    st.header(f"🎮 Consola de Perforación - {nombre_yacimiento}")
+    st.header(f"🎮 Consola de Perforación - {piz.get('yacimiento', 'Mendoza')}")
     
-    # --- FILA 1: CONTROLES DE OPERACIÓN ---
+    # --- Sidebar con controles (Lo que ya teníamos) ---
     with st.sidebar:
-        try:
-            st.image("logo_menfa.png", width=200)
-        except:
-            st.warning("Logo no encontrado")
-            
-        st.subheader("🕹️ Mandos del Cuadro")
-        
-        # IMPORTANTE: Forzamos int() y usamos 'key' para evitar el StreamlitAPIException
-        val_rpm = int(piz.get("rpm", 0))
-        val_wob = int(piz.get("wob", 0))
-        val_caudal = int(piz.get("caudal", 0))
+        st.subheader("🕹️ Controles")
+        piz["rpm"] = st.slider("Rotación", 0, 180, int(piz.get("rpm", 0)), key="s_rpm")
+        piz["caudal"] = st.slider("Bombas", 0, 1200, int(piz.get("caudal", 0)), key="s_caudal")
 
-        piz["rpm"] = st.slider("Rotación (RPM)", 0, 180, val_rpm, key="s_rpm")
-        piz["wob"] = st.slider("Peso en el Trépano (klbs)", 0, 60, val_wob, key="s_wob")
-        piz["caudal"] = st.slider("Bombas (GPM)", 0, 1200, val_caudal, key="s_caudal")
-        
-        if st.button("🚨 PARADA DE EMERGENCIA", key="btn_emergencia"):
-            piz["rpm"] = 0
-            piz["caudal"] = 0
-            st.rerun()
+    # --- NUEVA ESTRUCTURA DE PESTAÑAS (Aquí vuelve lo que "perdimos") ---
+    tab_principal, tab_geo, tab_tanques, tab_seguridad = st.tabs([
+        "📊 Panel Principal", "🌍 Geonavegación", "🛢️ Sistema de Lodos", "🛡️ BOP & Seguridad"
+    ])
 
-    # --- FILA 2: RELOJES (MANÓMETROS) ---
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        st.plotly_chart(crear_manometro(datos.get("SPP", 0), "Presión de Bomba", "PSI", 5000, "#00ffcc"), use_container_width=True)
-    with c2:
-        st.plotly_chart(crear_manometro(datos.get("ROP", 0), "Penetración", "m/h", 80, "#ffcc00"), use_container_width=True)
-    with c3:
-        st.plotly_chart(crear_manometro(datos.get("Carga_Gancho", 150), "Hook Load", "klbs", 400, "#ff3300"), use_container_width=True)
+    with tab_principal:
+        c1, c2, c3 = st.columns(3)
+        with c1: st.plotly_chart(crear_manometro(datos.get("SPP", 0), "Presión", "PSI", 5000, "#00ffcc"))
+        with c2: st.plotly_chart(crear_manometro(datos.get("ROP", 0), "Penetración", "m/h", 80, "#ffcc00"))
+        with c3: st.plotly_chart(crear_manometro(datos.get("Carga_Gancho", 150), "Hook Load", "klbs", 400, "#ff3300"))
 
-    # --- FILA 3: DATOS TÉCNICOS ---
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.metric("Profundidad Actual", f"{piz.get('profundidad_actual', 0)} m")
-        st.metric("Densidad de Lodo", f"{piz.get('densidad_lodo', 9.5)} ppg")
-    with col_b:
-        st.metric("ECD (Dens. Equivalente)", f"{datos.get('ECD', 0)} ppg")
-        st.metric("Presión Hidrostática", f"{datos.get('PH', 0)} PSI")
+    with tab_geo:
+        st.subheader("📍 Monitoreo de Trayectoria (Vaca Muerta)")
+        # Aquí es donde llamaríamos a tu viejo geonavegacion_pro.py
+        st.info("Visualizando formación: " + piz.get("litologia", "Cuyana"))
+        # Simulación de gráfico de trayectoria
+        st.line_chart([10, 20, 35, 50, 80, 90], help="Inclinación del pozo")
+
+    with tab_tanques:
+        st.subheader("📈 Nivel de Tanques y Retorno")
+        col1, col2 = st.columns(2)
+        col1.metric("Tanque Activo 1", "450 bbl", "+2 bbl (Gain)")
+        col2.metric("Retorno de Flujo", "85%", "-5% (Loss)")
+
+    with tab_seguridad:
+        st.subheader("🛡️ Estado del BOP")
+        if piz.get("bop_cerrado"):
+            st.error("BOP CERRADO - Presión Encajonada")
+        else:
+            st.success("BOP ABIERTO - Operación Normal")
