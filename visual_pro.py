@@ -114,84 +114,82 @@ def renderizar_cabina_perforador(piz, datos):
 {pd.Timestamp.now().strftime('%H:%M:%S')} - WOB CONTROLADO
             """, language="text")
 
-  with t_geo:
-        st.subheader("🧭 Centro de Geonavegación y Trayectoria")
+with t_geo:
+        st.subheader("🚀 Navegación Direccional y Control de Trayectoria")
         
-        # --- 1. LÓGICA DE NAVEGACIÓN (Simulación de Surveys) ---
+        # --- 1. LÓGICA DE NAVEGACIÓN 3D ---
         prof_actual = piz.get("profundidad_actual", 1000)
-        # Generamos puntos de trayectoria cada 30m (estándar de la industria)
         puntos = int(prof_actual / 30) if prof_actual > 30 else 1
         profundidades = np.linspace(0, prof_actual, puntos)
         
-        # Modelo de trayectoria: Inclinación aumenta si hay mucho WOB/RPM (simulado)
-        # En la realidad, el DLS depende del BHA, aquí lo vinculamos a la operación
-        inc_final = (piz.get("wob", 0) * 0.1) + (piz.get("rpm", 0) * 0.05)
-        inclinaciones = np.linspace(0, inc_final, puntos)
+        # Simulación de Inclinación y Azimut
+        # El Azimut tiende a desviarse si no hay control
+        inclinaciones = np.linspace(0, (piz.get("wob", 0) * 0.12), puntos)
+        azimuts = np.linspace(45, 45 + (piz.get("rpm", 0) * 0.02), puntos) # Rumbo Noreste 45°
         
-        # Cálculo de Dogleg Severity (DLS) - Diferencia de inclinación cada 30m
-        dls_actual = np.diff(inclinaciones, prepend=0).round(2)
+        # Cálculo de Coordenadas (Norte y Este) simplificado
+        norte = np.cumsum(np.sin(np.radians(inclinaciones)) * np.cos(np.radians(azimuts)) * 30)
+        este = np.cumsum(np.sin(np.radians(inclinaciones)) * np.sin(np.radians(azimuts)) * 30)
         
-        # --- 2. COLUMNAS DE VISUALIZACIÓN ---
-        c_surv, c_td = st.columns([1, 2])
+        # --- 2. LAYOUT DE PANTALLA ---
+        c_map, c_details = st.columns([2, 1])
         
-        with c_surv:
-            st.write("**📋 Registro de Surveys (MWD)**")
-            df_survey = pd.DataFrame({
-                "MD (m)": profundidades.round(1),
-                "Inc (°)": inclinaciones.round(2),
-                "DLS (°/30m)": dls_actual
-            }).tail(10) # Mostramos los últimos 10 para no saturar
+        with c_map:
+            # VISTA DE PLANTA (Slot Plot)
+            fig_map = go.Figure()
+            # Trayectoria Real
+            fig_map.add_trace(go.Scatter(x=este, y=norte, name="Trayectoria Real",
+                                         line=dict(color="#00ffcc", width=4)))
+            # Objetivo (Target)
+            fig_map.add_trace(go.Scatter(x=[este[-1] + 20], y=[norte[-1] + 20], 
+                                         mode='markers+text', name="TARGET",
+                                         text=["🎯"], textposition="top center",
+                                         marker=dict(color='red', size=12, symbol='x')))
             
-            st.table(df_survey)
-            
-            critical_dls = dls_actual[-1] > 2.5
-            st.metric("DLS Actual", f"{dls_actual[-1]} °/30m", 
-                      delta="CRÍTICO" if critical_dls else "OK",
-                      delta_color="normal" if not critical_dls else "inverse")
-
-        with c_td:
-            # --- 3. GRÁFICO DE TORQUE & DRAG ---
-            # El Drag aumenta exponencialmente con el DLS y la Inclinación
-            drag_sim = [datos.get("Carga_Gancho", 150) - (i * 0.8) for i in inclinaciones]
-            
-            fig_td = go.Figure()
-            # Curva de Hookload (Drag)
-            fig_td.add_trace(go.Scatter(x=drag_hookload, y=profundidades,
-                                        name="Hookload (Drag)", line=dict(color="#00ffcc", width=3)))
-            # Curva de Torque Real
-            fig_td.add_trace(go.Scatter(x=[datos.get("Torque", 0)] * puntos, y=profundidades,
-                                        name="Torque", line=dict(color="#ff00ff", dash='dot')))
-            
-            fig_td.update_layout(
-                title="Modelo de Torque & Drag en Tiempo Real",
-                yaxis=dict(autorange="reversed", title="Profundidad Medida (MD)"),
-                xaxis=dict(title="Fuerza (klbs) / Torque (ft-lbs)"),
+            fig_map.update_layout(
+                title="Vista de Planta (Horizontal Section)",
+                xaxis=dict(title="Este-Oeste (m)", gridcolor="#333"),
+                yaxis=dict(title="Norte-Sur (m)", gridcolor="#333"),
                 height=450, template="plotly_dark",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)'
             )
-            st.plotly_chart(fig_td, use_container_width=True)
+            st.plotly_chart(fig_map, use_container_width=True)
+
+        with c_details:
+            st.write("**📍 Posición Actual**")
+            st.metric("Inclinación", f"{inclinaciones[-1]:.2f} °")
+            st.metric("Azimut", f"{azimuts[-1]:.2f} °")
+            
+            st.divider()
+            
+            # Cálculo de DLS para el panel lateral
+            dls_val = np.diff(inclinaciones, prepend=0)[-1].round(2)
+            st.write(f"**DLS:** {dls_val} °/30m")
+            if dls_val > 2.5:
+                st.warning("⚠️ ALTA SEVERIDAD DE DOGLEG")
 
         st.divider()
 
-        # --- 4. GEOLOGÍA DE CORRELACIÓN (Gamma Ray comparativo) ---
-        st.subheader("🌍 Correlación Geológica LWD")
+        # --- 3. GRÁFICA DE TORQUE & DRAG DINÁMICO ---
+        st.subheader("📊 Análisis de Esfuerzos (Torque & Drag)")
         
-        # Simulación de pozo vecino (Offset) vs Pozo actual
-        depth_range = np.linspace(prof_actual - 50, prof_actual + 20, 100)
-        gr_actual = np.random.normal(80, 15, 100) 
-        gr_offset = np.random.normal(85, 12, 100)
+        # El drag aumenta con la profundidad y la severidad del pozo
+        hookload_teorico = 180 - (prof_actual * 0.01)
+        drag_real = hookload_teorico - (inclinaciones[-1] * 0.5) - (dls_val * 10)
         
-        fig_lwd = go.Figure()
-        fig_lwd.add_trace(go.Scatter(x=gr_offset, y=depth_range, name="Offset Well", line=dict(color="gray", dash='dash')))
-        fig_lwd.add_trace(go.Scatter(x=gr_actual, y=depth_range, name="Actual Well (LWD)", line=dict(color="#ffaa00", width=2)))
+        fig_td = go.Figure()
+        fig_td.add_trace(go.Scatter(x=[hookload_teorico, drag_real], y=[0, prof_actual],
+                                    name="Carga en Gancho (Drag)", line=dict(color="#00ffcc")))
+        fig_td.add_trace(go.Scatter(x=[0, datos.get("Torque", 0)], y=[0, prof_actual],
+                                    name="Torque", line=dict(color="#ff00ff", dash='dot')))
         
-        fig_lwd.update_layout(
-            height=300, template="plotly_dark", title="Gamma Ray Log",
-            yaxis=dict(autorange="reversed", title="MD (m)"),
-            xaxis=dict(title="Gamma Ray (API)", range=[0, 150])
+        fig_td.update_layout(
+            height=350, template="plotly_dark",
+            yaxis=dict(autorange="reversed", title="Profundidad (MD)"),
+            xaxis=dict(title="Libras / Ft-Lbs"),
+            margin=dict(l=0, r=0, t=30, b=0)
         )
-        st.plotly_chart(fig_lwd, use_container_width=True)
-
+        st.plotly_chart(fig_td, use_container_width=True)
     with t_mud:
         st.subheader("🛢️ Sistema de Circulación")
         l1, l2 = st.columns(2)
