@@ -4,6 +4,7 @@ import pizarra_maestra as pm
 import motor_perforacion as motor
 import control_operativo as control
 import visual_pro as vis
+import sarta_pro as sarta # Importamos el nuevo módulo
 
 # 1. CONFIGURACIÓN E IDENTIDAD (MENFA)
 st.set_page_config(layout="wide", page_title="MENFA Drilling Sim 3.0", page_icon="assets/logo_menfa.png")
@@ -23,7 +24,7 @@ if not st.session_state.auth:
         input_pass = st.text_input("Código de Seguridad:", type="password")
         if st.button("CONECTAR CON LA CABINA", use_container_width=True):
             if input_pass == CLAVE_INSTRUCTOR:
-                st.session_state.auth, st.session_state.rol, st.session_state.usuario = True, "instructor", "Fabricio Pizzolato" #
+                st.session_state.auth, st.session_state.rol, st.session_state.usuario = True, "instructor", "Fabricio Pizzolato" 
                 st.rerun()
             elif input_pass == CLAVE_ALUMNO:
                 st.session_state.auth, st.session_state.rol, st.session_state.usuario = True, "alumno", "Operador en Evaluación"
@@ -31,8 +32,7 @@ if not st.session_state.auth:
             else: st.error("Código inválido.")
     st.stop()
 
-# --- 3. CONEXIÓN A LA VERDADERA PIZARRA (Lectura del Archivo) ---
-# pm.conectar_pizarra() debe leer de un JSON para que ambos vean lo mismo
+# --- 3. CONEXIÓN A LA VERDADERA PIZARRA ---
 piz = pm.conectar_pizarra()
 
 # 4. FILTRO DE CONFIGURACIÓN
@@ -50,43 +50,54 @@ if not piz.get("bop_cerrado"):
     if rop_actual > 0:
         factor_avance = 15 
         avance = (rop_actual / 3600) * factor_avance
-        piz["profundidad_actual"] = round(piz.get("profundidad_actual", 0) + avance, 4) #
+        piz["profundidad_actual"] = round(piz.get("profundidad_actual", 0) + avance, 4) 
         
-        # B. GEONAVEGACIÓN (Sincronización de Trayectoria)
-        # Aquí es donde los parámetros CAMBIAN y se guardan
+        # B. GEONAVEGACIÓN
         piz["inclinacion"] = datos_fisica.get("nueva_inclinacion", piz.get("inclinacion", 0))
         piz["azimut"] = datos_fisica.get("nuevo_azimut", piz.get("azimut", 0))
         piz["tvd"] = datos_fisica.get("TVD", piz.get("tvd", 0))
     
-    # C. CONTROL DE POZO (Well Control)
-    # Si vos como instructor activás un influjo en tu panel, el alumno lo recibe aquí
-    influjo_rate = piz.get("influjo_instructor", 0) # El instructor escribe esto en la pizarra
+    # C. CONTROL DE POZO
+    influjo_rate = piz.get("influjo_instructor", 0) 
     piz["volumen_piletas"] += (influjo_rate * 0.1)
-    
-    # Actualizamos el reporte de física para que el visualizador lo muestre
     datos_fisica["Influjo"] = influjo_rate 
 
-# --- 7. GUARDAR CAMBIOS (CRÍTICO PARA LA CONEXIÓN) ---
-# Sin esto, el alumno y el instructor nunca están conectados
-pm.actualizar_fichero(piz) #
+# --- 7. MÓDULO DE SARTAS (API 5DP INTEGRADO) ---
+# Calculamos la tensión real vs resistencia antes de renderizar
+# Usamos S-135 por defecto para Vaca Muerta como sugeriste
+resistencia = sarta.modulo_sartas_api(piz) 
+datos_fisica["hook_load"] = resistencia.get("hook_load", 0)
+datos_fisica["max_yield"] = resistencia.get("max_yield", 0)
 
-# --- 8. INTERFAZ Y RENDERIZADO ---
+# --- 8. GUARDAR CAMBIOS ---
+pm.actualizar_fichero(piz) 
+
+# --- 9. INTERFAZ Y RENDERIZADO ---
 st.sidebar.title(f"👤 {st.session_state.usuario}")
 
-# Barra de progreso basada en la profundidad compartida
+# Barra de progreso
 meta = piz.get("tvd_target", 2500.0)
 progreso = min(piz["profundidad_actual"] / meta, 1.0)
 st.progress(progreso, text=f"Progreso: {piz['profundidad_actual']:.2f} m / {meta} m")
 
 if st.session_state.rol == "alumno":
-    vis.renderizar_cabina_perforador(piz, datos_fisica) # El alumno solo mueve perillas
+    vis.renderizar_cabina_perforador(piz, datos_fisica)
 elif st.session_state.rol == "instructor":
-    control.panel_instructor(piz) # El instructor inyecta problemas
+    # El instructor ve el panel de control y puede configurar la sarta
+    tab1, tab2 = st.tabs(["🎮 Control de Pozo", "🔩 Configuración de Sarta"])
+    with tab1:
+        control.panel_instructor(piz)
+    with tab2:
+        sarta.configuracion_ui() # La parte visual de los selectbox que pasaste
 
 if st.sidebar.button("Cerrar Sesión"):
     st.session_state.auth = False
     st.rerun()
 
-# 9. LATIDO (Refresco cada 0.5s para ver el avance)
+# 10. ALERTAS DE SEGURIDAD OPERATIVA
+if datos_fisica["hook_load"] > (datos_fisica["max_yield"] * 0.9):
+    st.warning("⚠️ TENSIÓN EN SARTA PRÓXIMA AL LÍMITE DE FLUENCIA")
+
+# 11. LATIDO
 time.sleep(0.5)
 st.rerun()
