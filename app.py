@@ -1,7 +1,6 @@
 import streamlit as st
 import os
 import time
-# Importación de tus módulos técnicos
 import pizarra_maestra as pm
 import motor_perforacion as motor
 import control_operativo as control
@@ -49,34 +48,20 @@ if not piz.get("configurado"):
     pm.selector_yacimiento_mendoza(piz)
     st.stop()
 
-# 5. BUCLE DE FÍSICA Y SIMULACIÓN
-# Solo avanzamos si hay parámetros mecánicos activos
-if piz.get("rpm", 0) > 0 and piz.get("wob", 0) > 0:
-    # El motor técnico calcula el ROP basado en las variables actuales
-    datos_fisica = motor.calcular_todo(piz)
-    rop_actual = datos_fisica.get("ROP", 0)
+if st.session_state.rol == "alumno":
+    # Aquí el alumno mueve los controles y se guardan en 'piz'
+    vis.renderizar_cabina_perforador(piz, motor.calcular_todo(piz))
     
-    # Avance de profundidad (m/h a m/s con multiplicador para la clase)
-    avance = (rop_actual / 3600) * 2 
-    piz["profundidad_actual"] = round(piz.get("profundidad_actual", 0) + avance, 2)
-else:
-    # Si no hay rotación o peso, calculamos parámetros estáticos (hidrostática, etc.)
+    # 2. AHORA calculamos el avance con los datos frescos
     datos_fisica = motor.calcular_todo(piz)
+    if piz.get("rpm", 0) > 0 and piz.get("wob", 0) > 0:
+        rop_actual = datos_fisica.get("ROP", 0)
+        # Aumentamos la velocidad de simulación para que se note el movimiento
+        avance = (rop_actual / 3600) * 5  
+        piz["profundidad_actual"] += avance
 
-# 6. RENDERIZADO SEGÚN ROL
-mostrar_logo()
-
-if st.session_state.rol == "instructor":
+elif st.session_state.rol == "instructor":
     control.panel_instructor(piz)
-    if st.sidebar.button("Cerrar Sesión"):
-        st.session_state.rol = None
-        st.rerun()
-else:
-    # Interfaz del Alumno con los datos del motor
-    vis.renderizar_cabina_perforador(piz, datos_fisica)
-    if st.sidebar.button("Log Out"):
-        st.session_state.rol = None
-        st.rerun()
 
 # 7. AUTO-REFRESH (Mantiene vivos los manómetros)
 time.sleep(0.5)
