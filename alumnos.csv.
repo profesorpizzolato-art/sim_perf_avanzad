@@ -4,19 +4,50 @@ import numpy as np
 import random
 import plotly.graph_objects as go
 import os
+import streamlit as st
+import time
+import pizarra_maestra as pm
 
-# --- 1. CONFIGURACIÓN E IDENTIDAD ---
-st.set_page_config(page_title="SIMULADOR MENFA V6.1 - PRIVADO", layout="wide")
+# 1. CONFIGURACIÓN
+st.set_page_config(layout="wide", page_title="MENFA Drilling Sim 3.0", page_icon="🏗️")
 
-# --- 2. FUNCIÓN DE CARGA DE LEGAJOS ---
-def validar_acceso(legajo_ingresado):
-    if os.path.exists("alumnos.csv"):
-        df = pd.read_csv("alumnos.csv")
-        # Buscamos el legajo (lo tratamos como string por las dudas)
-        match = df[df['legajo'].astype(str) == str(legajo_ingresado)]
-        if not match.empty:
-            return match.iloc[0]['nombre']
-    return None
+# --- 2. SISTEMA DE CLAVES ---
+CLAVE_ALUMNO = "menfa2026"
+CLAVE_INSTRUCTOR = "admin_mendoza"
+
+if "auth" not in st.session_state:
+    st.session_state.auth = False
+    st.session_state.rol = None
+
+# Muro de Acceso
+if not st.session_state.auth:
+    st.markdown("<h1 style='text-align: center; color:#00ffcc;'>🛡️ MENFA 3.0 | ACCESO</h1>", unsafe_allow_html=True)
+    
+    c1, c2, c3 = st.columns([1, 1.2, 1])
+    with c2:
+        st.info("Ingrese sus credenciales para activar la consola.")
+        input_pass = st.text_input("Código de Acceso:", type="password")
+        
+        if st.button("INGRESAR AL SISTEMA", use_container_width=True):
+            if input_pass == CLAVE_INSTRUCTOR:
+                st.session_state.auth = True
+                st.session_state.rol = "instructor"
+                st.session_state.usuario = "Fabricio Pizzolato"
+                st.success("Acceso como INSTRUCTOR concedido.")
+                time.sleep(1)
+                st.rerun()
+            
+            elif input_pass == CLAVE_ALUMNO:
+                st.session_state.auth = True
+                st.session_state.rol = "alumno"
+                st.session_state.usuario = "Operador en Formación"
+                st.success("Acceso como ALUMNO concedido.")
+                time.sleep(1)
+                st.rerun()
+            
+            else:
+                st.error("Código incorrecto. Contacte al instructor de IPCL MENFA.")
+    st.stop()
 
 # --- 3. LÓGICA DE LOGIN ---
 if "auth" not in st.session_state:
