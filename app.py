@@ -13,7 +13,7 @@ import motor_calculos_avanzados as motor
 import geonavegacion_pro as geo
 import torque_and_drag as td
 import bombas_de_lodo as bombas
-import sartas_perforacion as sartas
+import sarta_perforacion as sartas
 import sys
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
