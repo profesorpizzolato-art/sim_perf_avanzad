@@ -88,29 +88,39 @@ pm.actualizar_fichero(piz)
 # --- 9. INTERFAZ Y RENDERIZADO ---
 st.sidebar.title(f"👤 {st.session_state.usuario}")
 
-# Barra de progreso
+# SEGURO ANTI-DIVISIÓN POR CERO (ZeroDivisionError Fix)
+# Si tvd_target es 0 o no existe, usamos 2500 como fallback
 meta = piz.get("tvd_target", 2500.0)
-progreso = min(piz["profundidad_actual"] / meta, 1.0)
-st.progress(progreso, text=f"Progreso: {piz['profundidad_actual']:.2f} m / {meta} m")
+if meta <= 0:
+    meta = 2500.0
 
+prof_actual = piz.get("profundidad_actual", 0.0)
+progreso = min(prof_actual / meta, 1.0)
+
+st.progress(progreso, text=f"Progreso: {prof_actual:.2f} m / {meta} m")
+
+# Renderizado por Rol
 if st.session_state.rol == "alumno":
     vis.renderizar_cabina_perforador(piz, datos_fisica)
 elif st.session_state.rol == "instructor":
-    # El instructor ve el panel de control y puede configurar la sarta
     tab1, tab2 = st.tabs(["🎮 Control de Pozo", "🔩 Configuración de Sarta"])
     with tab1:
         control.panel_instructor(piz)
     with tab2:
-        sarta.configuracion_ui() # La parte visual de los selectbox que pasaste
+        sarta.configuracion_ui()
 
+# --- 10. ALERTAS DE SEGURIDAD OPERATIVA ---
+# Verificamos que max_yield no sea 0 antes de comparar
+max_y = datos_fisica.get("max_yield", 0)
+hook_l = datos_fisica.get("hook_load", 0)
+
+if max_y > 0 and hook_l > (max_y * 0.9):
+    st.warning("⚠️ TENSIÓN EN SARTA PRÓXIMA AL LÍMITE DE FLUENCIA")
+
+# --- 11. GESTIÓN DE SESIÓN Y LOOP ---
 if st.sidebar.button("Cerrar Sesión"):
     st.session_state.auth = False
     st.rerun()
 
-# 10. ALERTAS DE SEGURIDAD OPERATIVA
-if datos_fisica["hook_load"] > (datos_fisica["max_yield"] * 0.9):
-    st.warning("⚠️ TENSIÓN EN SARTA PRÓXIMA AL LÍMITE DE FLUENCIA")
-
-# 11. LATIDO
 time.sleep(0.5)
 st.rerun()
