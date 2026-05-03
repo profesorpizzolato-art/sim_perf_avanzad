@@ -9,11 +9,11 @@ import sarta_pro as sarta
 # 1. CONFIGURACIÓN E IDENTIDAD
 st.set_page_config(layout="wide", page_title="MENFA Drilling Sim 3.0", page_icon="assets/logo_menfa.png")
 
-# 2. CONSTANTES DE SEGURIDAD (Definidas antes del uso)
+# 2. CONSTANTES DE SEGURIDAD
 CLAVE_ALUMNO = "menfa2026"
 CLAVE_INSTRUCTOR = "admin_mza"
 
-# 3. SISTEMA DE SEGURIDAD (Persistente)
+# 3. SISTEMA DE SEGURIDAD
 if "auth" not in st.session_state:
     st.session_state.auth = False
     st.session_state.rol = None
@@ -33,73 +33,55 @@ if not st.session_state.auth:
                 st.rerun()
             else:
                 st.error("Código inválido.")
-    st.stop() # Bloqueo total hasta autenticación exitosa
-    st.stop() # Bloquea el resto del script hasta estar autenticado
-
-# --- 3. CONEXIÓN A LA PIZARRA (Con manejo de errores) ---
-try:
-    piz = pm.conectar_pizarra()
-except Exception as e:
-    st.error(f"Error de conexión con la base de datos: {e}")
     st.stop()
 
-# --- 4. FILTRO DE CONFIGURACIÓN (Evitar pantalla negra) ---
-# Si no está configurado, mostramos el selector pero NO detenemos todo el flujo visual
+# --- 4. CONEXIÓN Y AUTOREPARACIÓN DE PIZARRA ---
+try:
+    piz = pm.conectar_pizarra()
+except Exception:
+    # Si el archivo está vacío (char 0), creamos una estructura base para no romper la app
+    piz = {"configurado": False, "profundidad_actual": 0.0, "tvd_target": 2500.0, "inclinacion": 0.0, "volumen_piletas": 500.0}
+    st.sidebar.error("Base de datos reseteada (estaba vacía).")
+
+# --- 5. FILTRO DE CONFIGURACIÓN ---
 if not piz.get("configurado"):
     st.warning("⚠️ El sistema requiere configuración inicial del yacimiento.")
     pm.selector_yacimiento_mendoza(piz)
-    # Importante: No ponemos st.stop() aquí si queremos que el instructor vea algo
     if st.session_state.rol == "alumno":
         st.info("Esperando que el instructor configure el pozo...")
         st.stop()
 
-# 5. PROCESAMIENTO TÉCNICO
+# 6. PROCESAMIENTO TÉCNICO Y SARTAS (API 5DP)
 datos_fisica = motor.calcular_todo(piz)
-
-# --- 6. EL MOTOR DE AVANCE Y GEONAVEGACIÓN REAL ---
-if not piz.get("bop_cerrado"):
-    # A. Avance de Profundidad
-    rop_actual = datos_fisica.get("ROP", 0)
-    if rop_actual > 0:
-        factor_avance = 15 
-        avance = (rop_actual / 3600) * factor_avance
-        piz["profundidad_actual"] = round(piz.get("profundidad_actual", 0) + avance, 4) 
-        
-        # B. GEONAVEGACIÓN
-        piz["inclinacion"] = datos_fisica.get("nueva_inclinacion", piz.get("inclinacion", 0))
-        piz["azimut"] = datos_fisica.get("nuevo_azimut", piz.get("azimut", 0))
-        piz["tvd"] = datos_fisica.get("TVD", piz.get("tvd", 0))
-    
-    # C. CONTROL DE POZO
-    influjo_rate = piz.get("influjo_instructor", 0) 
-    piz["volumen_piletas"] += (influjo_rate * 0.1)
-    datos_fisica["Influjo"] = influjo_rate 
-
-# --- 7. MÓDULO DE SARTAS (API 5DP INTEGRADO) ---
-# Calculamos la tensión real vs resistencia antes de renderizar
-# Usamos S-135 por defecto para Vaca Muerta como sugeriste
 resistencia = sarta.modulo_sartas_api(piz) 
 datos_fisica["hook_load"] = resistencia.get("hook_load", 0)
 datos_fisica["max_yield"] = resistencia.get("max_yield", 0)
 
-# --- 8. GUARDAR CAMBIOS ---
+# --- 7. MOTOR DE AVANCE Y GEONAVEGACIÓN ---
+if not piz.get("bop_cerrado"):
+    rop_actual = datos_fisica.get("ROP", 0)
+    if rop_actual > 0:
+        avance = (rop_actual / 3600) * 15 # Factor de simulación
+        piz["profundidad_actual"] = round(piz.get("profundidad_actual", 0) + avance, 4) 
+        piz["inclinacion"] = datos_fisica.get("nueva_inclinacion", piz.get("inclinacion", 0))
+        piz["azimut"] = datos_fisica.get("nuevo_azimut", piz.get("azimut", 0))
+        piz["tvd"] = datos_fisica.get("TVD", piz.get("tvd", 0))
+    
+    influjo_rate = piz.get("influjo_instructor", 0) 
+    piz["volumen_piletas"] += (influjo_rate * 0.1)
+    datos_fisica["Influjo"] = influjo_rate 
+
+# --- 8. GUARDAR Y RENDERIZAR ---
 pm.actualizar_fichero(piz) 
 
-# --- 9. INTERFAZ Y RENDERIZADO ---
 st.sidebar.title(f"👤 {st.session_state.usuario}")
 
-# SEGURO ANTI-DIVISIÓN POR CERO (ZeroDivisionError Fix)
-# Si tvd_target es 0 o no existe, usamos 2500 como fallback
+# Fix ZeroDivisionError
 meta = piz.get("tvd_target", 2500.0)
-if meta <= 0:
-    meta = 2500.0
-
+meta = 2500.0 if meta <= 0 else meta
 prof_actual = piz.get("profundidad_actual", 0.0)
-progreso = min(prof_actual / meta, 1.0)
+st.progress(min(prof_actual / meta, 1.0), text=f"Progreso: {prof_actual:.2f} m / {meta} m")
 
-st.progress(progreso, text=f"Progreso: {prof_actual:.2f} m / {meta} m")
-
-# Renderizado por Rol
 if st.session_state.rol == "alumno":
     vis.renderizar_cabina_perforador(piz, datos_fisica)
 elif st.session_state.rol == "instructor":
@@ -109,15 +91,10 @@ elif st.session_state.rol == "instructor":
     with tab2:
         sarta.configuracion_ui()
 
-# --- 10. ALERTAS DE SEGURIDAD OPERATIVA ---
-# Verificamos que max_yield no sea 0 antes de comparar
-max_y = datos_fisica.get("max_yield", 0)
-hook_l = datos_fisica.get("hook_load", 0)
-
-if max_y > 0 and hook_l > (max_y * 0.9):
+# --- 9. ALERTAS Y CIERRE ---
+if datos_fisica["max_yield"] > 0 and datos_fisica["hook_load"] > (datos_fisica["max_yield"] * 0.9):
     st.warning("⚠️ TENSIÓN EN SARTA PRÓXIMA AL LÍMITE DE FLUENCIA")
 
-# --- 11. GESTIÓN DE SESIÓN Y LOOP ---
 if st.sidebar.button("Cerrar Sesión"):
     st.session_state.auth = False
     st.rerun()
