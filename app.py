@@ -6,53 +6,50 @@ import motor_perforacion as motor
 import control_operativo as control
 import visual_pro as vis
 
-# 1. CONFIGURACIÓN TÉCNICA DE PÁGINA
-st.set_page_config(
-    layout="wide", 
-    page_title="MENFA Drilling Sim 3.0", 
-    page_icon="🏗️",
-    initial_sidebar_state="expanded"
-)
+# 1. CONFIGURACIÓN TÉCNICA
+st.set_page_config(layout="wide", page_title="MENFA Drilling Sim 3.0", page_icon="🏗️")
 
-# 2. CONEXIÓN A LA PIZARRA (Estado Global)
+# 2. ESTADO GLOBAL
 piz = pm.conectar_pizarra()
 
-# 3. FILTRO DE ACCESO (Muro de seguridad)
+# Inicializar volumen si no existe
+if "volumen_piletas" not in piz:
+    piz["volumen_piletas"] = 1200.0
+
 if not piz.get("configurado"):
     pm.selector_yacimiento_mendoza(piz)
     st.stop()
 
-# 4. PROCESAMIENTO DE FÍSICA (Cálculos antes de renderizar)
-# Calculamos Torque, Drag, Hook Load y Geonavegación con los datos actuales
+# 3. PROCESAMIENTO DE FÍSICA (Cálculos base)
+# Esto se ejecuta en cada ciclo para ambos roles
 datos_fisica = motor.calcular_todo(piz)
 
-# 5. INTERFAZ SEGÚN ROL
-if st.session_state.rol == "alumno":
-    # LA CABINA: Aquí se capturan RPM, WOB, Caudal, Inclinación y Azimut
-    vis.renderizar_cabina_perforador(piz, datos_fisica)
-    
-    # 6. MOTOR DE AVANCE Y DINÁMICA MECÁNICA
-    # Solo si hay actividad mecánica (RPM > 0) el pozo progresa
-    if piz.get("rpm", 0) > 0 and not piz.get("bop_cerrado"):
-        # Recuperamos el ROP calculado por el motor
-        rop_actual = datos_fisica.get("ROP", 0)
-        
-        # Simulación de avance (Ajustado para visibilidad en clase)
+# --- 4. MOTOR DE AVANCE GLOBAL (Aquí es donde sucede la magia) ---
+# Movimos esto afuera de los IF de rol para que el pozo avance siempre
+if not piz.get("bop_cerrado"):
+    # A. Avance de Profundidad
+    rop_actual = datos_fisica.get("ROP", 0)
+    if rop_actual > 0:
         factor_tiempo = 5 
         avance = (rop_actual / 3600) * factor_tiempo
         piz["profundidad_actual"] = round(piz.get("profundidad_actual", 0) + avance, 4)
-        
-        # Actualizamos variables de navegación en la pizarra
-        piz["torque"] = datos_fisica.get("torque", 0)
-        piz["hook_load"] = datos_fisica.get("hook_load", 0)
-        piz["spp"] = datos_fisica.get("spp", 0)
-        
+    
+    # B. Dinámica de Tanques (Influjo o Pérdida)
+    influjo_rate = datos_fisica.get("Influjo", 0)
+    if influjo_rate != 0:
+        # Actualizamos el volumen en la pizarra maestra
+        piz["volumen_piletas"] += (influjo_rate * 0.1)
+
+# 5. INTERFAZ SEGÚN ROL
+if st.session_state.rol == "alumno":
+    vis.renderizar_cabina_perforador(piz, datos_fisica)
+    
     if st.sidebar.button("Terminar Turno (Cerrar Sesión)"):
         st.session_state.rol = None
         st.rerun()
 
 elif st.session_state.rol == "instructor":
-    # PANEL DEL INSTRUCTOR: Monitoreo de Torque/Drag y envío de fallas
+    # El instructor usa su panel pero los datos_fisica ya traen el avance
     control.panel_instructor(piz)
     
     if st.sidebar.button("Finalizar Simulación"):
@@ -60,11 +57,10 @@ elif st.session_state.rol == "instructor":
         st.session_state.rol = None
         st.rerun()
 
-# 7. SISTEMA DE ALERTAS CRÍTICAS
-if piz.get("alarma"):
-    st.toast("⚠️ ALERTA DE SEGURIDAD EN POZO", icon="🚨")
+# 6. SISTEMA DE ALERTAS
+if datos_fisica.get("Influjo", 0) > 0:
+    st.toast("⚠️ GANANCIA EN PILETAS DETECTADA", icon="🚨")
 
-# 8. LATIDO DEL SIMULADOR (Auto-refresh)
-# Un delay de 0.5s permite que los manómetros se muevan fluidos
+# 7. LATIDO DEL SIMULADOR
 time.sleep(0.5)
 st.rerun()
