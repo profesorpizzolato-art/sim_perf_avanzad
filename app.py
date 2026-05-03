@@ -4,11 +4,20 @@ import pizarra_maestra as pm
 import motor_perforacion as motor
 import control_operativo as control
 import visual_pro as vis
-import sarta_pro as sarta # Importamos el nuevo módulo
-# --- 2. SISTEMA DE SEGURIDAD (Optimizado) ---
+import sarta_pro as sarta
+
+# 1. CONFIGURACIÓN E IDENTIDAD
+st.set_page_config(layout="wide", page_title="MENFA Drilling Sim 3.0", page_icon="assets/logo_menfa.png")
+
+# 2. CONSTANTES DE SEGURIDAD (Definidas antes del uso)
+CLAVE_ALUMNO = "menfa2026"
+CLAVE_INSTRUCTOR = "admin_mza"
+
+# 3. SISTEMA DE SEGURIDAD (Persistente)
 if "auth" not in st.session_state:
     st.session_state.auth = False
     st.session_state.rol = None
+    st.session_state.usuario = None
 
 if not st.session_state.auth:
     st.markdown("<h1 style='text-align: center; color:#00ffcc;'>🛡️ MENFA 3.0 | ACCESO AL RIG</h1>", unsafe_allow_html=True)
@@ -17,17 +26,14 @@ if not st.session_state.auth:
         input_pass = st.text_input("Código de Seguridad:", type="password")
         if st.button("CONECTAR CON LA CABINA", use_container_width=True):
             if input_pass == CLAVE_INSTRUCTOR:
-                st.session_state.auth = True
-                st.session_state.rol = "instructor"
-                st.session_state.usuario = "Fabricio Pizzolato"
+                st.session_state.auth, st.session_state.rol, st.session_state.usuario = True, "instructor", "Fabricio Pizzolato"
                 st.rerun()
             elif input_pass == CLAVE_ALUMNO:
-                st.session_state.auth = True
-                st.session_state.rol = "alumno"
-                st.session_state.usuario = "Operador en Evaluación"
+                st.session_state.auth, st.session_state.rol, st.session_state.usuario = True, "alumno", "Operador en Evaluación"
                 st.rerun()
             else:
                 st.error("Código inválido.")
+    st.stop() # Bloqueo total hasta autenticación exitosa
     st.stop() # Bloquea el resto del script hasta estar autenticado
 
 # --- 3. CONEXIÓN A LA PIZARRA (Con manejo de errores) ---
