@@ -35,14 +35,23 @@ if not st.session_state.auth:
                 st.error("Código inválido.")
     st.stop()
 
-# --- 4. CONEXIÓN Y AUTOREPARACIÓN DE PIZARRA ---
-try:
-    piz = pm.conectar_pizarra()
-except Exception:
-    # Si el archivo está vacío (char 0), creamos una estructura base para no romper la app
-    piz = {"configurado": False, "profundidad_actual": 0.0, "tvd_target": 2500.0, "inclinacion": 0.0, "volumen_piletas": 500.0}
-    st.sidebar.error("Base de datos reseteada (estaba vacía).")
+# --- 4. FILTRO DE CONFIGURACIÓN (Forzado para Well Control) ---
+if not piz.get("configurado"):
+    st.warning("⚠️ Configuración inicial pendiente.")
+    
+    # Este botón va a forzar el inicio si el selector falla
+    if st.button("🚀 FORZAR ARRANQUE DEL RIG"):
+        piz["configurado"] = True
+        piz["tvd_target"] = 3500.0 # Valor estándar Vaca Muerta
+        piz["profundidad_actual"] = 1200.0 # Empezamos ya perforando
+        pm.actualizar_fichero(piz)
+        st.rerun()
 
+    pm.selector_yacimiento_mendoza(piz)
+    
+    if st.session_state.rol == "alumno":
+        st.info("Esperando que el instructor configure el pozo...")
+        st.stop()
 # --- 5. FILTRO DE CONFIGURACIÓN ---
 if not piz.get("configurado"):
     st.warning("⚠️ El sistema requiere configuración inicial del yacimiento.")
