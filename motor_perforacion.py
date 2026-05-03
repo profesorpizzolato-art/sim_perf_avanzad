@@ -78,3 +78,75 @@ def calcular_todo(piz):
         "Influjo": round(influjo, 2),
         "Presion_Casing": 0 if not piz.get("bop_cerrado") else (500 + spp_extra)
     }
+import numpy as np
+
+def calcular_todo(piz):
+    """
+    Motor Avanzado MENFA 3.0 - Módulo de Perforación y Control de Pozos.
+    Integra física de fluidos, mecánica de rocas y control de presiones.
+    """
+    # 1. INPUTS OPERATIVOS (Alumno)
+    rpm = piz.get("rpm", 0)
+    wob = piz.get("wob", 0)
+    caudal = piz.get("caudal", 0)
+    prof = piz.get("profundidad_actual", 1000)
+    
+    # 2. PARÁMETROS DEL LODO (Dinámicos)
+    # Ahora el alumno/instructor pueden modificar la densidad en tiempo real
+    densidad_actual = piz.get("densidad_lodo", 9.5) 
+    
+    # 3. CONTROL DE POZO E INSTRUCTOR
+    evento = piz.get("evento_activo", None)
+    litologia = piz.get("litologia", "Vaca Muerta (Shale)")
+    bop_cerrado = piz.get("bop_cerrado", False)
+
+    # 4. MECÁNICA DE ROCAS
+    dureza_map = {"Areniscas": 1.0, "Arcillas": 0.7, "Vaca Muerta (Shale)": 2.5}
+    dureza = dureza_map.get(litologia, 1.0)
+
+    # 5. FÍSICA DE PERFORACIÓN (ROP y Torque)
+    if wob > 1 and rpm > 5 and caudal > 100 and not bop_cerrado:
+        rop = (rpm * wob * 0.002) / (dureza * piz.get("factor_desgaste", 1.0))
+    else:
+        rop = 0
+    
+    torque = (wob * 0.85) + (rpm * 0.15) + (prof * 0.02) if rpm > 0 else 0
+
+    # 6. HIDRÁULICA Y EVENTOS CRÍTICOS
+    spp_base = (caudal ** 1.8) * 0.005 * (densidad_actual / 8.33) if caudal > 0 else 0
+    
+    # Lógica de Presiones de Formación
+    presion_formacion = 0.052 * 10.2 * (prof * 3.28) # Asumimos formación a 10.2 ppg
+    ph = 0.052 * densidad_actual * (prof * 3.28)
+    
+    influjo = 0
+    presion_casing = 0
+    
+    # Simulación de KICK (Si PH < Presión Formación y el instructor lo activa)
+    if evento == "KICK" or ph < presion_formacion:
+        diferencial = (presion_formacion - ph) / 100
+        influjo = max(0, diferencial * 2.0) # bbl/min de ganancia
+        
+        if bop_cerrado:
+            # Si cerramos, la presión en casing sube hasta igualar la formación
+            presion_casing = presion_formacion - ph
+            influjo = 0 # El flujo se detiene al cerrar el pozo
+        else:
+            presion_casing = 0
+
+    # 7. CÁLCULO DE ECD (Densidad Equivalente)
+    # Aumenta por fricción anular (APL) si hay circulación
+    apl = spp_base * 0.1 if not bop_cerrado else 0
+    ecd = densidad_actual + (apl / (0.052 * prof * 3.28)) if prof > 0 else densidad_actual
+
+    return {
+        "ROP": round(rop, 2),
+        "SPP": round(spp_base, 2),
+        "ECD": round(ecd, 2),
+        "PH": round(ph, 0),
+        "Torque": round(torque, 2),
+        "Carga_Gancho": round((150 + (prof * 0.025)) - wob, 1),
+        "Influjo": round(influjo, 2),
+        "Presion_Casing": round(presion_casing, 0),
+        "P_Formacion": round(presion_formacion, 0)
+    }
