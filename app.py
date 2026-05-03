@@ -5,14 +5,7 @@ import motor_perforacion as motor
 import control_operativo as control
 import visual_pro as vis
 import sarta_pro as sarta # Importamos el nuevo módulo
-
-# 1. CONFIGURACIÓN E IDENTIDAD (MENFA)
-st.set_page_config(layout="wide", page_title="MENFA Drilling Sim 3.0", page_icon="assets/logo_menfa.png")
-
-# --- 2. SISTEMA DE SEGURIDAD (Persistente) ---
-CLAVE_ALUMNO = "menfa2026"
-CLAVE_INSTRUCTOR = "admin_mza"
-
+# --- 2. SISTEMA DE SEGURIDAD (Optimizado) ---
 if "auth" not in st.session_state:
     st.session_state.auth = False
     st.session_state.rol = None
@@ -24,21 +17,35 @@ if not st.session_state.auth:
         input_pass = st.text_input("Código de Seguridad:", type="password")
         if st.button("CONECTAR CON LA CABINA", use_container_width=True):
             if input_pass == CLAVE_INSTRUCTOR:
-                st.session_state.auth, st.session_state.rol, st.session_state.usuario = True, "instructor", "Fabricio Pizzolato" 
+                st.session_state.auth = True
+                st.session_state.rol = "instructor"
+                st.session_state.usuario = "Fabricio Pizzolato"
                 st.rerun()
             elif input_pass == CLAVE_ALUMNO:
-                st.session_state.auth, st.session_state.rol, st.session_state.usuario = True, "alumno", "Operador en Evaluación"
+                st.session_state.auth = True
+                st.session_state.rol = "alumno"
+                st.session_state.usuario = "Operador en Evaluación"
                 st.rerun()
-            else: st.error("Código inválido.")
+            else:
+                st.error("Código inválido.")
+    st.stop() # Bloquea el resto del script hasta estar autenticado
+
+# --- 3. CONEXIÓN A LA PIZARRA (Con manejo de errores) ---
+try:
+    piz = pm.conectar_pizarra()
+except Exception as e:
+    st.error(f"Error de conexión con la base de datos: {e}")
     st.stop()
 
-# --- 3. CONEXIÓN A LA VERDADERA PIZARRA ---
-piz = pm.conectar_pizarra()
-
-# 4. FILTRO DE CONFIGURACIÓN
+# --- 4. FILTRO DE CONFIGURACIÓN (Evitar pantalla negra) ---
+# Si no está configurado, mostramos el selector pero NO detenemos todo el flujo visual
 if not piz.get("configurado"):
+    st.warning("⚠️ El sistema requiere configuración inicial del yacimiento.")
     pm.selector_yacimiento_mendoza(piz)
-    st.stop()
+    # Importante: No ponemos st.stop() aquí si queremos que el instructor vea algo
+    if st.session_state.rol == "alumno":
+        st.info("Esperando que el instructor configure el pozo...")
+        st.stop()
 
 # 5. PROCESAMIENTO TÉCNICO
 datos_fisica = motor.calcular_todo(piz)
