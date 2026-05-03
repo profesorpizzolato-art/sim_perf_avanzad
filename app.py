@@ -47,55 +47,58 @@ if not st.session_state.auth:
 try:
     piz = pm.conectar_pizarra()
 except Exception:
-    # Si falla, creamos una estructura base de perforación
     piz = {
         "configurado": False, 
         "profundidad_actual": 0.0, 
-        "tvd_target": 2500.0, 
+        "tvd_target": 3500.0, 
         "bop_cerrado": False, 
         "volumen_piletas": 500.0,
         "influjo_instructor": 0.0,
         "inclinacion": 0.0,
-        "azimut": 0.0
+        "azimut": 0.0,
+        "yacimiento": "No Definido"
     }
     st.sidebar.error("⚠️ Pizarra inicializada en modo seguro.")
 
-# 4. FILTRO DE CONFIGURACIÓN DEL YACIMIENTO (Mendoza Focus)
+# 4. FILTRO DE CONFIGURACIÓN DEL YACIMIENTO
+# Corregido para asegurar que el alumno pase una vez que el instructor active
 if not piz.get("configurado"):
     st.warning("⚠️ El sistema requiere configuración inicial del yacimiento.")
     
     if st.session_state.rol == "instructor":
-        pm.selector_yacimiento_mendoza(piz)
-        if st.button("🚀 ACTIVAR OPERACIONES"):
+        # Botón de arranque forzado con datos de Mendoza
+        if st.button("🚀 ACTIVAR OPERACIONES (ARRANQUE RÁPIDO)"):
             piz["configurado"] = True
+            piz["profundidad_actual"] = 1200.0  # Empezamos ya en profundidad
+            piz["tvd_target"] = 3500.0
+            piz["yacimiento"] = "Vaca Muerta - Mendoza"
             pm.actualizar_fichero(piz)
             st.rerun()
+            
+        pm.selector_yacimiento_mendoza(piz)
     else:
         st.info("Esperando que el instructor configure el pozo...")
+        # Botón de refresco manual para el alumno
+        if st.button("🔄 Verificar Estado del Pozo"):
+            st.rerun()
         st.stop()
 
 # 5. CÁLCULOS TÉCNICOS Y API 5DP
-# Procesamos la física del motor y la resistencia de la sarta
 datos_fisica = motor.calcular_todo(piz)
 resistencia = sarta.modulo_sartas_api(piz) 
 
-# Integramos datos de carga en el gancho
 datos_fisica["hook_load"] = resistencia.get("hook_load", 0)
 datos_fisica["max_yield"] = resistencia.get("max_yield", 0)
 
 # 6. LÓGICA DE AVANCE Y WELL CONTROL
 if not piz.get("bop_cerrado"):
-    # Avance de perforación
     rop_actual = datos_fisica.get("ROP", 0)
     if rop_actual > 0:
-        avance = (rop_actual / 3600) * 15 # Factor de tiempo simulado
-        piz["profundidad_actual"] = round(piz.get("profundidad_actual", 0) + avance, 4) 
-        piz["inclinacion"] = datos_fisica.get("nueva_inclinacion", piz.get("inclinacion", 0))
-        piz["tvd"] = datos_fisica.get("TVD", piz.get("tvd", 0))
+        avance = (rop_actual / 3600) * 10 
+        piz["profundidad_actual"] = round(float(piz.get("profundidad_actual", 0)) + avance, 4) 
     
-    # Simulación de Influjo (Kick)
     influjo_rate = piz.get("influjo_instructor", 0) 
-    piz["volumen_piletas"] += (influjo_rate * 0.1)
+    piz["volumen_piletas"] = float(piz.get("volumen_piletas", 500.0)) + (influjo_rate * 0.1)
     datos_fisica["Influjo"] = influjo_rate 
 
 # Guardar estado actual
@@ -103,18 +106,19 @@ pm.actualizar_fichero(piz)
 
 # 7. INTERFAZ DE USUARIO (DASHBOARD)
 st.sidebar.title(f"👤 {st.session_state.usuario}")
+st.sidebar.info(f"📍 Yacimiento: {piz.get('yacimiento', 'Mendoza')}")
 
-# Barra de progreso al objetivo
-meta = piz.get("tvd_target", 2500.0)
-prof_actual = piz.get("profundidad_actual", 0.0)
-st.progress(min(prof_actual / max(meta, 1), 1.0), text=f"Progreso: {prof_actual:.2f} m / {meta} m")
+# Barra de progreso - Con protección contra división por cero
+meta = float(piz.get("tvd_target", 3500.0))
+if meta <= 0: meta = 3500.0 # Valor de seguridad
+prof_actual = float(piz.get("profundidad_actual", 0.0))
+progreso_porcentaje = min(prof_actual / meta, 1.0)
+st.progress(progreso_porcentaje, text=f"Progreso: {prof_actual:.2f} m / {meta} m")
 
 # Renderizado según Rol
 if st.session_state.rol == "alumno":
-    # Cabina con manómetros y controles de perforador
     vis.renderizar_cabina_perforador(piz, datos_fisica)
 else:
-    # Panel de Instructor para simular fallas y Well Control
     tab1, tab2, tab3 = st.tabs(["🎮 Control de Pozo", "🔩 Ingeniería de Sarta", "📊 Monitor en Tiempo Real"])
     with tab1:
         control.panel_instructor(piz)
@@ -132,6 +136,6 @@ if st.sidebar.button("Cerrar Sesión"):
     st.session_state.auth = False
     st.rerun()
 
-# Refresco automático para simulación en tiempo real
-time.sleep(0.5)
+# Refresco automático cada 1 segundo
+time.sleep(1)
 st.rerun()
