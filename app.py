@@ -13,14 +13,7 @@ import motor_calculos_avanzados as motor
 import geonavegacion_pro as geo
 import torque_and_drag as td
 import bombas_de_lodo as bombas
-try:
-    import sartas_perforacion as sartas
-except ImportError:
-    st.sidebar.warning("⚠️ Módulo de sartas no encontrado. Usando cálculos genéricos.")
-    # Creamos un objeto falso para que el resto del código no explote
-    class MockSartas:
-        def modulo_sartas_api(self, p): return {"hook_load": 180}
-    sartas = MockSartas()
+import sartas_perforacion as sartas
 import sys
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
