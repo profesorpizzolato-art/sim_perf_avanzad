@@ -1,127 +1,1189 @@
 import streamlit as st
+import pandas as pd
+import numpy as np
 import time
+import base64
 import os
-import json
+from datetime import datetime
+from fpdf import FPDF
+from streamlit_autorefresh import st_autorefresh
+import io
+# --- IMPORTACIÓN DE TUS MÓDULOS TÉCNICOS (FILES) ---
+import motor_calculos_avanzados as motor
+import geonavegacion_pro as geo
+import torque_and_drag as td
+import bombas_de_lodo as bombas
+import sartas_perforacion as sartas
+import sys
+import plotly.graph_objects as go
+import streamlit.components.v1 as components
+# --- 1. INICIALIZACIÓN BLINDADA (Colocar justo después de los imports) ---
+import random
+from streamlit_autorefresh import st_autorefresh
 
-# Importación de tus módulos técnicos de MENFA
-import pizarra_maestra as pm
-import motor_perforacion as motor
-import control_operativo as control
-import visual_pro as vis
-import sarta_pro as sarta
 
-# 1. CONFIGURACIÓN E IDENTIDAD INSTITUCIONAL
-st.set_page_config(
-    layout="wide", 
-    page_title="MENFA Drilling Sim 3.0", 
-    page_icon="assets/logo_menfa.png"
-)
-
-# 2. GESTIÓN DE SESIÓN
-if "auth" not in st.session_state:
-    st.session_state.auth = False
-    st.session_state.rol = None
-    st.session_state.usuario = None
-
-# Pantalla de Login (Sin cambios, funciona perfecto)
-if not st.session_state.auth:
-    st.markdown("<h1 style='text-align: center; color:#00ffcc;'>🛡️ MENFA 3.0 | ACCESO AL RIG</h1>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 1.2, 1])
-    with c2:
-        input_pass = st.text_input("Código de Seguridad:", type="password")
-        if st.button("CONECTAR CON LA CABINA", use_container_width=True):
-            if input_pass == "admin_mza":
-                st.session_state.auth, st.session_state.rol, st.session_state.usuario = True, "instructor", "Fabricio Pizzolato"
-                st.rerun()
-            elif input_pass == "menfa2026":
-                st.session_state.auth, st.session_state.rol, st.session_state.usuario = True, "alumno", "Operador en Evaluación"
-                st.rerun()
-            else:
-                st.error("Código inválido.")
-    st.stop()
-
-# 3. CONEXIÓN A LA PIZARRA (CON PERSISTENCIA)
-try:
-    piz = pm.conectar_pizarra()
-    # Si el archivo existe pero está vacío o corrupto, lanzamos error para ir al except
-    if not piz or not isinstance(piz, dict):
-        raise ValueError("Pizarra vacía")
-except Exception:
-    # Mantenemos los valores de la captura image_5df6b7.png para no perder el progreso
-    piz = {
-        "configurado": True, 
-        "profundidad_actual": 1200.0, 
-        "tvd_target": 3500.0, 
-        "bop_cerrado": False, 
-        "volumen_piletas": 500.0,
-        "influjo_instructor": 0.0,
-        "yacimiento": "Vaca Muerta - Mendoza",
-        "orden": "Sin órdenes pendientes"
+# --- 1. MEMORIA COMPARTIDA ÚNICA (SERVIDOR) ---
+@st.cache_resource
+def conectar_pizarra_maestra():
+    return {
+        "profundidad_actual": 2500.0,
+        "caudal_maestro": 500.0,
+        "wob_maestro": 0.0,
+        "rpm_maestro": 0.0,
+        "torque_maestro": 0.0,
+        "presion_base": 1200.0,
+        "densidad_maestra": 10.2,
+        "piletas_nivel": 450.0,
+        "evento_activo": None,
+        "alarma_activa": False,
+        "bop_cerrado": False,
+        "mensaje_evento": "Operación Normal",
+        "alumnos_activos": {}
     }
 
-# 4. FILTRO DE CONFIGURACIÓN (Mendoza Focus)
-if not piz.get("configurado"):
-    if st.session_state.rol == "instructor":
-        st.warning("⚠️ Configuración pendiente.")
-        pm.selector_yacimiento_mendoza(piz)
-        if st.button("🚀 ACTIVAR OPERACIONES"):
-            piz["configurado"] = True
-            piz["profundidad_actual"] = 1200.0
-            pm.actualizar_fichero(piz)
+# ESTO DEBE IR FUERA DE LA FUNCIÓN
+piz = conectar_pizarra_maestra()
+pizarra = piz
+# Contraseña única para la clase del 17 de abril
+PASSWORD_ALUMNO = "alumno2026"
+
+USUARIOS_ALUMNOS = {
+    "Usubiaga": PASSWORD_ALUMNO,
+    "Flores": PASSWORD_ALUMNO,
+    "Moya": PASSWORD_ALUMNO,
+    "Perez": PASSWORD_ALUMNO,
+    "Paredes": PASSWORD_ALUMNO,
+    "Casanueva": PASSWORD_ALUMNO,
+    "Pizzolato": PASSWORD_ALUMNO,
+    "Villalba": PASSWORD_ALUMNO,
+    "Invitado": PASSWORD_ALUMNO
+}
+# --- FUNCIONES DE APOYO (DEBEN IR ARRIBA) ---
+def crear_manometro(valor, titulo, unidad, max_val, color):
+    import plotly.graph_objects as go
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=valor,
+        title={'text': f"{titulo} ({unidad})"},
+        gauge={
+            'axis': {'range': [0, max_val]},
+            'bar': {'color': color},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "gray",
+        }
+    ))
+    fig.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20))
+    return fig
+# Lista de variables necesarias para que la app no explote
+variables_necesarias = {
+    "pizarra": {
+        "wob_maestro": 0.0, "rpm_maestro": 0.0, "caudal_maestro": 500.0,
+        "densidad_maestra": 10.2, "presion_base": 1200.0,
+        "profundidad_actual": 2500.0, "evento_activo": None,
+        "piletas_nivel": 500.0, "bop_cerrado": False
+    },
+    "ultima_falla": time.time(),
+    "inicio_falla": None,
+    "tiempo_respuesta": 0,
+    "mensaje_alerta": "Operación Normal"
+}
+
+# Creamos las variables si no existen
+for clave, valor_defecto in variables_necesarias.items():
+    if clave not in st.session_state:
+        st.session_state[clave] = valor_defecto
+
+# Acceso directo para facilitar el código
+piz = st.session_state.pizarra
+# Esto le dice a Python que busque módulos en la carpeta donde está app.py
+sys.path.append(os.path.dirname(__file__))
+import streamlit as st
+import bombas_de_lodo as bombas  # Ahora debería encontrarlo
+# --- REPORTE DEL ALUMNO AL RADAR ---
+if st.session_state.get("rol") == "alumno":
+    nombre_alumno = st.session_state.get("usuario", "Invitado")
+    
+    # ESTA LÍNEA ASEGURA QUE EL DICCIONARIO EXISTA (Evita el KeyError)
+    if "alumnos_activos" not in piz:
+        piz["alumnos_activos"] = {}
+
+    # Ahora guardamos los datos de forma segura
+    piz["alumnos_activos"][nombre_alumno] = {
+        "Profundidad": f"{piz.get('profundidad_actual', 0):.2f} m",
+        "BOP": "CERRADO" if piz.get("bop_cerrado", False) else "ABIERTO",
+        "Estado": piz.get("mensaje_evento", "Operación Normal"),
+        "Última Conexión": datetime.now().strftime("%H:%M:%S")
+    }
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="MENFA 3.0 - Mendoza Oil Industry", layout="wide", page_icon="🏗️")
+# --- SISTEMA DE LATIDO ÚNICO (Evita DuplicateElementKey) ---
+if st.session_state.get("autenticado"):
+    # Generamos una key única usando el nombre del usuario
+    nombre_seguro = st.session_state.get("usuario", "anonimo").replace(" ", "_")
+    key_refresco = f"latido_{nombre_seguro}"
+        # Solo un autorefresh en toda la app
+    st_autorefresh(interval=2000, key=key_refresco)
+# 1. Los imports SIEMPRE al principio del bloque o del archivo
+import streamlit.components.v1 as components
+
+# 2. Corregimos el bloque de autenticación
+if "autenticado" in st.session_state and st.session_state.autenticado:
+    if st.session_state.get("rol") == "alumno":
+        # Agregamos el refresco para que no quede vacío el if
+        st_autorefresh(interval=2000, key=f"refresco_{st.session_state.usuario}")
+    else:
+        # Si es instructor, no hace nada o puedes poner pass
+        pass
+# 3. La función de la alarma (fuera de los if)
+def disparar_alarma_sonora():
+    ruta_audio = "assets/alarma.mp3" 
+    if os.path.exists(ruta_audio):
+        with open(ruta_audio, "rb") as f:
+            data = f.read()
+            b64 = base64.b64encode(data).decode()
+            html_audio = f"""
+                <audio autoplay loop>
+                    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                </audio>
+            """
+            components.html(html_audio, height=0, width=0)
+    else:
+        st.error(f"⚠️ Archivo de audio no encontrado en: {ruta_audio}")
+# --- 3. LÓGICA DE AUDIO (ALARMAS) ---
+def reproducir_alarma_critica():
+    if os.path.exists("assets/alarma.mp3"):
+        with open("assets/alarma.mp3", "rb") as f:
+            data = f.read()
+            b64 = base64.b64encode(data).decode()
+            html = f'<audio autoplay loop><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>'
+            st.components.v1.html(html, height=0)
+
+# --- 4. CONTROL DE ACCESO (FABRICIO VS ALUMNOS) ---
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+
+if not st.session_state.autenticado:
+    col_l, col_c, col_r = st.columns([1, 2, 1])
+    with col_c:
+        st.image("logo.menfa.png", use_container_width=True)
+        st.markdown("<h2 style='text-align: center;'>SISTEMA DE ENTRENAMIENTO v3.0</h2>", unsafe_allow_html=True)
+        
+        tab1, tab2 = st.tabs(["🎓 Acceso Alumnos", "👨‍🏫 Instructor"])
+        with tab1:
+            with st.form("alumno_login"):
+                u = st.text_input("Nombre y Apellido (Tal cual figura en lista)")
+                c = st.text_input("Contraseña Individual", type="password")
+                if st.form_submit_button("Ingresar"):
+                    # Verificamos si el nombre existe y la clave coincide
+                    if u in USUARIOS_ALUMNOS and USUARIOS_ALUMNOS[u] == c:
+                        st.session_state.autenticado = True
+                        st.session_state.usuario = u
+                        st.session_state.rol = "alumno"
+                        st.rerun()
+                    else:
+                        st.error("❌ Nombre o Clave incorrectos. Contacte al instructor.")
+        with tab2:
+            with st.form("profe_login"):
+                cp = st.text_input("Clave Maestro", type="password")
+                if st.form_submit_button("Acceso Administrativo"):
+                    if cp == "menfa2026":
+                        st.session_state.autenticado, st.session_state.usuario, st.session_state.rol = True, "Inst. Fabricio Pizzolato", "instructor"
+                        st.rerun()
+    st.stop()
+# --- CONEXIÓN Y ALARMA ---
+if st.session_state.get("autenticado"):
+    # 1. El alumno se reporta y escucha
+    if st.session_state.rol == "alumno":
+        nombre = st.session_state.usuario
+        piz.setdefault("alumnos_activos", {})
+        
+        # El alumno escribe su estado en la pizarra
+        piz["alumnos_activos"][nombre] = {
+            "Profundidad": f"{piz.get('profundidad_actual', 0):.2f} m",
+            "Estado": piz.get("mensaje_evento", "Normal"),
+            "Hora": datetime.now().strftime("%H:%M:%S")
+        }
+        # Refresco cada 2 segundos para recibir tus órdenes
+        st_autorefresh(interval=2000, key=f"ref_alu_{nombre}")
+
+    # 2. DISPARADOR DE ALARMA (Para todos)
+    if piz.get("alarma_activa", False):
+        disparar_alarma_sonora()
+        st.warning(f"🚨 ¡ATENCIÓN! {piz.get('mensaje_evento', 'ALERTA EN POZO')}")
+# --- 5. INTERFAZ PRINCIPAL (SIDEBAR UNIFICADO) ---
+with st.sidebar:
+    st.image("logo.menfa.png", use_container_width=True)
+    st.title(f"👤 {st.session_state.get('usuario', 'Invitado')}")
+    st.write(f"Rol: {st.session_state.get('rol', 'alumno').capitalize()}")
+
+    # --- CASO A: VISTA DEL INSTRUCTOR ---
+    if st.session_state.get("rol") == "instructor":
+        st.divider()
+        st.header("👨‍🏫 Panel del Instructor")
+    if st.session_state.get("rol") == "instructor":
+        if st.sidebar.button("🔊 Probar Sonido de Alarma"):
+            piz["alarma_activa"] = True
+            st.rerun()  
+       # 1. MONITOR DE ALUMNOS (TORRE DE CONTROL)
+        st.subheader("🖥️ Monitor de Alumnos")
+        
+        # Contenedor vacío para refresco limpio
+        placeholder_radar = st.empty()
+        
+        with placeholder_radar.container():
+            if piz.get("alumnos_activos"):
+                import pandas as pd
+                # Filtramos para mostrar solo los datos más importantes en la tabla
+                df_radar = pd.DataFrame.from_dict(piz["alumnos_activos"], orient='index')
+                st.dataframe(df_radar, use_container_width=True)
+                
+                if st.button("🔴 Resetear Radar"):
+                    piz["alumnos_activos"] = {}
+                    st.rerun()
+            else:
+                st.info("Esperando alumnos... (Pídales que ingresen con 'alumno2026')")
+
+        st.divider()
+
+        # 2. HERRAMIENTAS DE SISTEMA
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            if st.button("🧹 Limpiar Memoria"):
+                piz.clear()
+                piz.update(conectar_pizarra_maestra())
+                st.rerun()
+        with col_s2:
+            if st.button("🔄 Reset Eventos"):
+                piz["evento_activo"] = None
+                piz["alarma_activa"] = False
+                piz["mensaje_evento"] = "Operación Normal"
+                st.rerun()
+
+        # 3. CONTROLES OPERATIVOS (SLIDERS ÚNICOS)
+        st.subheader("🕹️ Controles del Pozo")
+        piz["caudal_maestro"] = float(st.slider("Caudal (GPM)", 0, 1200, int(piz["caudal_maestro"]), 10))
+        piz["wob_maestro"] = float(st.slider("WOB (klbs)", 0, 100, int(piz["wob_maestro"]), 1))
+        piz["rpm_maestro"] = float(st.slider("RPM", 0, 200, int(piz["rpm_maestro"]), 1))
+        piz["torque_maestro"] = float(st.slider("Torque (kft-lb)", 0, 40, int(piz.get("torque_maestro", 0)), 1)
+)
+
+        st.divider()
+
+        # 4. SIMULACIÓN DE FALLAS
+        st.subheader("⚠️ Disparar Fallas")
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            if st.button("🚨 Provocar Kick"):
+                piz["evento_activo"] = "KICK"
+                piz["alarma_activa"] = True
+                piz["mensaje_evento"] = "¡SURGENCIA DETECTADA!"
+                st.rerun()
+            if st.button("⚙️ Falla Bomba"):
+                piz["evento_activo"] = "FALLA_BOMBA"
+                piz["mensaje_evento"] = "BAJA PRESIÓN EN BOMBAS"
+                st.rerun()
+        with col_f2:
+            if st.button("📉 Pérdida"):
+                piz["evento_activo"] = "PERDIDA"
+                piz["mensaje_evento"] = "PÉRDIDA DE CIRCULACIÓN"
+                st.rerun()
+            if st.button("✅ Normalizar"):
+                piz["evento_activo"] = None
+                piz["alarma_activa"] = False
+                piz["mensaje_evento"] = "Operación Normal"
+                st.rerun()
+
+    # --- CASO B: VISTA DEL ALUMNO ---
+    else:
+        st.divider()
+        st.header("🎓 Panel del Alumno")
+        st.info("Monitoreo activo. El instructor controla los parámetros.")
+        st.metric("Profundidad", f"{piz.get('profundidad_actual', 0):.2f} m")
+        st.metric("Estado", piz.get("mensaje_evento", "Normal"))
+
+    # BOTÓN COMÚN (PARA AMBOS)
+    st.divider()
+    if st.button("📊 Generar Reporte Final"):
+        st.info("Generando reporte PDF...")
+        # Aquí llamarías a tu función de PDF
+
+# --- CUERPO PRINCIPAL DE LA APP ---
+st.title("📟 Consola de Perforación Avanzada")
+# --- SINCRONIZACIÓN DE LA PIZARRA CON LA PANTALLA ---
+# Aquí "bajamos" los datos de la nube a la pantalla actual
+caudal_actual = piz.get("caudal_maestro", 0.0)
+rpm_actual = piz.get("rpm_maestro", 0.0)
+wob_actual = piz.get("wob_maestro", 0.0)
+spp_actual = piz.get("presion_base", 0.0)
+
+# Si tienes motor de cálculos, úsalos aquí
+# res = motor.calcular_perforacion(caudal_actual, rpm_actual, wob_actual)
+# Alarma visual y sonora
+if piz.get("alarma_activa", False):
+    st.error(f"🔥 {piz.get('mensaje_evento', 'ALERTA CRÍTICA')}")
+    # reproducir_alarma_critica() # Asegúrate de que esta función exista
+
+    # Panel de Emergencia para el Alumno
+    st.markdown("### 🛡️ CONTROL DE BROTES (BOP)")
+    col_b1, col_b2 = st.columns(2)
+    with col_b1:
+        if st.button("🔴 CERRAR BOP ANULAR", type="primary", use_container_width=True):
+            piz["bop_cerrado"] = True
+            piz["alarma_activa"] = False
+            piz["mensaje_evento"] = "POZO CERRADO SEGURO"
+            st.success("BOP Cerrado con éxito.")
+            st.rerun()
+    with col_b2:
+        if st.button("🔴 CERRAR RAMS", type="secondary", use_container_width=True):
+            piz["bop_cerrado"] = True
+            st.warning("Rams de tubería cerrados.")
+
+@st.fragment
+def renderizar_consola_rapida():
+    # 1. Ejecutamos el motor (Variable unificada: res_fisica)
+    res_fisica = motor.calcular_fisica_perforacion(
+        wob=piz["wob_maestro"],
+        rpm=piz["rpm_maestro"],
+        torque=piz.get("torque_maestro", 0.0),
+        profundidad=piz["profundidad_actual"],
+        flow_rate=piz["caudal_maestro"]
+    )
+    
+    # 2. Cálculos adicionales inmediatos
+    hhp = (piz["presion_base"] * piz["caudal_maestro"]) / 1714
+    
+densidad = piz.get("densidad_maestra", 10.0)
+if_force = 0.0182 * piz["caudal_maestro"] * (piz["presion_base"] * densidad)**0.5
+# --- GRÁFICOS DINÁMICOS DE TUS ARCHIVOS ---
+st.divider()
+c_gra1, c_gra2 = st.columns(2)
+
+with c_gra1:
+    st.subheader("📍 Geonavegación Pro")
+    # Llamamos a tu archivo geonavegacion_pro.py
+    fig_geo = geo.generar_grafico_trayectoria(pizarra["profundidad_actual"])
+    st.plotly_chart(fig_geo, use_container_width=True)
+
+with c_gra2:
+    st.subheader("⚙️ Torque & Drag")
+    # Llamamos a tu archivo torque_and_drag.py
+    fig_td = td.calcular_curvas_esfuerzo(pizarra["wob_maestro"], pizarra["rpm_maestro"])
+    st.plotly_chart(fig_td, use_container_width=True)
+
+st.sidebar.divider()
+
+# 1. Aseguramos que el estado del reporte exista
+if "bytes_reporte_final" not in st.session_state:
+    st.session_state.bytes_reporte_final = None
+
+# 2. Botón para GENERAR el reporte
+import io  # Asegurate de tener este import arriba de todo
+
+st.sidebar.divider()
+
+# --- DENTRO DEL BOTÓN DE INFORME ---
+pdf_rep = FPDF()
+pdf_rep.add_page()
+pdf_rep.set_font("Arial", 'B', 16)
+
+# USAR TEXTO PLANO (Sin tildes ni emojis como 📊 o 🚨)
+pdf_rep.cell(200, 10, "MENFA IPCL - REPORTE DE ENTRENAMIENTO", 0, 1, 'C')
+pdf_rep.ln(10)
+pdf_rep.set_font("Arial", '', 12)
+pdf_rep.cell(200, 10, f"Alumno: {st.session_state.get('usuario', 'Anonimo')}", 0, 1)
+pdf_rep.cell(200, 10, "Instructor: Fabricio Pizzolato", 0, 1)
+
+# Conversión final segura
+pdf_str_rep = pdf_rep.output(dest='S')
+if isinstance(pdf_str_rep, str):
+    st.session_state.bytes_reporte_final = pdf_str_rep.encode('latin-1', 'ignore')
+else:
+    st.session_state.bytes_reporte_final = pdf_str_rep
+    
+# motor_calculos_avanzados.py
+import numpy as np
+
+def calcular_metricas(presion, caudal, densidad):
+    # HHP: Potencia Hidráulica
+    hhp = (presion * caudal) / 1714
+    
+    # IF: Fuerza de Impacto
+    if_force = 0.0182 * caudal * np.sqrt(densidad * presion)
+    
+    return round(hhp, 2), round(if_force, 2)
+
+def calcular_ecd(densidad_lodo, caudal, profundidad):
+    # Simulación de pérdida por fricción anular
+    perdida_friccion = (caudal * 0.1) / 100 
+    ecd = densidad_lodo + perdida_friccion
+    return round(ecd, 2)
+
+# geonavegacion_pro.py
+import plotly.graph_objects as go
+import numpy as np
+
+def generar_grafico_trayectoria(profundidad_actual):
+    # Creamos una trayectoria ficticia basada en la profundidad real
+    z = np.linspace(0, profundidad_actual, 100)
+    x = np.sin(z/500) * 50 # Desvío lateral
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=z, name="Trayectoria Real", line=dict(color='lime', width=4)))
+    
+    fig.update_layout(
+        title="Perfil de Pozo (Vaca Muerta)",
+        yaxis=dict(autorange="reversed", title="Profundidad (m)"),
+        xaxis=dict(title="Desplazamiento Lateral (m)"),
+        template="plotly_dark"
+    )
+    return fig
+
+# --- DENTRO DE LA VISTA DEL ALUMNO ---
+st.header("📊 Monitor de Perforación en Tiempo Real")
+
+# --- EN EL LÓGICA DEL ALUMNO ---
+# 1. Llamamos al motor de física (asegúrate de tener 'import motor_calculos_avanzados as motor')
+res = motor.calcular_fisica_perforacion(
+    wob=pizarra["wob_maestro"],
+    rpm=pizarra["rpm_maestro"],
+    torque = pizarra.get("torque_maestro", 0.0),
+    profundidad=pizarra["profundidad_actual"],
+    flow_rate=pizarra["caudal_maestro"]
+)
+# --- 1. CÁLCULOS (Esto ya lo tenés) ---
+res = motor.calcular_fisica_perforacion(
+    wob=pizarra["wob_maestro"],
+    rpm=pizarra["rpm_maestro"],
+    torque=pizarra.get("torque_maestro", 0.0),
+    profundidad=pizarra["profundidad_actual"],
+    flow_rate=pizarra["caudal_maestro"]
+)
+
+# --- 2. DEFINICIÓN DE PESTAÑAS (Aquí va el código nuevo) ---
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🎮 Consola Principal", 
+    "🛡️ BOP & Control", 
+    "🧪 Lodos y Tanques", 
+    "🛰️ Geonavegación"
+])
+import plotly.graph_objects as go
+
+def crear_manometro(valor, titulo, unidad, max_val, color_linea):
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = valor,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': f"<b>{titulo}</b><br><span style='font-size:0.8em;color:gray'>{unidad}</span>", 'font': {'size': 18}},
+        gauge = {
+            'axis': {'range': [None, max_val], 'tickwidth': 1, 'tickcolor': "white"},
+            'bar': {'color': color_linea},
+            'bgcolor': "rgba(0,0,0,0)",
+            'borderwidth': 2,
+            'bordercolor': "#555",
+            'steps': [
+                {'range': [0, max_val*0.8], 'color': 'rgba(0, 255, 0, 0.1)'},
+                {'range': [max_val*0.8, max_val], 'color': 'rgba(255, 0, 0, 0.3)'}
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': max_val * 0.9
+            }
+        }
+    ))
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=20, r=20, t=50, b=20),
+        height=250,
+        font={'color': "white", 'family': "Arial"}
+    )
+    return fig
+# --- 3. CONTENIDO DE CADA PESTAÑA ---
+
+with tab1:
+    st.subheader("Tablero de Perforación en Tiempo Real")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.plotly_chart(
+            crear_manometro(res["ROP"], "Velocidad ROP", "m/hr", 60, "lime"), 
+            use_container_width=True, 
+            key="gauge_rop"  # <-- ID Único 1
+        )
+        
+    with col2:
+        st.plotly_chart(
+            crear_manometro(res["MSE"], "Eficiencia MSE", "kpsi", 100, "orange"), 
+            use_container_width=True, 
+            key="gauge_mse"  # <-- ID Único 2
+        )
+        
+    with col3:
+        st.plotly_chart(
+            crear_manometro(res["HOOK_LOAD"], "Peso en Gancho", "klbs", 600, "white"), 
+            use_container_width=True, 
+            key="gauge_hook" # <-- ID Único 3
+        )
+with tab2:
+    import bop_panel as bop # Importamos tu módulo de BOP
+with tab2:
+    import bop_panel as bop 
+    st.header("🛡️ Sistema de Seguridad de Pozo")
+    
+    # Cambiamos 'mostrar_interfaz_bop' por 'render_bop_ui'
+    bop.render_bop_ui(pizarra)   
+with tab3:
+    import gestion_perdidas as gp
+    st.header("🧪 Control de Piletas y Lodos")
+    # Aquí graficaremos los niveles de los tanques
+    gp.render_tanques(pizarra)
+
+with tab4:
+    import geonavegacion_pro as geo
+    st.header("🛰️ Trayectoria en Vaca Muerta")
+    fig_geo = geo.generar_grafico_trayectoria(pizarra["profundidad_actual"])
+    st.plotly_chart(fig_geo, use_container_width=True, key="grafico_geo_tab4")
+    import plotly.graph_objects as go
+
+def crear_reloj(valor, titulo, unidad, max_val, color_linea):
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = valor,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': f"<b>{titulo}</b><br><span style='font-size:0.8em;color:gray'>{unidad}</span>"},
+        gauge = {
+            'axis': {'range': [None, max_val], 'tickwidth': 1, 'tickcolor': "white"},
+            'bar': {'color': color_linea},
+            'bgcolor': "rgba(0,0,0,0)",
+            'borderwidth': 2,
+            'bordercolor': "#444",
+            'steps': [
+                {'range': [0, max_val*0.8], 'color': 'rgba(0, 255, 0, 0.1)'},
+                {'range': [max_val*0.8, max_val], 'color': 'rgba(255, 0, 0, 0.2)'}
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': valor
+            }
+        }
+    ))
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=30, r=30, t=50, b=30),
+        height=280,
+        font={'color': "white", 'family': "Arial"}
+    )
+    return fig
+# 2. Dibujamos los manómetros usando tu nueva función
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.plotly_chart(
+        crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), 
+        use_container_width=True,
+        key="gauge_rop_main" # <--- AGREGAR ESTO
+    )
+
+with col2:
+    st.plotly_chart(
+        crear_manometro(res["MSE"], "MSE", "kpsi", 100, "orange"), 
+        use_container_width=True,
+        key="gauge_mse_main" # <--- AGREGAR ESTO
+    )
+
+with col3:
+    st.plotly_chart(
+        crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 600, "white"), 
+        use_container_width=True,
+        key="gauge_hook_main" # <--- AGREGAR ESTO
+    )
+# --- CÁLCULOS DE POTENCIA HIDRÁULICA (Antes de los relojes) ---
+# La fórmula es: (Presión * Caudal) / 1714
+presion = pizarra.get("presion_base", 0)
+caudal = pizarra.get("caudal_maestro", 0)
+
+hhp_actual = (presion * caudal) / 1714
+
+# Ahora sí, el reloj de la línea 433 va a funcionar:
+st.plotly_chart(crear_manometro(hhp_actual, "Potencia", "HHP", 2000, "purple"), key="hhp_gauge")
+# Actualizamos la profundidad en la pizarra automáticamente (Simulando el avance)
+if not pizarra["bop_cerrado"] and res["ROP"] > 1:
+    pizarra["profundidad_actual"] += (res["ROP"] / 3600) # Avance por segundo
+# 2. Mostramos los Gauges (Relojes)
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.plotly_chart(crear_manometro(pizarra["presion_base"], "Presión SPP", "PSI", 5000, "red"), key="p1_main")
+with col2:
+    # Usamos hhp_actual que calculaste arriba
+    st.plotly_chart(crear_manometro(hhp_actual, "Potencia", "HHP", 2000, "purple"), key="hhp_main")
+with col3:
+    st.plotly_chart(crear_manometro(pizarra["rpm_maestro"], "Rotación", "RPM", 200, "green"), key="rpm_main")
+# --- ASÍ DEBE QUEDAR LA LÍNEA 535 ---
+st.plotly_chart(
+    geo.generar_grafico_trayectoria(pizarra["profundidad_actual"]), 
+    key="grafico_trayectoria_direccional" # Este es el DNI único
+)
+# --- DENTRO DEL LÓGICA DEL ALUMNO EN app.py ---
+
+st.markdown("### 📊 MONITOREO DE PARÁMETROS EN TIEMPO REAL")
+
+fila1_col1, fila1_col2, fila1_col3 = st.columns(3)
+
+with fila1_col3:
+    # Leemos el valor directamente de la pizarra
+    valor_torque = piz.get("torque_maestro", 0.0)
+    
+    st.plotly_chart(
+        crear_manometro(
+            valor_torque, 
+            "Torque en Mesa", 
+            "kft-lb", 
+            40,       # Límite del reloj
+            "#ffcc00" # Color ámbar/amarillo
+        ), 
+        use_container_width=True, 
+        key="gauge_torque_final" # Key única para que no se pise
+    )
+with fila1_col1:
+    # Manómetro de Presión (Usa la variable de la pizarra)
+    st.plotly_chart(
+        crear_manometro(spp_actual, "Presión Standpipe", "PSI", 5000, "#ff4b4b"), 
+        use_container_width=True,
+        key="gauge_spp_alumno" 
+    )
+
+with fila1_col2:
+    # Manómetro de Caudal (Este reaccionará a tu slider de instructor)
+    st.plotly_chart(
+        crear_manometro(caudal_actual, "Caudal de Bomba", "GPM", 1200, "#00d4ff"), 
+        use_container_width=True,
+        key="gauge_caudal_alumno"
+    )
+
+fila2_col1, fila2_col2, fila2_col3 = st.columns(3)
+
+with fila2_col1:
+    # Este reaccionará a tu slider de RPM
+    st.plotly_chart(
+        crear_manometro(rpm_actual, "Rotación (RPM)", "rev/min", 200, "#00ff88"), 
+        use_container_width=True,
+        key="gauge_rpm_alumno"
+    )
+
+with fila2_col2:
+    # Este reaccionará a tu slider de WOB
+    st.plotly_chart(
+        crear_manometro(wob_actual, "Peso (WOB)", "klbs", 60, "#a64dff"), 
+        use_container_width=True,
+        key="gauge_wob_alumno"
+    )
+
+with fila2_col3:
+    st.plotly_chart(
+        crear_manometro(piz.get("densidad_maestra", 10.0), "Densidad Lodo", "ppg", 20, "#ffffff"), 
+        use_container_width=True,
+        key="gauge_densidad_alumno"
+    )
+# --- Lógica de Profundidad ---
+if not pizarra["bop_cerrado"] and res.get("ROP", 0) > 1:
+    pizarra["profundidad_actual"] += (res["ROP"] / 3600)
+
+import streamlit as st
+
+def render_bop_ui(pizarra):
+    st.markdown("---")
+    st.markdown("<h2 style='text-align: center; color: #ff4b4b;'>🛡️ CONSOLA DE CONTROL DE SURGENCIAS (BOP)</h2>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("⭕ CERRAR ANULAR", type="primary", use_container_width=True):
+            pizarra["bop_cerrado"] = True
+            pizarra["alarma_activa"] = False
+            pizarra["mensaje_evento"] = f"✅ Pozo Cerrado (Anular) por {st.session_state.usuario}"
+            st.success("Anular Cerrado")
+
+    with col2:
+        if st.button("🚫 PIPE RAMS", type="secondary", use_container_width=True):
+            pizarra["bop_cerrado"] = True
+            pizarra["alarma_activa"] = False
+            pizarra["mensaje_evento"] = f"✅ Pozo Cerrado (Rams) por {st.session_state.usuario}"
+            st.success("Pipe Rams Cerrados")
+
+    with col3:
+        if st.button("✂️ BLIND RAMS (Corte)", type="secondary", use_container_width=True):
+            pizarra["bop_cerrado"] = True
+            pizarra["alarma_activa"] = False
+            pizarra["mensaje_evento"] = "❗ POZO SELLADO (CORTE DE SARTA)"
+            st.warning("Sarta Cortada - Pozo Sellado")
+
+import plotly.graph_objects as go
+# --- SISTEMA DE EVENTOS CRÍTICOS ---
+# 1. Lógica de Surgencia (Kick)
+if st.sidebar.button("🚨 ACTIVAR KICK (SURGENCIA)"):
+    pizarra["alarma_activa"] = True
+    st.session_state.tipo_evento = "KICK"
+
+if st.session_state.get("tipo_evento") == "KICK":
+    # La presión sube 5 psi por segundo si no cierran el BOP
+    if not pizarra["bop_cerrado"]:
+        # ESTAS LÍNEAS AHORA TIENEN LA SANGRÍA CORRECTA
+        pizarra["presion_base"] = pizarra.get("presion_base", 0) + 5
+        st.error("⚠️ ¡AUMENTO DE PRESIÓN EN TUBING! ¡CERRAR BOP!")
+    else:
+        st.success("✅ POZO CERRADO. CALCULAR KILL MUD WEIGHT.")
+
+# 2. Lógica de Pérdida de Circulación
+if st.sidebar.button("📉 ACTIVAR PÉRDIDA DE RETORNO"):
+    st.session_state.tipo_evento = "PERDIDA"
+
+if st.session_state.get("tipo_evento") == "PERDIDA":
+    # Asumiendo que 'res' es el diccionario de tus resultados de cálculo
+    if "AV" in res:
+        res["AV"] = res["AV"] * 0.4 
+    st.warning("📉 PÉRDIDA DE CIRCULACIÓN DETECTADA EN FORMACIÓN")
+
+# 3. Lógica de Falla de Bomba
+if st.sidebar.button("⚙️ FALLA BOMBA 1"):
+    st.session_state.tipo_evento = "FALLA_BOMBA"
+
+if st.session_state.get("tipo_evento") == "FALLA_BOMBA":
+    pizarra["caudal_maestro"] = pizarra.get("caudal_maestro", 0) * 0.5
+    st.error("💥 FALLA EN VÁLVULA DE BOMBA 1. CAUDAL REDUCIDO AL 50%")
+    
+# --- LÓGICA DE DETECCIÓN DE KICK (Línea 689 Corregida) ---
+umbral_alarma = 5000  
+
+# Usamos .get() para que si no existe, devuelva 0 y no se rompa la app
+presion_actual = piz.get("presion_base", 0) 
+
+if presion_actual > umbral_alarma:
+    st.error(f"🚨 ¡ALERTA! PRESIÓN CRÍTICA EN BOCA DE POZO: {presion_actual} PSI")
+    
+    # IMPORTANTE: Usamos la variable de la pizarra para disparar el sonido
+    if piz.get('alarma_activa', False):
+        disparar_alarma_sonora()
+        
+    # Visualmente podemos hacer que la pantalla "parpadee" usando markdown
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-color: #440000;
+            transition: background-color 0.5s;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    # Volver al color normal si la presión baja
+    st.markdown(
+        """
+        <style>
+        .stApp { background-color: transparent; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
+# --- 4. INTERFAZ DE USUARIO (TABS) ---
+# Asegurate de que esto esté fuera de cualquier otro bloque 'with'
+with tab4:
+    st.subheader("🛰️ Navegación en el Target")
+    
+# --- 2. SEGUNDO: Asignamos la variable local (ESTO EVITA EL NAMEERROR) ---
+# Usamos el mismo nombre que intentas llamar en la línea 174
+pizarra = st.session_state.pizarra 
+piz = st.session_state.pizarra  # Creamos 'piz' también por si lo usas más abajo
+# 2. SEGUNDO: Creamos los tabs
+tab1, tab2, tab3, tab4 = st.tabs(["🎮 Consola", "🛡️ BOP", "🧪 Lodos", "🛰️ Geo"])
+
+with tab1:
+    # Acá piz ya funciona
+    st.write(f"Profundidad: {piz['profundidad_actual']}")
+
+with tab4:
+    st.subheader("🛰️ Navegación en el Target")
+    # LÍNEA 674: Ahora sí, 'piz' existe y no va a tirar error
+    actual = piz["profundidad_actual"] 
+    limite_superior = 2510 
+    limite_inferior = 2540
+    # ... resto del código    
+    # Definimos variables locales para este Tab
+    actual = piz["profundidad_actual"]
+    limite_superior = 2510 
+    limite_inferior = 2540
+
+    # Columnas alineadas perfectamente
+    col_geo1, col_geo2 = st.columns(2) 
+    
+    with col_geo1:
+        st.metric("Techo Formación", f"{limite_superior} m")
+        st.metric("Piso Formación", f"{limite_inferior} m")
+    
+    with col_geo2:
+        if actual > limite_inferior:
+            st.error("🚨 SALIDA POR EL PISO - ¡CORREGIR INCLINACIÓN!")
+        elif actual < limite_superior:
+            st.warning("⚠️ CERCA DEL TECHO - AJUSTAR TRAYECTORIA")
+        else:
+            st.success("🎯 DENTRO DE LA VENTANA PRODUCTIVA")
+
+# Cálculo físico para el simulador del MENFA
+peso_lineal = 0.02 # klbs por metro
+peso_sarta = piz["profundidad_actual"] * peso_lineal
+hook_load_real = peso_sarta - piz["wob_maestro"]
+
+import time
+
+if 'inicio_falla' not in st.session_state:
+    st.session_state.inicio_falla = None
+if 'tiempo_respuesta' not in st.session_state:
+    st.session_state.tiempo_respuesta = 0
+
+if piz.get("evento_activo") and st.session_state.inicio_falla is None:
+    st.session_state.inicio_falla = time.time()
+
+if not piz.get("evento_activo"):
+    st.session_state.inicio_falla = None
+    
+# Ahora podés usar 'hook_load_real' en cualquier reloj de la Tab 1
+with st.sidebar:
+    st.header("🎮 Controles del Perforador")
+    st.info("Ajuste los parámetros de perforación en tiempo real.")
+
+    # 1. SEGURIDAD Y BLINDAJE (Fuera de los sliders)
+    # Obtenemos valores limpios y enteros
+    rpm_val = int(max(0, min(200, piz.get("rpm_maestro", 0))))
+    wob_val = int(max(0, min(50, piz.get("wob_maestro", 0))))
+    gpm_val = int(max(0, min(1000, piz.get("caudal_maestro", 500))))
+
+    # 2. SLIDERS ÚNICOS (Uno por cada parámetro)
+    piz["rpm_maestro"] = st.slider("Rotación (RPM)", 0, 200, rpm_val)
+    
+    piz["wob_maestro"] = st.slider("Peso sobre Trépano (WOB klbs)", 0, 50, wob_val)
+    
+    piz["caudal_maestro"] = st.slider(
+        label="Bomba (GPM)", 
+        min_value=0, 
+        max_value=1000, 
+        value=gpm_val,
+        step=10
+    )
+
+    st.divider()
+
+    # 3. BOTÓN DE EMERGENCIA
+if st.button("🚨 EMERGENCIA: PARADA TOTAL", width="stretch"):
+        piz["caudal_maestro"] = 0
+        st.warning("SISTEMA DETENIDO")
+        st.rerun()
+
+if st.button("🚨 EMERGENCIA: PARADA TOTAL"):
+    piz["rpm_maestro"] = 0
+    piz["caudal_maestro"] = 0
+    st.warning("SISTEMA DETENIDO")
+
+# --- PESTAÑAS INTERACTIVAS ---
+with tab2:
+    st.header("🛡️ Unidad de Cierre BOP")
+    
+    # Verificamos el estado actual en la pizarra
+    bop_cerrado = pizarra.get("bop_cerrado", False)
+    
+    if not bop_cerrado:
+        # SI ESTÁ ABIERTO: Mostrar botón para cerrar
+        if st.button("🔴 CERRAR RAMS (EMERGENCIA)", use_container_width=True):
+            pizarra["bop_cerrado"] = True
+            pizarra["alarma_activa"] = False  # Apagamos la sirena al cerrar
+            st.success("✅ BOP Cerrado exitosamente")
             st.rerun()
     else:
-        st.info("Esperando al Instructor...")
-        time.sleep(2)
-        st.rerun()
+        # SI ESTÁ CERRADO: Mostrar botón para abrir
+        if st.button("🔓 ABRIR RAMS", use_container_width=True):
+            pizarra["bop_cerrado"] = False
+            st.warning("⚠️ BOP Abierto - Pozo en comunicación")
+            st.rerun()
+
+    # Indicador visual de estado
+    if bop_cerrado:
+        st.error("ESTADO: BLOQUEADO / CERRADO")
+    else:
+        st.success("ESTADO: ABIERTO / FLUJO LIBRE")
+
+with tab3:
+    st.header("🧪 Control de Densidad")
+    # Usamos .get para evitar errores si la clave no existe aún
+    dens_actual = piz.get("densidad_maestra", 10.0)
+    nuevo_peso = st.number_input("Ajustar Densidad (ppg)", 8.0, 18.0, dens_actual)
+    
+    if st.button("⚗️ Tratar Lodo"):
+        piz["densidad_maestra"] = nuevo_peso
+        st.info(f"Densidad ajustada a {nuevo_peso} ppg. Recalculando ECD...")
+
+with tab4:
+    st.header("🛰️ Dirección de Pozo")
+    inc_ajuste = st.select_slider("Corregir Inclinación", options=["Bajar (-)", "Mantener", "Subir (+)"], value="Mantener")
+    
+    if inc_ajuste == "Subir (+)":
+        piz["profundidad_actual"] -= 0.5 # Sube hacia el techo (TVD menor)
+    elif inc_ajuste == "Bajar (-)":
+        piz["profundidad_actual"] += 0.5 # Baja hacia el piso (TVD mayor)
+        
+    st.metric("Posición Actual TVD", f"{piz['profundidad_actual']:.2f} m")
+
+# --- 1. LÓGICA DE FALLAS Y TIEMPO ---
+if 'inicio_falla' not in st.session_state:
+    st.session_state.inicio_falla = None
+
+ultima_falla_segura = st.session_state.get("ultima_falla", time.time())
+
+if time.time() - ultima_falla_segura > 300:
+    if random.random() < 0.3: 
+        fallas = ["KICK", "PERDIDA", "FALLA BOMBA", "PEGAMIENTO"]
+        piz["evento_activo"] = random.choice(fallas)
+        st.session_state.ultima_falla = time.time()
+        st.session_state.inicio_falla = time.time()
+  
+# --- 2. PANEL DE ALERTAS (VISIBLES EN TODA LA APP) ---
+if piz.get("evento_activo"):
+    # Si por algún motivo no se inició el tiempo, lo iniciamos ahora
+    if st.session_state.inicio_falla is None:
+        st.session_state.inicio_falla = time.time()
+        
+    tiempo_transcurrido = int(time.time() - st.session_state.inicio_falla)
+    
+    col_err1, col_err2 = st.columns([3, 1])
+    with col_err1:
+        st.error(f"🚨 ¡FALLA ACTIVA: {piz['evento_activo']}!")
+        # Lógica dinámica de la falla
+        if piz["evento_activo"] == "KICK":
+            piz["presion_base"] += 0.5
+            piz["piletas_nivel"] += 0.1
+        elif piz["evento_activo"] == "PERDIDA":
+            piz["piletas_nivel"] -= 0.1
+            
+    with col_err2:
+        st.metric("⏱️ Tiempo Reacción", f"{tiempo_transcurrido} s")
+
+    if tiempo_transcurrido > 45:
+        st.error("💥 ¡DESCONTROL DEL POZO! Tardaste demasiado.")
         st.stop()
 
-# 5. MOTOR DE FÍSICA Y SARTA (API 5DP)
-datos_fisica = motor.calcular_todo(piz)
-resistencia = sarta.modulo_sartas_api(piz) 
-datos_fisica["hook_load"] = resistencia.get("hook_load", 180) # Valor base de tu captura
+# --- 3. CONTENIDO DE LAS PESTAÑAS (TABS) ---
+with tab1:
+    st.subheader("📊 Panel de Control Principal")
+    # ... tus otros gráficos ...
+    st.divider()
+    st.subheader("🏆 Ranking de Operadores (Top Mendoza)")
+    data_ranking = {
+        "Alumno": ["Fabricio", "Alumno A", "Alumno B"],
+        "Reacción (s)": [12, 18, 25],
+        "Costo (USD)": [15000, 18200, 22100]
+    }
+    st.table(data_ranking)
 
-# 6. LÓGICA DE AVANCE (Sólo si no hay BOP cerrado)
-if not piz.get("bop_cerrado"):
-    rop_actual = datos_fisica.get("ROP", 0)
-    if rop_actual > 0:
-        avance = (rop_actual / 3600) * 5 # Tiempo simulado acelerado
-        piz["profundidad_actual"] = round(float(piz.get("profundidad_actual", 0)) + avance, 2)
+with tab2:
+    st.header("🛡️ Seguridad de Pozo (BOP)")
+    if piz["evento_activo"] == "KICK":
+        if st.button("✅ CERRAR POZO (Driller's Method)", type="primary"):
+            piz["evento_activo"] = None
+            st.session_state.inicio_falla = None
+            st.balloons()
+            st.success("🎯 ¡KICK CONTROLADO!")
+
+with tab3:
+    st.header("🧪 Sistema de Circulación")
+    # Consolidamos la métrica de piletas aquí
+    st.metric("📦 Volumen en Piletas", f"{piz.get('piletas_nivel', 500):.1f} bbl")
     
-    # Well Control: El influjo afecta a las piletas
-    piz["volumen_piletas"] = float(piz.get("volumen_piletas", 500)) + (piz.get("influjo_instructor", 0) * 0.1)
+    if piz["evento_activo"] == "PERDIDA":
+        if st.button("🧪 Bombear Píldora LCM"):
+            piz["evento_activo"] = None
+            st.session_state.inicio_falla = None
+            st.success("✅ Pérdida sellada exitosamente")
+            
+# --- SISTEMA DE EMISIÓN DE DOCUMENTOS MENFA (ESTILO INSTITUCIONAL NARANJA) ---
+st.write("---") 
+st.header("🎓 Gestión de Certificados y Reportes")
 
-# 7. INTERFAZ DE USUARIO (DASHBOARD)
-st.sidebar.title(f"👤 {st.session_state.usuario}")
-st.sidebar.markdown(f"**Yacimiento:** {piz.get('yacimiento')}")
+# 1. Aseguramos que existan las variables de memoria
+if "pdf_cert_final" not in st.session_state:
+    st.session_state.pdf_cert_final = None
 
-# Barra de progreso blindada
-meta = max(float(piz.get("tvd_target", 3500)), 1)
-progreso = min(float(piz.get("profundidad_actual", 0)) / meta, 1.0)
-st.progress(progreso, text=f"Progreso: {piz['profundidad_actual']} m / {meta} m")
+# 2. SECCIÓN CERTIFICADO
+col1, col2 = st.columns(2)
 
-# --- RENDERIZADO POR ROL ---
-if st.session_state.rol == "alumno":
-    # Mostramos la orden del instructor en pantalla
-    st.chat_message("instructor").write(piz.get("orden", "Sin órdenes."))
-    # El alumno opera y guardamos su actividad
-    piz_retorno = vis.renderizar_cabina_perforador(piz, datos_fisica)
-    if piz_retorno:
-        pm.actualizar_fichero(piz_retorno)
-else:
-    # Panel Instructor
-    tab1, tab2, tab3 = st.tabs(["🎮 Control Operativo", "🔩 Ingeniería", "📊 Telemetría"])
-    with tab1:
-        # Pasamos la pizarra para que el instructor vea lo que el alumno hace
-        control.panel_instructor(piz) 
-    with tab2:
-        sarta.configuracion_ui()
-    with tab3:
-        st.json(piz)
+with col1:
+    alumno = st.text_input("Nombre del Alumno:", key="input_cert_nombre", placeholder="Ej: JUAN PEREZ")
+    
+    if st.button("📌 1. Generar Certificado de Participación"):
+        if alumno:
+            try:
+                import unicodedata
+                from fpdf import FPDF
+                from datetime import datetime
+                
+                # Limpieza de nombre (Mayúsculas y sin acentos para evitar errores de librería)
+                n_limpio = ''.join(c for c in unicodedata.normalize('NFD', alumno) if unicodedata.category(c) != 'Mn').upper()
+                
+                # Configuración: Horizontal (L), A4
+                f_pdf = FPDF(orientation='L', unit='mm', format='A4')
+                f_pdf.add_page()
+                
+                # --- FONDO DE COLOR (Simulando el naranja de la imagen) ---
+                f_pdf.set_fill_color(255, 120, 0)  # Naranja vibrante MENFA
+                f_pdf.rect(0, 0, 297, 210, 'F')
+                
+                # --- DETALLES DE DISEÑO (Triángulos oscuros en las esquinas como el modelo) ---
+                f_pdf.set_fill_color(10, 30, 60) # Azul muy oscuro
+                f_pdf.polygon([(0,0), (80,0), (0,80)], fill=True) # Esquina sup izq
+                f_pdf.polygon([(297,210), (217,210), (297,130)], fill=True) # Esquina inf der
 
-# 8. CIERRE Y REFRESCO
-if st.sidebar.button("Cerrar Sesión"):
-    st.session_state.auth = False
-    st.rerun()
+                # --- ENCABEZADO ---
+                f_pdf.ln(25)
+                f_pdf.set_font("Arial", 'B', 24)
+                f_pdf.set_text_color(255, 255, 255) # Texto Blanco
+                f_pdf.cell(0, 10, "MENFA CAPACITACIONES", ln=True, align='C')
+                
+                # --- TÍTULO ---
+                f_pdf.ln(15)
+                f_pdf.set_font("Arial", '', 18)
+                f_pdf.cell(0, 10, "Certificado de finalización", ln=True, align='C')
+                f_pdf.set_font("Arial", 'B', 20)
+                f_pdf.cell(0, 10, "Participación en el Simulador de Perforaciòn", ln=True, align='C')
+                
+                # --- NOMBRE DEL ALUMNO (Destacado en Blanco) ---
+                f_pdf.ln(15)
+                f_pdf.set_font("Arial", 'B', 45)
+                f_pdf.cell(0, 30, n_limpio, ln=True, align='C')
+                
+                # --- TEXTO DESCRIPTIVO ---
+                f_pdf.ln(10)
+                f_pdf.set_font("Arial", '', 15)
+                texto = "Entrenamiento práctico intensivo en el Simulador de Perforación Avanzada"
+                f_pdf.cell(0, 10, texto, ln=True, align='C')
+                
+                # --- FECHA ---
+                f_pdf.ln(5)
+                fecha_texto = datetime.now().strftime("%B %d, %Y").capitalize()
+                f_pdf.set_font("Arial", '', 12)
+                f_pdf.cell(0, 10, fecha_texto, ln=True, align='C')
+                
+                # --- FIRMA (ESTILO FABRICIO PIZZOLATO) ---
+                f_pdf.set_xy(0, 170)
+                f_pdf.set_font("Arial", 'B', 16)
+                f_pdf.cell(0, 10, "Fabricio Pizzolato", ln=True, align='C')
+                f_pdf.set_font("Arial", '', 11)
+                f_pdf.cell(0, 5, "Dirección General - MENFA", ln=True, align='C')
 
-time.sleep(1) # Un segundo para no saturar el disco
-st.rerun()
+                # --- PROCESAMIENTO DE BYTES (Anti-error bytearray) ---
+                pdf_out = f_pdf.output(dest='S')
+                if isinstance(pdf_out, str):
+                    st.session_state.pdf_cert_final = pdf_out.encode('latin-1', 'replace')
+                else:
+                    st.session_state.pdf_cert_final = bytes(pdf_out)
+                
+                st.success(f"✅ Certificado de {n_limpio} generado correctamente.")
+                st.rerun() 
+
+            except Exception as e:
+                st.error(f"Error técnico al crear el PDF: {e}")
+        else:
+            st.warning("⚠️ Ingresá el nombre del alumno para habilitar la generación.")
+
+with col2:
+    if st.session_state.pdf_cert_final is not None:
+        st.write("###") # Espaciador
+        st.download_button(
+            label="📥 DESCARGAR CERTIFICADO PDF",
+            data=st.session_state.pdf_cert_final,
+            file_name=f"Certificado_MENFA_{alumno.replace(' ', '_')}.pdf",
+            mime="application/pdf",
+            key="btn_descarga_final"  # <--- Asegurate que termine así
+        )
+# --- BOTÓN DE CIERRE DE SESIÓN / INSTRUCTOR ---
+st.sidebar.divider()
+with st.sidebar.expander("🔐 Panel del Instructor"):
+    st.write("Uso exclusivo para finalizar la jornada de capacitación.")
+    if st.button("🏁 DAR POR TERMINADA LA CLASE", use_container_width=True, type="secondary"):
+        # 1. Limpiamos las variables críticas
+        st.session_state.pizarra["evento_activo"] = None
+        st.session_state.pizarra["rpm_maestro"] = 0
+        st.session_state.pizarra["caudal_maestro"] = 0
+        st.session_state.pizarra["piletas_nivel"] = 500.0
+        st.session_state.pizarra["profundidad_actual"] = 2500.0
+        
+        # 2. Reseteamos cronómetros
+        st.session_state.ultima_falla = time.time()
+        st.session_state.inicio_falla = None
+        st.session_state.tiempo_respuesta = 0
+        
+        # 3. Mensaje de despedida y reinicio
+        st.success("✅ Clase finalizada. Sistema reseteado para el próximo turno.")
+        time.sleep(2) # Pausa para que el instructor vea el mensaje
+        st.rerun()
+
+from fpdf import FPDF
+import io
+
+def generar_reporte_menfa(datos_piz, nombre_usuario):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Encabezado
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, "IPCL MENFA - MENDOZA", 0, 1, 'C')
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, "Reporte de Entrenamiento de Perforacion", 0, 1, 'C')
+    
+    pdf.ln(10)
+    
+    # Datos del Alumno
+    pdf.set_font("Arial", '', 11)
+    pdf.cell(100, 10, f"Alumno: {nombre_usuario}", 0, 1)
+    pdf.cell(100, 10, f"Instructor: Fabricio Pizzolato", 0, 1)
+    pdf.cell(100, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", 0, 1)
+    
+    pdf.ln(5)
+    pdf.set_fill_color(230, 230, 230)
+    pdf.cell(200, 10, " PARAMETROS FINALES DE OPERACION", 1, 1, 'L', True)
+    
+    # Parámetros de la pizarra global (piz)
+    pdf.cell(100, 10, f"Profundidad Final: {datos_piz.get('profundidad_actual', 0):.2f} m", 1, 0)
+    pdf.cell(100, 10, f"Caudal: {datos_piz.get('caudal_maestro', 0)} GPM", 1, 1)
+    pdf.cell(100, 10, f"WOB: {datos_piz.get('wob_maestro', 0)} klbs", 1, 0)
+    pdf.cell(100, 10, f"RPM: {datos_piz.get('rpm_maestro', 0)}", 1, 1)
+
+    # Retornar los bytes del PDF
+    return pdf.output(dest='S').encode('latin-1', 'ignore')
+    # --- SECCIÓN DE REPORTE (Al final de la app) ---
+# --- SECCIÓN DE CIERRE Y REPORTE ---
+st.divider()
+st.subheader("🏁 Finalizar Sesión de Entrenamiento")
+
+# Creamos una columna para centrar el botón
+col_rep, _ = st.columns([1, 1])
+
+with col_rep:
+    if st.button("📊 Generar Certificado PDF", use_container_width=True):
+        try:
+            # 1. Llamamos a tu función para crear los datos
+            pdf_bytes = generar_reporte_menfa(piz, st.session_state.usuario)
+            
+            # 2. Mostramos el botón real de descarga (esto es lo que se ve)
+            st.download_button(
+                label="📥 DESCARGAR REPORTE AHORA",
+                data=pdf_bytes,
+                file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+            st.success("✅ ¡Reporte generado con éxito!")
+        except Exception as e:
+            st.error(f"Error al generar PDF: {e}")
