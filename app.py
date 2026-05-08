@@ -191,9 +191,9 @@ else:
             st.balloons()
             pdf = generador_reportes.crear_certificado_pdf(st.session_state.usuario, 95, piz["profundidad_actual"])
             st.download_button("📥 Descargar PDF", data=pdf, file_name=f"Certificado_{st.session_state.usuario}.pdf")
-    with tab4:
-    st.subheader("📚 Material de Referencia Oficial")
-    if st.button("Generar Manual Maestro MENFA"):
+    with st.sidebar: # Línea 194
+         st.subheader("📚 Material de Referencia Oficial") # Línea 195 (CON ESPACIOS)
+         st.write("Aquí van los manuales de MENFA") # También con espacios
         with st.spinner("Compilando manual..."):
             pdf_content = manual_tecnico_maestro.generar_manual_completo()
             st.download_button(
