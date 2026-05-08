@@ -1,4 +1,4 @@
-import streamlit as st
+﻿import streamlit as st
 import time
 import random
 import plotly.graph_objects as go
@@ -85,3 +85,4 @@ def modulo_perdida_circulacion(pizarra):
 
     if st.session_state.nivel_tanques < 200:
         st.error("🚨 ¡POZO VACÍO! Riesgo de pérdida de control.")
+
