@@ -63,7 +63,11 @@ if st.session_state.rol == "instructor":
     with col_ctrl:
         st.subheader("Controles de Perforación")
         piz["wob_maestro"] = st.slider("Ajustar WOB (klbs)", 0.0, 50.0, piz["wob_maestro"])
-        piz["rpm_maestro"] = st.slider("Ajustar RPM", 0, 160, piz["rpm_maestro"])
+       # Usamos int() para asegurar que sea número y min/max para que no se pase del rango
+valor_seguro_rpm = int(piz.get("rpm_maestro", 0))
+valor_seguro_rpm = max(0, min(160, valor_seguro_rpm))
+
+piz["rpm_maestro"] = st.slider("Ajustar RPM", 0, 160, valor_seguro_rpm)
         piz["caudal_maestro"] = st.slider("Caudal Bombas (GPM)", 0, 1200, piz["caudal_maestro"])
         piz["densidad_lodo"] = st.slider("Densidad Lodo (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1)
     
