@@ -185,20 +185,17 @@ else:
             st.dataframe(df.sort_values("Puntaje", ascending=False), use_container_width=True)
         except: st.info("Sin datos registrados.")
 
-    with tab4:
-        st.header("📜 Emisión de Certificado")
-        if st.button("Finalizar y Generar PDF"):
-            st.balloons()
-            pdf = generador_reportes.crear_certificado_pdf(st.session_state.usuario, 95, piz["profundidad_actual"])
-            st.download_button("📥 Descargar PDF", data=pdf, file_name=f"Certificado_{st.session_state.usuario}.pdf")
-    with st.sidebar: # Línea 194
-         st.subheader("📚 Material de Referencia Oficial") # Línea 195 (CON ESPACIOS)
-         st.write("Aquí van los manuales de MENFA") # También con espacios
-        with st.spinner("Compilando manual..."):
-            pdf_content = manual_tecnico_maestro.generar_manual_completo()
-            st.download_button(
-                label="📥 Descargar Manual Completo (PDF)",
-                data=pdf_content,
-                file_name="Manual_Maestro_MENFA_3.pdf",
-                mime="application/pdf"
-            )
+  with st.sidebar: # Línea 194
+        st.subheader("📚 Material de Referencia Oficial") 
+        st.write("Aquí van los manuales de MENFA") 
+        
+        # Agregamos un botón para que el spinner no corra solo todo el tiempo
+        if st.button("📖 Preparar Manual para Descarga"):
+            with st.spinner("Compilando manual..."):
+                pdf_content = manual_tecnico_maestro.generar_manual_completo()
+                st.download_button(
+                    label="📥 Descargar Manual Completo (PDF)",
+                    data=pdf_content,
+                    file_name="Manual_Maestro_MENFA_3.pdf",
+                    mime="application/pdf"
+                )
