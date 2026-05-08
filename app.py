@@ -59,17 +59,24 @@ if st.session_state.rol == "instructor":
     st.title("👨‍🏫 Consola de Control - Instructor")
     st_autorefresh(interval=2000, key="ref_ins")
     
-  with col_ctrl:
+    col_ctrl, col_fail = st.columns([1, 1])
+    
+    with col_ctrl:
         st.subheader("Controles de Perforación")
-        piz["wob_maestro"] = st.slider("Ajustar WOB (klbs)", 0.0, 50.0, float(piz["wob_maestro"]))
+        # Aseguramos que los valores sean del tipo correcto para el slider
+        wob_val = float(piz.get("wob_maestro", 12.0))
+        piz["wob_maestro"] = st.slider("Ajustar WOB (klbs)", 0.0, 50.0, wob_val)
         
-        # --- ESTAS LÍNEAS AHORA TIENEN LOS ESPACIOS CORRECTOS ---
-        valor_seguro_rpm = int(piz.get("rpm_maestro", 0))
+        valor_seguro_rpm = int(piz.get("rpm_maestro", 70))
         valor_seguro_rpm = max(0, min(160, valor_seguro_rpm))
-
         piz["rpm_maestro"] = st.slider("Ajustar RPM", 0, 160, valor_seguro_rpm)
-        piz["caudal_maestro"] = st.slider("Caudal Bombas (GPM)", 0, 1200, int(piz.get("caudal_maestro", 500)))
-        piz["densidad_lodo"] = st.slider("Densidad Lodo (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1)
+        
+        caudal_val = int(piz.get("caudal_maestro", 500))
+        piz["caudal_maestro"] = st.slider("Caudal Bombas (GPM)", 0, 1200, caudal_val)
+        
+        dens_val = float(piz.get("densidad_lodo", 10.5))
+        piz["densidad_lodo"] = st.slider("Densidad Lodo (ppg)", 8.3, 19.0, dens_val, step=0.1)
+    
     with col_fail:
         st.subheader("Inyectar Fallas Técnicas")
         if st.button("🚨 DISPARAR KICK (Surgencia)", use_container_width=True):
