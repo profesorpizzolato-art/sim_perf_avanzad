@@ -1,15 +1,17 @@
 import streamlit as st
 import pandas as pd
+import datetime
 from streamlit_autorefresh import st_autorefresh
 import auth, ui_components, logic_events, generador_reportes
 import motor_calculos_avanzados as motor 
 import bop_panel, geonavegacion_pro 
 import manual_tecnico_maestro
  
-st.title("🏗️ Room de Operaciones MENFA")
-st.info("Bienvenido al simulador. Asegúrese de tener su Manual Maestro a mano y registrar sus parámetros cada 15 minutos de simulación.")
 # 1. CONFIGURACIÓN E INICIALIZACIÓN
 st.set_page_config(page_title="MENFA 3.0 - Simulador Pro", layout="wide")
+
+st.title("🏗️ Room de Operaciones MENFA")
+st.info("Bienvenido al simulador. Asegúrese de tener su Manual Maestro a mano y registrar sus parámetros cada 15 minutos de simulación.")
 
 @st.cache_resource
 def conectar_pizarra():
@@ -21,10 +23,12 @@ def conectar_pizarra():
         "torque_maestro": 3200.0,
         "presion_base": 1200.0, 
         "nivel_tanques": 80.0,
-        "densidad_lodo": 10.5, # Densidad inicial en ppg
+        "densidad_lodo": 10.5,
         "evento_activo": None, 
         "alarma_activa": False, 
-        "bop_cerrado": False
+        "bop_cerrado": False,
+        # AGREGADO: Memoria para gráficas
+        "historial": pd.DataFrame(columns=["Tiempo", "ROP", "WOB", "SPP"])
     }
 
 piz = conectar_pizarra()
@@ -63,7 +67,6 @@ if st.session_state.rol == "instructor":
     
     with col_ctrl:
         st.subheader("Controles de Perforación")
-        # Aseguramos que los valores sean del tipo correcto para el slider
         wob_val = float(piz.get("wob_maestro", 12.0))
         piz["wob_maestro"] = st.slider("Ajustar WOB (klbs)", 0.0, 50.0, wob_val)
         
@@ -106,6 +109,15 @@ else:
         piz["profundidad_actual"], piz["caudal_maestro"]
     )
 
+    # ACTUALIZACIÓN DE HISTORIAL PARA GRÁFICAS
+    nuevo_punto = {
+        "Tiempo": datetime.datetime.now().strftime("%H:%M:%S"),
+        "ROP": res["ROP"],
+        "WOB": piz["wob_maestro"],
+        "SPP": piz["presion_base"]
+    }
+    piz["historial"] = pd.concat([piz["historial"], pd.DataFrame([nuevo_punto])]).tail(20)
+
     # --- BARRA LATERAL (Controles del Perforador) ---
     with st.sidebar:
         try: st.image("logo_menfa.png", width=150)
@@ -114,7 +126,6 @@ else:
         st.header(f"👤 Alumno: {st.session_state.get('usuario', 'Invitado')}")
         st.divider()
 
-        # Mandos Operativos Estándar
         st.subheader("🕹️ Consola de Mando")
         piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]))
         piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]))
@@ -123,7 +134,6 @@ else:
 
         st.divider()
         
-        # Mandos de Geonavegación (Nuevos)
         st.subheader("🛰️ Control Direccional")
         col_dir1, col_dir2 = st.columns(2)
         with col_dir1:
@@ -145,17 +155,17 @@ else:
     if piz["alarma_activa"]:
         st.error(f"🚨 ALERTA: {piz['evento_activo']}")
 
-    # Definición de Pestañas Únicas
-    tab1, tab2, tab_geo, tab3, tab4 = st.tabs([
+    # AGREGADA PESTAÑA DE ANÁLISIS
+    tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
         "🎮 Panel Central", 
         "🛡️ Control de Pozos", 
         "🛰️ Geonavegación", 
+        "📈 Análisis de Tendencias",
         "🏆 Ranking", 
         "📜 Certificado"
     ])
     
     with tab1:
-        # Métricas Rápidas
         m1, m2, m3 = st.columns(3)
         m1.metric("Densidad Lodo", f"{piz['densidad_lodo']} ppg")
         presion_h = round(0.052 * piz['densidad_lodo'] * piz['profundidad_actual'] * 3.28, 0)
@@ -163,7 +173,6 @@ else:
         m3.metric("Fondo de Pozo (TVD)", f"{piz['profundidad_actual']} m")
         st.divider()
         
-        # Manómetros
         c1, c2, c3 = st.columns(3)
         with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True)
         with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True)
@@ -179,7 +188,6 @@ else:
 
     with tab_geo:
         st.subheader("Visualización de Trayectoria y Geonavegación")
-        # El gráfico reacciona a la profundidad y correcciones del alumno
         fig_geo = geonavegacion_pro.generar_grafico_trayectoria(piz["profundidad_actual"])
         st.plotly_chart(fig_geo, use_container_width=True)
         
@@ -188,6 +196,18 @@ else:
         with col_g2: st.metric("Azimut", f"{round(res.get('azimut', 120.5), 1)}°")
         with col_g3: st.info("🎯 Objetivo: Mantener TVD dentro del target.")
 
+    # CONTENIDO DE LA NUEVA PESTAÑA DE ANÁLISIS
+    with tab_analisis:
+        st.subheader("📈 Monitor de Tendencias Críticas")
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.write("**Eficiencia: ROP vs WOB**")
+            st.line_chart(piz["historial"].set_index("Tiempo")[["ROP", "WOB"]])
+        with col_c2:
+            st.write("**Circulación: Presión SPP (psi)**")
+            st.area_chart(piz["historial"].set_index("Tiempo")["SPP"])
+        st.info("💡 Estas gráficas te permiten detectar cambios de formación y fallas mecánicas antes que los manómetros.")
+
     with tab3:
         st.header("🏆 Ranking de Operadores")
         try:
@@ -195,7 +215,6 @@ else:
             st.dataframe(df.sort_values("Puntaje", ascending=False), use_container_width=True)
         except: st.info("Sin datos registrados.")
 
-# --- FINAL DE LAS TABS (Asegurate que el código de arriba termine así) ---
     with tab4:
         st.header("📜 Emisión de Certificado")
         if st.button("Finalizar y Generar PDF"):
@@ -203,7 +222,6 @@ else:
             pdf = generador_reportes.crear_certificado_pdf(st.session_state.usuario, 95, piz["profundidad_actual"])
             st.download_button("📥 Descargar PDF", data=pdf, file_name=f"Certificado_{st.session_state.usuario}.pdf")
 
-# --- ESTA LÍNEA DEBE VOLVER AL BORDE IZQUIERDO ---
 with st.sidebar: 
     st.subheader("📚 Material de Referencia Oficial")
     st.write("Aquí van los manuales de MENFA")
