@@ -6,7 +6,8 @@ import auth, ui_components, logic_events, generador_reportes
 import motor_calculos_avanzados as motor 
 import bop_panel, geonavegacion_pro 
 import manual_tecnico_maestro
- 
+import ranking_logic       # Para el Ranking (si usas un archivo externo)
+
 # 1. CONFIGURACIÓN E INICIALIZACIÓN
 st.set_page_config(page_title="MENFA 3.0 - Simulador Pro", layout="wide")
 
@@ -185,12 +186,13 @@ else:
             )
         except: st.error("Manual no disponible")
 
-    # --- TABS PRINCIPALES ---
+   # --- TABS PRINCIPALES ---
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
         "🎮 Panel Central", "🛡️ Control de Pozos", "🛰️ Geonavegación", 
         "📈 Análisis", "🏆 Ranking", "📜 Certificado"
     ])
     
+    # TAB 1: PANEL CENTRAL
     with tab1:
         st.subheader(f"Capa Geológica: {piz.get('formacion', 'Analizando...')}")
         m1, m2, m3 = st.columns(3)
@@ -204,8 +206,18 @@ else:
         with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True, key="gau_wob_alu")
         with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), use_container_width=True, key="gau_rpm_alu")
 
+    # TAB 2: CONTROL DE POZOS (BOP)
+    with tab2:
+        st.subheader("🛡️ Control de Pozos e Integridad")
+        try:
+            # Llamamos al panel de control de surgencias
+            bop_panel.interfaz_bop(piz)
+        except Exception as e:
+            st.error(f"No se pudo cargar el panel BOP: {e}")
+
+    # TAB GEO: GEONAVEGACIÓN
     with tab_geo:
-        st.subheader("Geonavegación en Tiempo Real")
+        st.subheader("🛰️ Geonavegación en Tiempo Real")
         fig_geo = geonavegacion_pro.generar_grafico_trayectoria(piz["profundidad_actual"])
         st.plotly_chart(fig_geo, use_container_width=True, key="chart_geo_alu")
         
@@ -214,6 +226,33 @@ else:
         col_g2.metric("Azimut", f"{round(res.get('azimut', 120.5), 1)}°")
         col_g3.info("🎯 Objetivo: Ventana 2600-2800m.")
 
+    # TAB ANÁLISIS: GRÁFICOS Y DATOS
+    with tab_analisis:
+        st.subheader("📈 Análisis de Tendencias Técnicas")
+        if not piz["historial"].empty:
+            st.line_chart(piz["historial"].set_index("Tiempo")[["ROP", "SPP"]], height=250)
+            st.divider()
+            col_a1, col_a2 = st.columns(2)
+            with col_a1:
+                st.write("📊 **WOB vs ROP**")
+                st.scatter_chart(piz["historial"], x="WOB", y="ROP")
+            with col_a2:
+                st.write("📋 **Registros**")
+                st.dataframe(piz["historial"].tail(10), use_container_width=True)
+        else:
+            st.info("Esperando datos de perforación para generar gráficos...")
+
+    # TAB 3: RANKING
+    with tab3:
+        st.subheader("🏆 Cuadro de Mérito - MENFA")
+        ranking_data = pd.DataFrame({
+            "Operador": [st.session_state.get('usuario', 'Alumno'), "Operador Master", "Guardia A"],
+            "Profundidad": [piz["profundidad_actual"], 5200.0, 4800.0],
+            "Estado": ["En Proceso", "Completado", "Completado"]
+        }).sort_values(by="Profundidad", ascending=False)
+        st.table(ranking_data)
+
+    # TAB 4: CERTIFICADO
     with tab4:
         st.header("📜 Emisión de Certificado")
         if st.button("Finalizar y Generar PDF", type="primary", key="btn_cert_alu"):
@@ -226,3 +265,4 @@ else:
                 mime="application/pdf",
                 key="btn_dl_cert_alu"
             )
+   
