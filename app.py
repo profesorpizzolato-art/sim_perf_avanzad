@@ -109,7 +109,37 @@ else:
         piz["profundidad_actual"], piz["caudal_maestro"]
     )
 
-    # ACTUALIZACIÓN DE HISTORIAL PARA GRÁFICAS
+    # --- [NUEVO] LÓGICA DE SEGURIDAD Y CONTROL DE POZOS ---
+    UMBRAL_KICK = 5.0  # Barriles
+    # Calculamos la ganancia comparando el nivel actual contra el inicial (80%)
+    pit_gain = max(0.0, piz["nivel_tanques"] - 80.0)
+
+    # 1. Alarma de Kick (Cambio de color de fondo)
+    if pit_gain >= UMBRAL_KICK and not piz.get("bop_cerrado", False):
+        st.markdown(
+            """<style>.stApp {background-color: #4b0000; transition: 0.5s;}</style>""", 
+            unsafe_allow_html=True
+        )
+        st.error(f"🚨 ¡KICK DETECTADO! Ganancia en piletas: {round(pit_gain, 1)} bbl")
+        st.toast("¡PELIGRO! Cierre el pozo inmediatamente", icon="⚠️")
+
+    # 2. Lógica de Cierre y Cálculos de Presión
+    if not piz.get("bop_cerrado", False):
+        if st.button("🔴 ACTIVAR CIERRE (SHUT-IN)", use_container_width=True, type="primary"):
+            tvd_ft = piz["profundidad_actual"] * 3.28
+            ph = 0.052 * piz["densidad_lodo"] * tvd_ft
+            pres_formacion = ph + 300  # Simulamos desequilibrio
+            
+            # Guardamos en la pizarra para que persista
+            piz["sidpp"] = round(pres_formacion - ph, 2)
+            piz["sicp"] = round(piz["sidpp"] + (0.052 * piz["densidad_lodo"] - 0.1) * (pit_gain / 0.0459), 2)
+            piz["kmw"] = round((piz["sidpp"] / (0.052 * tvd_ft)) + piz["densidad_lodo"], 2)
+            
+            piz["bop_cerrado"] = True
+            piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
+            st.rerun()
+
+    # --- ACTUALIZACIÓN DE HISTORIAL PARA GRÁFICAS ---
     nuevo_punto = {
         "Tiempo": datetime.datetime.now().strftime("%H:%M:%S"),
         "ROP": res["ROP"],
@@ -127,21 +157,12 @@ else:
         st.divider()
 
         st.subheader("🕹️ Consola de Mando")
-        piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]))
-        piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]))
-        piz["wob_maestro"] = st.number_input("WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), step=0.5)
-        piz["densidad_lodo"] = st.slider("Densidad (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1)
-
-        st.divider()
-        
-        st.subheader("🛰️ Control Direccional")
-        col_dir1, col_dir2 = st.columns(2)
-        with col_dir1:
-            if st.button("🔼 Subir", help="Corregir hacia arriba", use_container_width=True):
-                piz["inc_target"] = piz.get("inc_target", 90.0) + 0.5
-        with col_dir2:
-            if st.button("🔽 Bajar", help="Corregir hacia abajo", use_container_width=True):
-                piz["inc_target"] = piz.get("inc_target", 90.0) - 0.5
+        if not piz["bop_cerrado"]:
+            piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]))
+            piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]))
+            piz["wob_maestro"] = st.number_input("WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), step=0.5)
+        else:
+            st.warning("⚠️ Controles bloqueados por BOP")
 
         st.divider()
         if st.button("🛑 STOP", use_container_width=True, type="primary"):
@@ -152,8 +173,20 @@ else:
 
     # --- CUERPO PRINCIPAL ---
     st.title("Simulador de Perforación Avanzado")
-    if piz["alarma_activa"]:
-        st.error(f"🚨 ALERTA: {piz['evento_activo']}")
+    
+    # 3. Mostrar Kill Sheet si el pozo está cerrado
+    if piz.get("bop_cerrado"):
+        st.warning("🔒 PROTOCOLO DE CONTROL DE POZO ACTIVADO")
+        with st.expander("📋 HOJA DE MATAR (KILL SHEET) - DATOS DE CIERRE", expanded=True):
+            c1, c2, c3 = st.columns(3)
+            c1.metric("SIDPP", f"{piz['sidpp']} psi")
+            c2.metric("SICP", f"{piz['sicp']} psi")
+            c3.metric("KMW (Lodo de Matar)", f"{piz['kmw']} ppg")
+            st.info(f"Instrucción: Incrementar densidad a {piz['kmw']} ppg.")
+            if st.button("🔄 Abrir Pozo (BOP Open)"):
+                piz["bop_cerrado"] = False
+                piz["nivel_tanques"] = 80.0
+                st.rerun()
 
     # AGREGADA PESTAÑA DE ANÁLISIS
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
