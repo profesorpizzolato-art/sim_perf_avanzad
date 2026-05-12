@@ -1,17 +1,20 @@
-﻿from fpdf import FPDF
+from fpdf import FPDF
 import datetime
 
 class MENFA_Manual(FPDF):
     def header(self):
         try:
-            # Intenta cargar el logo, si no existe sigue adelante
-            self.image('logo_menfa.png', 10, 8, 33)
+            # Centrar el logo: (210mm ancho A4 - 33mm logo) / 2 = 88.5mm
+            self.image('logo_menfa.png', 88.5, 8, 33)
         except:
             pass
-        self.set_font('Arial', 'B', 12)
+        
+        # Bajamos el cursor 35mm para que el texto empiece debajo del logo
+        self.ln(35) 
+        self.set_font('Arial', 'B', 10)
         self.set_text_color(100, 100, 100)
-        self.cell(0, 10, 'MENFA CAPACITACIONES - MENDOZA, ARGENTINA', 0, 0, 'R')
-        self.ln(20)
+        self.cell(0, 10, 'MENFA CAPACITACIONES - MENDOZA, ARGENTINA', 0, 1, 'C')
+        self.ln(5)
 
     def footer(self):
         self.set_y(-15)
@@ -21,6 +24,9 @@ class MENFA_Manual(FPDF):
 
 def generar_manual_completo():
     pdf = MENFA_Manual()
+    # Definimos márgenes de 20mm (2cm) a cada lado para centrar el bloque de contenido
+    pdf.set_left_margin(20)
+    pdf.set_right_margin(20)
     pdf.set_auto_page_break(auto=True, margin=15)
     
     # --- 1. PORTADA ---
@@ -43,7 +49,7 @@ def generar_manual_completo():
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "1. GLOSARIO TECNICO PROFESIONAL", 0, 1)
+    pdf.cell(0, 10, "1. GLOSARIO TECNICO PROFESIONAL", 0, 1, 'C')
     pdf.ln(5)
     pdf.set_text_color(0, 0, 0)
     
@@ -61,14 +67,14 @@ def generar_manual_completo():
         pdf.set_font('Arial', 'B', 11)
         pdf.cell(0, 7, f"- {term}:", 0, 1) 
         pdf.set_font('Arial', '', 10)
-        pdf.multi_cell(0, 6, desc)
+        pdf.multi_cell(0, 6, desc, align='J') # Alineación justificada
         pdf.ln(2)
 
     # --- 3. PROTOCOLOS DE SEGURIDAD ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "2. PROTOCOLOS DE SEGURIDAD OPERATIVA", 0, 1)
+    pdf.cell(0, 10, "2. PROTOCOLOS DE SEGURIDAD OPERATIVA", 0, 1, 'C')
     pdf.ln(5)
     pdf.set_text_color(0, 0, 0)
 
@@ -77,22 +83,44 @@ def generar_manual_completo():
         ("CIERRE DURO", "Espaciar, Parar bombas, Cerrar BOP y registrar SIDPP/SICP."),
         ("TRIPPING", "Uso obligatorio de Trip Tank y registro de llenado cada 5 tiros."),
         ("TIW VALVE", "Mantener siempre una válvula de seguridad abierta en el piso.")
+    ]     
+        # Definimos los procedimientos con títulos y pasos
+    procedimientos = [
+        ("DETECCION DE SURGENCIAS (KICK DETECTION)", 
+         "1. Monitoreo de Piletas: Todo aumento > 5 bbl (Pit Gain) es alarma inmediata.\n"
+         "2. Flow Check: Realizar ante Drilling Breaks, cambios de presion o antes de maniobras."),
+        
+        ("CIERRE DURO (HARD SHUT-IN)", 
+         "1. Espaciar: Levantar la sarta para no cerrar sobre una junta.\n"
+         "2. Parar: Apagar bombas y frenar la rotaria.\n"
+         "3. Cerrar: Accionar el Preventor (BOP) y abrir valvula de manifold.\n"
+         "4. Registrar: Anotar SIDPP y SICP tras estabilizacion (5-10 min)."),
+        
+        ("MANIOBRAS DE SACADA (TRIPPING)", 
+         "1. Hoja de Llenado: Registrar volumen desplazado cada 5 tiros.\n"
+         "2. Swabbing: No exceder velocidad de sacada para evitar succion.\n"
+         "3. Valvula TIW: Mantener siempre una valvula de seguridad abierta en el piso."),
+        
+        ("SEGURIDAD EN BOCA DE POZO", 
+         "1. Zonas de Peligro: Prohibido circular bajo el bloque viajero.\n"
+         "2. LOTO: Bloqueo y Etiquetado obligatorio en mantenimiento de bombas.\n"
+         "3. Comunicacion: Uso de señales manuales estandarizadas Drill-Enganchador.")
     ]
-
+    
     for titulo, desc in protocolos:
         pdf.set_font('Arial', 'B', 11)
         pdf.cell(0, 7, f"- {titulo}:", 0, 1)
         pdf.set_font('Arial', '', 10)
-        pdf.multi_cell(0, 6, desc)
+        pdf.multi_cell(0, 6, desc, align='J')
         pdf.ln(2)
 
     # --- 4. FORMULAS ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "3. FORMULARIO DE INGENIERIA (UNIDADES DE CAMPO)", 0, 1)
-    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 10, "3. FORMULARIO DE INGENIERIA (UNIDADES DE CAMPO)", 0, 1, 'C')
     pdf.ln(5)
+    pdf.set_text_color(0, 0, 0)
     
     formulas = [
         "Presion Hidrostatica: Ph (psi) = 0.052 x Densidad (ppg) x TVD (ft)",
@@ -104,19 +132,21 @@ def generar_manual_completo():
     ]
     for f in formulas:
         pdf.set_font('Arial', '', 11)
-        pdf.multi_cell(0, 10, f, border=1)
+        pdf.multi_cell(0, 10, f, border=1, align='C') # Fórmulas centradas en su recuadro
         pdf.ln(2)
 
     # --- 5. 100 TIPS ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "4. LOS 100 TIPS DE ORO DEL PERFORADOR", 0, 1)
+    pdf.cell(0, 10, "4. LOS 100 TIPS DE ORO DEL PERFORADOR", 0, 1, 'C')
+    pdf.ln(5)
     pdf.set_text_color(0, 0, 0)
-    pdf.set_font('Arial', '', 8.5)
+    pdf.set_font('Arial', '', 9)
     
-    tips = [
-        # 1-10 Seguridad y General
+    # (Lista de tips abreviada para el ejemplo, usá la tuya completa)
+    tips_ejemplo = [
+                # 1-10 Seguridad y General
         "1. SEGURIDAD: Verifique el freno de emergencia al iniciar el turno.",
         "2. OPERATIVO: Aumento de torque indica cambio de formacion o mecha embotada.",
         "3. CONTROL: Nunca saque tuberia sin llenar el pozo con lodo.",
@@ -222,19 +252,19 @@ def generar_manual_completo():
         "98. SEGURIDAD: Nunca deje el pozo abierto a la atmosfera.",
         "99. TÉCNICO: Minimice Skin Effect con fluidos compatibles.",
         "100. MENFA: La capacitacion continua es su mejor herramienta."
-
     ]
 
-    for t in tips:
-        pdf.cell(0, 4.5, t, 0, 1)
+    for t in tips: # Usando tu lista original de 'tips'
+        pdf.multi_cell(0, 5, t, 0, 'L')
+        pdf.ln(1)
 
     # --- 6. CONVERSIONES ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "5. TABLA DE CONVERSIONES CRITICAS", 0, 1)
-    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 10, "5. TABLA DE CONVERSIONES CRITICAS", 0, 1, 'C')
     pdf.ln(5)
+    pdf.set_text_color(0, 0, 0)
     
     conversions = [
         ["De Metros (m)", "a Pies (ft)", "x 3.281"],
@@ -243,16 +273,19 @@ def generar_manual_completo():
         ["De PSI (Presion)", "a BAR", "x 0.0689"],
         ["De Pulgadas (in)", "a Milimetros (mm)", "x 25.4"]
     ]
+    
+    # Ancho total disponible es 210 - 20 - 20 = 170mm. Dividimos 170 / 3 = 56.6mm
+    col_width = 56.6
     pdf.set_font('Arial', 'B', 10)
-    pdf.cell(60, 10, "Origen", 1, 0, 'C')
-    pdf.cell(60, 10, "Destino", 1, 0, 'C')
-    pdf.cell(60, 10, "Factor", 1, 1, 'C')
+    pdf.cell(col_width, 10, "Origen", 1, 0, 'C')
+    pdf.cell(col_width, 10, "Destino", 1, 0, 'C')
+    pdf.cell(col_width, 10, "Factor", 1, 1, 'C')
+    
     pdf.set_font('Arial', '', 10)
     for row in conversions:
-        pdf.cell(60, 10, row[0], 1)
-        pdf.cell(60, 10, row[1], 1)
-        pdf.cell(60, 10, row[2], 1)
-        pdf.ln()
+        pdf.cell(col_width, 10, row[0], 1, 0, 'C')
+        pdf.cell(col_width, 10, row[1], 1, 0, 'C')
+        pdf.cell(col_width, 10, row[2], 1, 1, 'C')
 
     return bytes(pdf.output(dest='S'))
 
