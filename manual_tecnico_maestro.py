@@ -58,8 +58,6 @@ def generar_manual_completo():
         ("PORE PRESSURE", "Presion natural de los fluidos dentro de la roca (Presion de Poros).")
     ]
     for term, desc in glosario:
-        pdf.set_font('Arial', 'B', 11)
-        # CAMBIO CLAVE: Se usó "-" en lugar del punto especial para evitar error de Unicode
         pdf.cell(0, 7, f"- {term}:", 0, 1) 
         pdf.set_font('Arial', '', 10)
         pdf.multi_cell(0, 6, desc)
