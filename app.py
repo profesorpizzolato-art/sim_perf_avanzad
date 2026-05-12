@@ -220,8 +220,20 @@ else:
         st.header("📜 Emisión de Certificado")
         if st.button("Finalizar y Generar PDF"):
             st.balloons()
-            pdf = generador_reportes.crear_certificado_pdf(st.session_state.usuario, 95, piz["profundidad_actual"])
-            st.download_button("📥 Descargar PDF", data=pdf, file_name=f"Certificado_{st.session_state.usuario}.pdf")
+            # Asegúrate que crear_certificado_pdf devuelva bytes o un bytearray limpio
+            pdf = generador_reportes.crear_certificado_pdf(
+                st.session_state.usuario, 
+                95, 
+                piz["profundidad_actual"]
+            )
+            
+            st.download_button(
+                label="📥 Descargar PDF", 
+                data=pdf, # Sin .encode(), ya es binario
+                file_name=f"Certificado_{st.session_state.usuario}.pdf",
+                mime="application/pdf",
+                width="stretch" # Actualizado para evitar advertencia de logs
+            )
 
 with st.sidebar: 
     st.subheader("📚 Material de Referencia Oficial")
