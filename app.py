@@ -103,90 +103,74 @@ else:
     st_autorefresh(interval=2000, key="ref_alu")
     logic_events.gestionar_fallas(piz)
     
-    # Cálculos físicos (Pasamos la densidad dinámica al motor)
+    # Cálculos físicos (Motor de simulación)
     res = motor.calcular_fisica_perforacion(
         piz["wob_maestro"], piz["rpm_maestro"], piz["torque_maestro"], 
         piz["profundidad_actual"], piz["caudal_maestro"], piz["densidad_lodo"]
     )
 
     # --- LÓGICA DE SEGURIDAD Y CONTROL DE POZOS ---
-    UMBRAL_KICK = 5.0  # Barriles de ganancia
+    UMBRAL_KICK = 5.0 
     pit_gain = max(0.0, piz["nivel_tanques"] - 80.0)
 
-    # 1. Alerta Visual de Kick
     if pit_gain >= UMBRAL_KICK and not piz.get("bop_cerrado", False):
-        st.markdown(
-            """<style>.stApp {background-color: #4b0000; transition: 0.5s;}</style>""", 
-            unsafe_allow_html=True
-        )
+        st.markdown("""<style>.stApp {background-color: #4b0000; transition: 0.5s;}</style>""", unsafe_allow_html=True)
         st.error(f"🚨 ¡KICK DETECTADO! Ganancia: {round(pit_gain, 1)} bbl")
-        st.toast("⚠️ ¡PELIGRO! Proceda al cierre inmediato", icon="⚠️")
+        st.toast("⚠️ ¡PELIGRO! Cierre el pozo", icon="⚠️")
 
-    # 2. Procedimiento de Shut-In
     if not piz.get("bop_cerrado", False):
         if st.button("🔴 ACTIVAR CIERRE (SHUT-IN)", use_container_width=True, type="primary"):
             tvd_ft = piz["profundidad_actual"] * 3.28
             ph = 0.052 * piz["densidad_lodo"] * tvd_ft
-            pres_formacion = ph + 300  # Simulación de influjo
-            
+            pres_formacion = ph + 300 
             piz["sidpp"] = round(pres_formacion - ph, 2)
             piz["sicp"] = round(piz["sidpp"] + (0.052 * piz["densidad_lodo"] - 0.1) * (pit_gain / 0.0459), 2)
             piz["kmw"] = round((piz["sidpp"] / (0.052 * tvd_ft)) + piz["densidad_lodo"], 2)
-            
             piz["bop_cerrado"] = True
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
             st.rerun()
 
-    # --- BARRA LATERAL (Controles y Referencia) ---
+    # --- ACTUALIZACIÓN DE HISTORIAL ---
+    nuevo_punto = {
+        "Tiempo": datetime.datetime.now().strftime("%H:%M:%S"),
+        "ROP": res["ROP"], "WOB": piz["wob_maestro"], "SPP": piz["presion_base"]
+    }
+    piz["historial"] = pd.concat([piz["historial"], pd.DataFrame([nuevo_punto])]).tail(20)
+
+    # --- BARRA LATERAL ---
     with st.sidebar:
         try: st.image("logo_menfa.png", width=150)
         except: st.title("MENFA 3.0")
-        
         st.header(f"👤 Alumno: {st.session_state.get('usuario', 'Invitado')}")
         st.divider()
-
-        st.subheader("🕹️ Consola de Mando")
         if not piz["bop_cerrado"]:
             piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]))
             piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]))
             piz["wob_maestro"] = st.number_input("WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), step=0.5)
-            # Slider de densidad habilitado para el tratamiento de lodos
             piz["densidad_lodo"] = st.slider("Densidad (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1)
         else:
-            st.warning("⚠️ Controles bloqueados: Pozo Cerrado")
-
-        st.divider()
+            st.warning("⚠️ Controles bloqueados")
         if st.button("🛑 STOP", use_container_width=True, type="primary"):
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
-        
-        if piz["bop_cerrado"]: st.error("🚫 POZO CERRADO")
-        else: st.success("✅ FLUJO ABIERTO")
 
-    # --- PESTAÑAS DE VISUALIZACIÓN ---
-    st.title("Simulador de Perforación Avanzado")
-    
+    # --- CUERPO PRINCIPAL ---
     if piz.get("bop_cerrado"):
         with st.expander("📋 HOJA DE MATAR (KILL SHEET)", expanded=True):
             col1, col2, col3 = st.columns(3)
             col1.metric("SIDPP", f"{piz['sidpp']} psi")
             col2.metric("SICP", f"{piz['sicp']} psi")
-            col3.metric("KMW (Matar)", f"{piz['kmw']} ppg")
-            
+            col3.metric("KMW", f"{piz['kmw']} ppg")
             if piz["densidad_lodo"] >= piz["kmw"]:
-                st.success("✅ Densidad alcanzada. El pozo está equilibrado.")
                 if st.button("🔄 Abrir Pozo (BOP Open)"):
                     piz["bop_cerrado"] = False
                     piz["nivel_tanques"] = 80.0
                     st.rerun()
-            else:
-                st.info(f"Faltan {round(piz['kmw'] - piz['densidad_lodo'], 2)} ppg.")
 
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
         "🎮 Panel Central", "🛡️ Control de Pozos", "🛰️ Geonavegación", 
         "📈 Análisis", "🏆 Ranking", "📜 Certificado"
     ])
     
-    # Renderizado de Tab1 (Manómetros) usando 'res' del motor actualizado
     with tab1:
         m1, m2, m3 = st.columns(3)
         m1.metric("Densidad Lodo", f"{piz['densidad_lodo']} ppg")
@@ -195,28 +179,17 @@ else:
         st.divider()
         
         c1, c2, c3 = st.columns(3)
-        with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True)
-        with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True)
-        with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), use_container_width=True)
-    
-    with tab1:
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Densidad Lodo", f"{piz['densidad_lodo']} ppg")
-        presion_h = round(0.052 * piz['densidad_lodo'] * piz['profundidad_actual'] * 3.28, 0)
-        m2.metric("Presión Hidrostática", f"{presion_h} psi")
-        m3.metric("Fondo de Pozo (TVD)", f"{piz['profundidad_actual']} m")
-        st.divider()
-        
-        c1, c2, c3 = st.columns(3)
-        with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True)
-        with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True)
-        with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), use_container_width=True)
+        # Agregamos KEYS para evitar el error de duplicados
+        with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True, key="m_rop")
+        with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True, key="m_wob")
+        with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), use_container_width=True, key="m_rpm")
         
         c4, c5, c6 = st.columns(3)
-        with c4: st.plotly_chart(ui_components.crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), use_container_width=True)
-        with c5: st.plotly_chart(ui_components.crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 350, "white"), use_container_width=True)
-        with c6: st.plotly_chart(ui_components.crear_manometro(piz["nivel_tanques"], "Tanques", "%", 100, "yellow"), use_container_width=True)
+        with c4: st.plotly_chart(ui_components.crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), use_container_width=True, key="m_spp")
+        with c5: st.plotly_chart(ui_components.crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 350, "white"), use_container_width=True, key="m_hook")
+        with c6: st.plotly_chart(ui_components.crear_manometro(piz["nivel_tanques"], "Tanques", "%", 100, "yellow"), use_container_width=True, key="m_tanques")
 
+    # (El resto de los tabs se mantienen igual, solo asegúrate de que no se repitan)
     with tab2:
         bop_panel.render_bop_ui(piz)
 
