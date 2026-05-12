@@ -98,6 +98,9 @@ if st.session_state.rol == "instructor":
         st.session_state.autenticado = False
         st.rerun()
 
+import datetime  # Asegurar import
+import pandas as pd  # Asegurar import
+
 # 4. INTERFAZ DEL ALUMNO
 else:
     st_autorefresh(interval=2000, key="ref_alu")
@@ -111,11 +114,9 @@ else:
 
     # --- LÓGICA DE AVANCE Y GEOLOGÍA ---
     if not piz.get("bop_cerrado", False) and piz["rpm_maestro"] > 0 and piz["caudal_maestro"] > 400:
-        # Avance real basado en ROP (m/h) convertido a incremento por ciclo (2 seg)
         incremento = (res["ROP"] / 3600) * 2
         piz["profundidad_actual"] = round(piz["profundidad_actual"] + incremento, 4)
         
-        # Cambio de Formación Dinámico
         if piz["profundidad_actual"] < 2550:
             piz["formacion"] = "🏜️ Arcilla Blanda (Alta ROP)"
         elif 2550 <= piz["profundidad_actual"] < 2800:
@@ -127,34 +128,24 @@ else:
     else:
         piz["formacion"] = "⏸️ Perforación Detenida"
 
-    # --- LÓGICA DE SEGURIDAD (KICK) ---
-    UMBRAL_KICK = 5.0 
+    # --- SEGURIDAD (KICK) ---
     pit_gain = max(0.0, piz["nivel_tanques"] - 80.0)
-
-    if pit_gain >= UMBRAL_KICK and not piz.get("bop_cerrado", False):
+    if pit_gain >= 5.0 and not piz.get("bop_cerrado", False):
         st.markdown("""<style>.stApp {background-color: #4b0000; transition: 0.5s;}</style>""", unsafe_allow_html=True)
         st.error(f"🚨 ¡KICK DETECTADO! Ganancia: {round(pit_gain, 1)} bbl")
 
-    if not piz.get("bop_cerrado", False):
-        if st.button("🔴 ACTIVAR CIERRE (SHUT-IN)", width="stretch", type="primary"):
-            tvd_ft = piz["profundidad_actual"] * 3.28
-            ph = 0.052 * piz["densidad_lodo"] * tvd_ft
-            pres_formacion = ph + 300 
-            piz["sidpp"] = round(pres_formacion - ph, 2)
-            piz["sicp"] = round(piz["sidpp"] + (0.052 * piz["densidad_lodo"] - 0.1) * (pit_gain / 0.0459), 2)
-            piz["kmw"] = round((piz["sidpp"] / (0.052 * tvd_ft)) + piz["densidad_lodo"], 2)
-            piz["bop_cerrado"] = True
-            piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
-            st.rerun()
-
     # --- ACTUALIZACIÓN DE HISTORIAL ---
-    nuevo_punto = {
-        "Tiempo": datetime.datetime.now().strftime("%H:%M:%S"),
-        "ROP": res["ROP"], "WOB": piz["wob_maestro"], "SPP": piz["presion_base"]
-    }
-    piz["historial"] = pd.concat([piz["historial"], pd.DataFrame([nuevo_punto])]).tail(20)
+    # Usamos try/except por si el historial no se inicializó correctamente en el state
+    try:
+        nuevo_punto = pd.DataFrame([{
+            "Tiempo": datetime.datetime.now().strftime("%H:%M:%S"),
+            "ROP": res["ROP"], "WOB": piz["wob_maestro"], "SPP": piz["presion_base"]
+        }])
+        piz["historial"] = pd.concat([piz["historial"], nuevo_punto], ignore_index=True).tail(20)
+    except Exception as e:
+        st.error(f"Error en historial: {e}")
 
-    # --- SIDEBAR (CONTROLES OPERATIVOS Y MATERIAL) ---
+    # --- SIDEBAR (CONTROLES Y BIBLIOTECA) ---
     with st.sidebar:
         try: st.image("logo_menfa.png", width=150)
         except: st.title("MENFA 3.0")
@@ -178,34 +169,17 @@ else:
         st.divider()
         st.subheader("📚 Biblioteca Técnica")
         try:
-            pdf_content = manual_tecnico_maestro.generar_manual_completo()
-            # Asegurar formato bytes para evitar AttributeError
-            pdf_data = bytes(pdf_content) if isinstance(pdf_content, (bytearray, memoryview)) else pdf_content
-            
+            pdf_raw = manual_tecnico_maestro.generar_manual_completo()
             st.download_button(
                 label="📥 Manual Maestro 3.0",
-                data=pdf_data, 
-                file_name="Manual_MENFA_V3.pdf",
+                data=bytes(pdf_raw) if isinstance(pdf_raw, (bytearray, memoryview)) else pdf_raw,
+                file_name="Manual_MENFA.pdf",
                 mime="application/pdf",
                 width="stretch"
             )
-            st.success("Manual listo")
-        except Exception as e:
-            st.error(f"Error en manual: {e}")
+        except: st.error("No se pudo cargar el manual")
 
-    # --- CUERPO PRINCIPAL (TABS) ---
-    if piz.get("bop_cerrado"):
-        with st.expander("📋 HOJA DE MATAR (KILL SHEET)", expanded=True):
-            col1, col2, col3 = st.columns(3)
-            col1.metric("SIDPP", f"{piz['sidpp']} psi")
-            col2.metric("SICP", f"{piz['sicp']} psi")
-            col3.metric("KMW", f"{piz['kmw']} ppg")
-            if piz["densidad_lodo"] >= piz["kmw"]:
-                if st.button("🔄 Abrir Pozo (BOP Open)", width="stretch"):
-                    piz["bop_cerrado"] = False
-                    piz["nivel_tanques"] = 80.0
-                    st.rerun()
-
+    # --- TABS PRINCIPALES ---
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
         "🎮 Panel Central", "🛡️ Control de Pozos", "🛰️ Geonavegación", 
         "📈 Análisis", "🏆 Ranking", "📜 Certificado"
@@ -220,58 +194,34 @@ else:
         
         st.divider()
         c1, c2, c3 = st.columns(3)
-        with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), width="stretch", key="m_rop")
-        with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), width="stretch", key="m_wob")
-        with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), width="stretch", key="m_rpm")
+        # Agregamos sufijos a las keys para evitar DuplicateElementId
+        with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), width="stretch", key="gau_rop_v1")
+        with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), width="stretch", key="gau_wob_v1")
+        with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), width="stretch", key="gau_rpm_v1")
         
         c4, c5, c6 = st.columns(3)
-        with c4: st.plotly_chart(ui_components.crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), width="stretch", key="m_spp")
-        with c5: st.plotly_chart(ui_components.crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 350, "white"), width="stretch", key="m_hook")
-        with c6: st.plotly_chart(ui_components.crear_manometro(piz["nivel_tanques"], "Tanques", "%", 100, "yellow"), width="stretch", key="m_tanques")
-
-    with tab2:
-        bop_panel.render_bop_ui(piz)
+        with c4: st.plotly_chart(ui_components.crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), width="stretch", key="gau_spp_v1")
+        with c5: st.plotly_chart(ui_components.crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 350, "white"), width="stretch", key="gau_hook_v1")
+        with c6: st.plotly_chart(ui_components.crear_manometro(piz["nivel_tanques"], "Tanques", "%", 100, "yellow"), width="stretch", key="gau_tan_v1")
 
     with tab_geo:
-        st.subheader("Visualización de Trayectoria y Geonavegación")
+        st.subheader("Geonavegación en Tiempo Real")
         fig_geo = geonavegacion_pro.generar_grafico_trayectoria(piz["profundidad_actual"])
-        st.plotly_chart(fig_geo, width="stretch")
+        st.plotly_chart(fig_geo, width="stretch", key="geo_live_chart") # Key única aquí también
         
         col_g1, col_g2, col_g3 = st.columns(3)
         with col_g1: st.metric("Inclinación", f"{round(res.get('inclinacion', 89.2), 1)}°")
         with col_g2: st.metric("Azimut", f"{round(res.get('azimut', 120.5), 1)}°")
-        with col_g3: st.info("🎯 Objetivo: Mantener TVD dentro del target.")
-
-    with tab_analisis:
-        st.subheader("📈 Monitor de Tendencias Críticas")
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            st.write("**Eficiencia: ROP vs WOB**")
-            st.line_chart(piz["historial"].set_index("Tiempo")[["ROP", "WOB"]])
-        with col_c2:
-            st.write("**Circulación: Presión SPP (psi)**")
-            st.area_chart(piz["historial"].set_index("Tiempo")["SPP"])
-
-    with tab3:
-        st.header("🏆 Ranking de Operadores")
-        try:
-            df = pd.read_csv("alumnos_ranking.csv")
-            st.dataframe(df.sort_values("Puntaje", ascending=False), width="stretch")
-        except: st.info("Sin datos registrados.")
+        with col_g3: st.info("🎯 Objetivo: Ventana de navegación 2600-2800m.")
 
     with tab4:
         st.header("📜 Emisión de Certificado")
-        if st.button("Finalizar y Generar PDF", type="primary"):
+        if st.button("Finalizar y Generar PDF", type="primary", key="btn_final"):
             st.balloons()
-            pdf_cert = generador_reportes.crear_certificado_pdf(
-                st.session_state.usuario, 95, piz["profundidad_actual"]
-            )
-            # Asegurar formato bytes para descarga limpia
-            pdf_cert_data = bytes(pdf_cert) if isinstance(pdf_cert, (bytearray, memoryview)) else pdf_cert
-            
+            pdf_cert = generador_reportes.crear_certificado_pdf(st.session_state.usuario, 95, piz["profundidad_actual"])
             st.download_button(
-                label="📥 Descargar mi Certificado PDF",
-                data=pdf_cert_data,
+                label="📥 Descargar Certificado",
+                data=bytes(pdf_cert) if isinstance(pdf_cert, (bytearray, memoryview)) else pdf_cert,
                 file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
                 mime="application/pdf",
                 width="stretch"
