@@ -270,7 +270,7 @@ def generar_manual_completo():
     
     conversions = [
         ["De Metros (m)", "a Pies (ft)", "x 3.281"],
-        ["De Barrales (bbl)", "a Metros Cubicos (m3)", "x 0.1589"],
+        ["De Barriles (bbl)", "a Metros Cubicos (m3)", "x 0.1589"],
         ["De PPG (lb/gal)", "a gr/cm3 (SG)", "x 0.1198"],
         ["De PSI (Presion)", "a BAR", "x 0.0689"],
         ["De Pulgadas (in)", "a Milimetros (mm)", "x 25.4"]
