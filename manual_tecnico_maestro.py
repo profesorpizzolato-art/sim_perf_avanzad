@@ -4,6 +4,7 @@ import datetime
 class MENFA_Manual(FPDF):
     def header(self):
         try:
+            # Si el logo no está, el try-except evita que el programa falle
             self.image('logo_menfa.png', 10, 8, 33)
         except:
             pass
@@ -33,7 +34,7 @@ def generar_manual_completo():
     pdf.ln(10)
     pdf.set_font('Arial', '', 12)
     pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 10, f"Edicion Especial 2026", 0, 1, 'C')
+    pdf.cell(0, 10, "Edicion Especial 2026", 0, 1, 'C')
     pdf.ln(50)
     pdf.set_font('Arial', 'I', 10)
     pdf.multi_cell(0, 7, "Material educativo desarrollado para la formacion de Tecnicos Superiores en Petroleo.\nMendoza, Argentina.", align='C')
@@ -58,7 +59,8 @@ def generar_manual_completo():
     ]
     for term, desc in glosario:
         pdf.set_font('Arial', 'B', 11)
-        pdf.cell(0, 7, f"• {term}:", 0, 1)
+        # CAMBIO CLAVE: Se usó "-" en lugar del punto especial para evitar error de Unicode
+        pdf.cell(0, 7, f"- {term}:", 0, 1) 
         pdf.set_font('Arial', '', 10)
         pdf.multi_cell(0, 6, desc)
         pdf.ln(2)
@@ -92,6 +94,7 @@ def generar_manual_completo():
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Arial', '', 8.5)
     
+    # Se mantienen los tips originales pero con codificación segura
     tips = [
         # 1-10 Seguridad y General
         "1. SEGURIDAD: Verifique el freno de emergencia al iniciar el turno.",
@@ -199,6 +202,7 @@ def generar_manual_completo():
         "98. SEGURIDAD: Nunca deje el pozo abierto a la atmosfera.",
         "99. TÉCNICO: Minimice Skin Effect con fluidos compatibles.",
         "100. MENFA: La capacitacion continua es su mejor herramienta."
+
     ]
 
     for t in tips:
@@ -237,7 +241,6 @@ if __name__ == "__main__":
         content = generar_manual_completo()
         with open("Manual_Maestro_MENFA_3.0.pdf", "wb") as f:
             f.write(content)
-        print("Manual generado con exito: Manual_Maestro_MENFA_3.0.pdf")
+        print("Manual generado con exito.")
     except Exception as e:
         print(f"Error: {e}")
-   
