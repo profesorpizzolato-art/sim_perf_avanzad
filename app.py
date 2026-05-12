@@ -239,18 +239,25 @@ with st.sidebar:
     st.subheader("📚 Material de Referencia Oficial")
     st.write("Descarga el material técnico actualizado de MENFA.")
     
-    # Generamos el contenido una sola vez para que el botón esté siempre listo
-    # No te preocupes por el rendimiento, FPDF es muy rápido.
     try:
+        # Generamos el contenido del PDF
         pdf_content = manual_tecnico_maestro.generar_manual_completo()
         
+        # FIX CRÍTICO: Nos aseguramos de que el contenido sean bytes puros.
+        # Si fpdf devuelve un bytearray, lo pasamos a bytes para máxima compatibilidad.
+        if isinstance(pdf_content, (bytearray, memoryview)):
+            pdf_data = bytes(pdf_content)
+        else:
+            pdf_data = pdf_content
+
         st.download_button(
             label="📥 Descargar Manual Maestro 3.0",
-            data=pdf_content,
+            data=pdf_data, 
             file_name="Manual_Maestro_MENFA_3.pdf",
             mime="application/pdf",
-            width="stretch"  # Esto elimina la advertencia de logs
+            width="stretch" # Esto silencia la advertencia de logs en 2026
         )
         st.success("Manual listo para descarga")
+        
     except Exception as e:
         st.error(f"Error al preparar el manual: {e}")
