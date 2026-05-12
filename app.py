@@ -145,39 +145,67 @@ else:
     except Exception as e:
         st.error(f"Error en historial: {e}")
 
-    # --- SIDEBAR (CONTROLES Y BIBLIOTECA) ---
+ # --- SIDEBAR (CONTROLES, GEONAVEGACIÓN Y BIBLIOTECA) ---
     with st.sidebar:
-        try: st.image("logo_menfa.png", width=150)
-        except: st.title("MENFA 3.0")
+        try: 
+            st.image("logo_menfa.png", width=150)
+        except: 
+            st.title("MENFA 3.0")
         
         st.header(f"👤 Alumno: {st.session_state.get('usuario', 'Invitado')}")
         st.divider()
 
         if not piz.get("bop_cerrado", False):
+            # 1. SECCIÓN DE OPERACIÓN
             st.subheader("🕹️ Consola de Mando")
             piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]))
             piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]))
             piz["wob_maestro"] = st.number_input("WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), step=0.5)
             piz["densidad_lodo"] = st.slider("Densidad (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1)
+            
+            st.divider()
+            
+            # 2. SECCIÓN DE GEONAVEGACIÓN (CONTROL DE TRAYECTORIA)
+            st.subheader("🛰️ Geonavegación")
+            # Mostramos los valores actuales calculados por el motor
+            col_side1, col_side2 = st.columns(2)
+            with col_side1:
+                st.metric("INC", f"{round(res.get('inclinacion', 89.2), 1)}°")
+            with col_side2:
+                st.metric("AZI", f"{round(res.get('azimut', 120.5), 1)}°")
+            
+            # Controles de navegación para el alumno
+            st.caption("Ajuste de Target")
+            target_tvd = st.number_input("Target TVD (m)", 1500.0, 5000.0, 2750.0, step=10.0)
+            st.info(f"Distancia al Target: {round(target_tvd - piz['profundidad_actual'], 2)} m")
+            
         else:
             st.warning("⚠️ Controles bloqueados (Pozo Cerrado)")
 
-        if st.button("🛑 STOP TOTAL", width="stretch", type="primary"):
+        if st.button("🛑 STOP TOTAL", width="stretch", type="primary", key="btn_stop_side"):
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
             st.rerun()
 
         st.divider()
+        
+        # 3. BIBLIOTECA TÉCNICA
         st.subheader("📚 Biblioteca Técnica")
         try:
             pdf_raw = manual_tecnico_maestro.generar_manual_completo()
+            # Fix de bytes para evitar AttributeError
+            pdf_data = bytes(pdf_raw) if isinstance(pdf_raw, (bytearray, memoryview)) else pdf_raw
+            
             st.download_button(
                 label="📥 Manual Maestro 3.0",
-                data=bytes(pdf_raw) if isinstance(pdf_raw, (bytearray, memoryview)) else pdf_raw,
-                file_name="Manual_MENFA.pdf",
+                data=pdf_data, 
+                file_name="Manual_MENFA_V3.pdf",
                 mime="application/pdf",
-                width="stretch"
+                width="stretch",
+                key="btn_dl_manual_side"
             )
-        except: st.error("No se pudo cargar el manual")
+            st.success("Manual listo")
+        except Exception as e:
+            st.error(f"Error en manual: {e}")
 
     # --- TABS PRINCIPALES ---
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
