@@ -103,30 +103,27 @@ else:
     st_autorefresh(interval=2000, key="ref_alu")
     logic_events.gestionar_fallas(piz)
     
-    # 1. Cálculos físicos iniciales
+    # Cálculos físicos (Motor de simulación)
     res = motor.calcular_fisica_perforacion(
         piz["wob_maestro"], piz["rpm_maestro"], piz["torque_maestro"], 
         piz["profundidad_actual"], piz["caudal_maestro"], piz["densidad_lodo"]
     )
 
-    # --- [NUEVO] LÓGICA DE AVANCE Y GEOLOGÍA ---
-    # Solo perforamos si el pozo está abierto, hay rotación y hay circulación
+    # --- LÓGICA DE AVANCE Y GEOLOGÍA ---
     if not piz.get("bop_cerrado", False) and piz["rpm_maestro"] > 0 and piz["caudal_maestro"] > 400:
-        # ROP está en metros/hora. El refresh es cada 2 segundos.
-        # Incremento = (ROP / 3600 segundos) * 2 segundos de cada ciclo
+        # Avance real basado en ROP (m/h) convertido a incremento por ciclo (2 seg)
         incremento = (res["ROP"] / 3600) * 2
         piz["profundidad_actual"] = round(piz["profundidad_actual"] + incremento, 4)
         
         # Cambio de Formación Dinámico
         if piz["profundidad_actual"] < 2550:
             piz["formacion"] = "🏜️ Arcilla Blanda (Alta ROP)"
-            # ROP Normal
         elif 2550 <= piz["profundidad_actual"] < 2800:
             piz["formacion"] = "🪨 Caliza Compacta (Dureza Media)"
-            res["ROP"] *= 0.7  # La roca frena el avance un 30%
+            res["ROP"] *= 0.7  
         else:
             piz["formacion"] = "💎 Basalto/Granito (Dureza Extrema)"
-            res["ROP"] *= 0.4  # La roca frena el avance un 60%
+            res["ROP"] *= 0.4  
     else:
         piz["formacion"] = "⏸️ Perforación Detenida"
 
@@ -139,7 +136,7 @@ else:
         st.error(f"🚨 ¡KICK DETECTADO! Ganancia: {round(pit_gain, 1)} bbl")
 
     if not piz.get("bop_cerrado", False):
-        if st.button("🔴 ACTIVAR CIERRE (SHUT-IN)", use_container_width=True, type="primary"):
+        if st.button("🔴 ACTIVAR CIERRE (SHUT-IN)", width="stretch", type="primary"):
             tvd_ft = piz["profundidad_actual"] * 3.28
             ph = 0.052 * piz["densidad_lodo"] * tvd_ft
             pres_formacion = ph + 300 
@@ -150,54 +147,101 @@ else:
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
             st.rerun()
 
-    # --- ACTUALIZACIÓN DE HISTORIAL PARA GRÁFICAS ---
+    # --- ACTUALIZACIÓN DE HISTORIAL ---
     nuevo_punto = {
         "Tiempo": datetime.datetime.now().strftime("%H:%M:%S"),
         "ROP": res["ROP"], "WOB": piz["wob_maestro"], "SPP": piz["presion_base"]
     }
     piz["historial"] = pd.concat([piz["historial"], pd.DataFrame([nuevo_punto])]).tail(20)
 
-    # --- PESTAÑAS Y VISUALIZACIÓN ---
+    # --- SIDEBAR (CONTROLES OPERATIVOS Y MATERIAL) ---
+    with st.sidebar:
+        try: st.image("logo_menfa.png", width=150)
+        except: st.title("MENFA 3.0")
+        
+        st.header(f"👤 Alumno: {st.session_state.get('usuario', 'Invitado')}")
+        st.divider()
+
+        if not piz.get("bop_cerrado", False):
+            st.subheader("🕹️ Consola de Mando")
+            piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]))
+            piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]))
+            piz["wob_maestro"] = st.number_input("WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), step=0.5)
+            piz["densidad_lodo"] = st.slider("Densidad (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1)
+        else:
+            st.warning("⚠️ Controles bloqueados (Pozo Cerrado)")
+
+        if st.button("🛑 STOP TOTAL", width="stretch", type="primary"):
+            piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
+            st.rerun()
+
+        st.divider()
+        st.subheader("📚 Biblioteca Técnica")
+        try:
+            pdf_content = manual_tecnico_maestro.generar_manual_completo()
+            # Asegurar formato bytes para evitar AttributeError
+            pdf_data = bytes(pdf_content) if isinstance(pdf_content, (bytearray, memoryview)) else pdf_content
+            
+            st.download_button(
+                label="📥 Manual Maestro 3.0",
+                data=pdf_data, 
+                file_name="Manual_MENFA_V3.pdf",
+                mime="application/pdf",
+                width="stretch"
+            )
+            st.success("Manual listo")
+        except Exception as e:
+            st.error(f"Error en manual: {e}")
+
+    # --- CUERPO PRINCIPAL (TABS) ---
+    if piz.get("bop_cerrado"):
+        with st.expander("📋 HOJA DE MATAR (KILL SHEET)", expanded=True):
+            col1, col2, col3 = st.columns(3)
+            col1.metric("SIDPP", f"{piz['sidpp']} psi")
+            col2.metric("SICP", f"{piz['sicp']} psi")
+            col3.metric("KMW", f"{piz['kmw']} ppg")
+            if piz["densidad_lodo"] >= piz["kmw"]:
+                if st.button("🔄 Abrir Pozo (BOP Open)", width="stretch"):
+                    piz["bop_cerrado"] = False
+                    piz["nivel_tanques"] = 80.0
+                    st.rerun()
+
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
         "🎮 Panel Central", "🛡️ Control de Pozos", "🛰️ Geonavegación", 
         "📈 Análisis", "🏆 Ranking", "📜 Certificado"
     ])
     
     with tab1:
-        # Indicador de Formación actual
         st.subheader(f"Capa Geológica: {piz.get('formacion', 'Analizando...')}")
-        
         m1, m2, m3 = st.columns(3)
         m1.metric("Densidad Lodo", f"{piz['densidad_lodo']} ppg")
         m2.metric("P. Hidrostática", f"{res.get('PH', 0)} psi")
         m3.metric("Fondo (TVD)", f"{piz['profundidad_actual']} m", delta=f"{round(res['ROP'], 2)} m/h")
         
         st.divider()
-        
         c1, c2, c3 = st.columns(3)
-        with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True, key="m_rop")
-        with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True, key="m_wob")
-        with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), use_container_width=True, key="m_rpm")
+        with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), width="stretch", key="m_rop")
+        with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), width="stretch", key="m_wob")
+        with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), width="stretch", key="m_rpm")
+        
         c4, c5, c6 = st.columns(3)
-        with c4: st.plotly_chart(ui_components.crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), use_container_width=True, key="m_spp")
-        with c5: st.plotly_chart(ui_components.crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 350, "white"), use_container_width=True, key="m_hook")
-        with c6: st.plotly_chart(ui_components.crear_manometro(piz["nivel_tanques"], "Tanques", "%", 100, "yellow"), use_container_width=True, key="m_tanques")
+        with c4: st.plotly_chart(ui_components.crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), width="stretch", key="m_spp")
+        with c5: st.plotly_chart(ui_components.crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 350, "white"), width="stretch", key="m_hook")
+        with c6: st.plotly_chart(ui_components.crear_manometro(piz["nivel_tanques"], "Tanques", "%", 100, "yellow"), width="stretch", key="m_tanques")
 
-    # (El resto de los tabs se mantienen igual, solo asegúrate de que no se repitan)
     with tab2:
         bop_panel.render_bop_ui(piz)
 
     with tab_geo:
         st.subheader("Visualización de Trayectoria y Geonavegación")
         fig_geo = geonavegacion_pro.generar_grafico_trayectoria(piz["profundidad_actual"])
-        st.plotly_chart(fig_geo, use_container_width=True)
+        st.plotly_chart(fig_geo, width="stretch")
         
         col_g1, col_g2, col_g3 = st.columns(3)
         with col_g1: st.metric("Inclinación", f"{round(res.get('inclinacion', 89.2), 1)}°")
         with col_g2: st.metric("Azimut", f"{round(res.get('azimut', 120.5), 1)}°")
         with col_g3: st.info("🎯 Objetivo: Mantener TVD dentro del target.")
 
-    # CONTENIDO DE LA NUEVA PESTAÑA DE ANÁLISIS
     with tab_analisis:
         st.subheader("📈 Monitor de Tendencias Críticas")
         col_c1, col_c2 = st.columns(2)
@@ -207,57 +251,28 @@ else:
         with col_c2:
             st.write("**Circulación: Presión SPP (psi)**")
             st.area_chart(piz["historial"].set_index("Tiempo")["SPP"])
-        st.info("💡 Estas gráficas te permiten detectar cambios de formación y fallas mecánicas antes que los manómetros.")
 
     with tab3:
         st.header("🏆 Ranking de Operadores")
         try:
             df = pd.read_csv("alumnos_ranking.csv")
-            st.dataframe(df.sort_values("Puntaje", ascending=False), use_container_width=True)
+            st.dataframe(df.sort_values("Puntaje", ascending=False), width="stretch")
         except: st.info("Sin datos registrados.")
 
     with tab4:
         st.header("📜 Emisión de Certificado")
-        if st.button("Finalizar y Generar PDF"):
+        if st.button("Finalizar y Generar PDF", type="primary"):
             st.balloons()
-            # Asegúrate que crear_certificado_pdf devuelva bytes o un bytearray limpio
-            pdf = generador_reportes.crear_certificado_pdf(
-                st.session_state.usuario, 
-                95, 
-                piz["profundidad_actual"]
+            pdf_cert = generador_reportes.crear_certificado_pdf(
+                st.session_state.usuario, 95, piz["profundidad_actual"]
             )
+            # Asegurar formato bytes para descarga limpia
+            pdf_cert_data = bytes(pdf_cert) if isinstance(pdf_cert, (bytearray, memoryview)) else pdf_cert
             
             st.download_button(
-                label="📥 Descargar PDF", 
-                data=pdf, # Sin .encode(), ya es binario
-                file_name=f"Certificado_{st.session_state.usuario}.pdf",
+                label="📥 Descargar mi Certificado PDF",
+                data=pdf_cert_data,
+                file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
                 mime="application/pdf",
-                width="stretch" # Actualizado para evitar advertencia de logs
+                width="stretch"
             )
-
-with st.sidebar: 
-    st.subheader("📚 Material de Referencia Oficial")
-    st.write("Descarga el material técnico actualizado de MENFA.")
-    
-    try:
-        # Generamos el contenido del PDF
-        pdf_content = manual_tecnico_maestro.generar_manual_completo()
-        
-        # FIX CRÍTICO: Nos aseguramos de que el contenido sean bytes puros.
-        # Si fpdf devuelve un bytearray, lo pasamos a bytes para máxima compatibilidad.
-        if isinstance(pdf_content, (bytearray, memoryview)):
-            pdf_data = bytes(pdf_content)
-        else:
-            pdf_data = pdf_content
-
-        st.download_button(
-            label="📥 Descargar Manual Maestro 3.0",
-            data=pdf_data, 
-            file_name="Manual_Maestro_MENFA_3.pdf",
-            mime="application/pdf",
-            width="stretch" # Esto silencia la advertencia de logs en 2026
-        )
-        st.success("Manual listo para descarga")
-        
-    except Exception as e:
-        st.error(f"Error al preparar el manual: {e}")
