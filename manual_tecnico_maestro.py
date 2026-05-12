@@ -4,7 +4,7 @@ import datetime
 class MENFA_Manual(FPDF):
     def header(self):
         try:
-            # Si el logo no está, el try-except evita que el programa falle
+            # Intenta cargar el logo, si no existe sigue adelante
             self.image('logo_menfa.png', 10, 8, 33)
         except:
             pass
@@ -58,16 +58,39 @@ def generar_manual_completo():
         ("PORE PRESSURE", "Presion natural de los fluidos dentro de la roca (Presion de Poros).")
     ]
     for term, desc in glosario:
+        pdf.set_font('Arial', 'B', 11)
         pdf.cell(0, 7, f"- {term}:", 0, 1) 
         pdf.set_font('Arial', '', 10)
         pdf.multi_cell(0, 6, desc)
         pdf.ln(2)
 
-    # --- 3. FORMULAS ---
+    # --- 3. PROTOCOLOS DE SEGURIDAD ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "2. FORMULARIO DE INGENIERIA (UNIDADES DE CAMPO)", 0, 1)
+    pdf.cell(0, 10, "2. PROTOCOLOS DE SEGURIDAD OPERATIVA", 0, 1)
+    pdf.ln(5)
+    pdf.set_text_color(0, 0, 0)
+
+    protocolos = [
+        ("KICK DETECTION", "Monitoreo constante de tanques. Todo Pit Gain > 5 bbl requiere Flow Check."),
+        ("CIERRE DURO", "Espaciar, Parar bombas, Cerrar BOP y registrar SIDPP/SICP."),
+        ("TRIPPING", "Uso obligatorio de Trip Tank y registro de llenado cada 5 tiros."),
+        ("TIW VALVE", "Mantener siempre una válvula de seguridad abierta en el piso.")
+    ]
+
+    for titulo, desc in protocolos:
+        pdf.set_font('Arial', 'B', 11)
+        pdf.cell(0, 7, f"- {titulo}:", 0, 1)
+        pdf.set_font('Arial', '', 10)
+        pdf.multi_cell(0, 6, desc)
+        pdf.ln(2)
+
+    # --- 4. FORMULAS ---
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 16)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 10, "3. FORMULARIO DE INGENIERIA (UNIDADES DE CAMPO)", 0, 1)
     pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
     
@@ -84,15 +107,14 @@ def generar_manual_completo():
         pdf.multi_cell(0, 10, f, border=1)
         pdf.ln(2)
 
-    # --- 4. 100 TIPS (SECCIONADA) ---
+    # --- 5. 100 TIPS ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "3. LOS 100 TIPS DE ORO DEL PERFORADOR", 0, 1)
+    pdf.cell(0, 10, "4. LOS 100 TIPS DE ORO DEL PERFORADOR", 0, 1)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Arial', '', 8.5)
     
-    # Se mantienen los tips originales pero con codificación segura
     tips = [
         # 1-10 Seguridad y General
         "1. SEGURIDAD: Verifique el freno de emergencia al iniciar el turno.",
@@ -206,11 +228,11 @@ def generar_manual_completo():
     for t in tips:
         pdf.cell(0, 4.5, t, 0, 1)
 
-    # --- 5. CONVERSIONES ---
+    # --- 6. CONVERSIONES ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "4. TABLA DE CONVERSIONES CRITICAS", 0, 1)
+    pdf.cell(0, 10, "5. TABLA DE CONVERSIONES CRITICAS", 0, 1)
     pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
     
