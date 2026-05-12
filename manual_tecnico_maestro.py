@@ -135,17 +135,17 @@ def generar_manual_completo():
         pdf.multi_cell(0, 10, f, border=1, align='C') # Fórmulas centradas en su recuadro
         pdf.ln(2)
 
-    # --- 5. 100 TIPS ---
+ # --- 5. LOS 100 TIPS DE ORO ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "4. LOS 100 TIPS DE ORO DEL PERFORADOR", 0, 1, 'C')
+    pdf.cell(0, 10, "5. LOS 100 TIPS DE ORO DEL PERFORADOR", 0, 1, 'C')
     pdf.ln(5)
     pdf.set_text_color(0, 0, 0)
-    pdf.set_font('Arial', '', 9)
+    pdf.set_font('Arial', '', 8.5)
     
-    # (Lista de tips abreviada para el ejemplo, usá la tuya completa)
-    tips_ejemplo = [
+    # PRIMERO definimos la lista (asegurate que esté antes del bucle for)
+    tips = [
                 # 1-10 Seguridad y General
         "1. SEGURIDAD: Verifique el freno de emergencia al iniciar el turno.",
         "2. OPERATIVO: Aumento de torque indica cambio de formacion o mecha embotada.",
@@ -252,9 +252,11 @@ def generar_manual_completo():
         "98. SEGURIDAD: Nunca deje el pozo abierto a la atmosfera.",
         "99. TÉCNICO: Minimice Skin Effect con fluidos compatibles.",
         "100. MENFA: La capacitacion continua es su mejor herramienta."
+
     ]
 
-    for t in tips: # Usando tu lista original de 'tips'
+    # SEGUNDO recorremos la lista para escribirla en el PDF
+    for t in tips:
         pdf.multi_cell(0, 5, t, 0, 'L')
         pdf.ln(1)
 
