@@ -232,7 +232,7 @@ def generar_manual_completo():
         pdf.cell(60, 10, row[2], 1)
         pdf.ln()
 
-    return pdf.output(dest='S')
+    return bytes(pdf.output(dest='S'))
 
 if __name__ == "__main__":
     try:
