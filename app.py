@@ -94,22 +94,24 @@ if st.session_state.rol == "instructor":
             piz["presion_base"] = 1200.0
             piz["nivel_tanques"] = 80.0
 
+ # ... (Viene del bloque if st.session_state.rol == "instructor")
     if st.button("Cerrar Sesión Instructor"):
         st.session_state.autenticado = False
         st.rerun()
 
-import datetime  # Asegurar import
-import pandas as pd  # Asegurar import
-
-# 4. INTERFAZ DEL ALUMNO
+# 4. INTERFAZ DEL ALUMNO (Línea 105 corregida)
 else:
     st_autorefresh(interval=2000, key="ref_alu")
     logic_events.gestionar_fallas(piz)
     
     # Cálculos físicos (Motor de simulación)
     res = motor.calcular_fisica_perforacion(
-        piz["wob_maestro"], piz["rpm_maestro"], piz["torque_maestro"], 
-        piz["profundidad_actual"], piz["caudal_maestro"], piz["densidad_lodo"]
+        float(piz["wob_maestro"]), 
+        float(piz["rpm_maestro"]), 
+        float(piz["torque_maestro"]), 
+        float(piz["profundidad_actual"]), 
+        float(piz["caudal_maestro"]), 
+        float(piz["densidad_lodo"])
     )
 
     # --- LÓGICA DE AVANCE Y GEOLOGÍA ---
@@ -128,84 +130,60 @@ else:
     else:
         piz["formacion"] = "⏸️ Perforación Detenida"
 
-    # --- SEGURIDAD (KICK) ---
-    pit_gain = max(0.0, piz["nivel_tanques"] - 80.0)
-    if pit_gain >= 5.0 and not piz.get("bop_cerrado", False):
-        st.markdown("""<style>.stApp {background-color: #4b0000; transition: 0.5s;}</style>""", unsafe_allow_html=True)
-        st.error(f"🚨 ¡KICK DETECTADO! Ganancia: {round(pit_gain, 1)} bbl")
-
     # --- ACTUALIZACIÓN DE HISTORIAL ---
-    # Usamos try/except por si el historial no se inicializó correctamente en el state
     try:
         nuevo_punto = pd.DataFrame([{
             "Tiempo": datetime.datetime.now().strftime("%H:%M:%S"),
-            "ROP": res["ROP"], "WOB": piz["wob_maestro"], "SPP": piz["presion_base"]
+            "ROP": res["ROP"], 
+            "WOB": piz["wob_maestro"], 
+            "SPP": piz["presion_base"]
         }])
         piz["historial"] = pd.concat([piz["historial"], nuevo_punto], ignore_index=True).tail(20)
     except Exception as e:
         st.error(f"Error en historial: {e}")
 
- # --- SIDEBAR (CONTROLES, GEONAVEGACIÓN Y BIBLIOTECA) ---
+    # --- SIDEBAR (CONTROLES Y GEONAVEGACIÓN) ---
     with st.sidebar:
-        try: 
-            st.image("logo_menfa.png", width=150)
-        except: 
-            st.title("MENFA 3.0")
+        try: st.image("logo_menfa.png", width=150)
+        except: st.title("MENFA 3.0")
         
         st.header(f"👤 Alumno: {st.session_state.get('usuario', 'Invitado')}")
         st.divider()
 
         if not piz.get("bop_cerrado", False):
-            # 1. SECCIÓN DE OPERACIÓN
-            st.subheader("🕹️ Consola de Mando")
-            piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]))
-            piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]))
-            piz["wob_maestro"] = st.number_input("WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), step=0.5)
-            piz["densidad_lodo"] = st.slider("Densidad (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1)
+            with st.expander("🕹️ Consola de Mando", expanded=True):
+                piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]), key="sld_caudal_alu")
+                piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]), key="sld_rpm_alu")
+                piz["wob_maestro"] = st.number_input("WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), step=0.5, key="num_wob_alu")
+                piz["densidad_lodo"] = st.slider("Densidad (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1, key="sld_dens_alu")
             
             st.divider()
-            
-            # 2. SECCIÓN DE GEONAVEGACIÓN (CONTROL DE TRAYECTORIA)
-            st.subheader("🛰️ Geonavegación")
-            # Mostramos los valores actuales calculados por el motor
-            col_side1, col_side2 = st.columns(2)
-            with col_side1:
-                st.metric("INC", f"{round(res.get('inclinacion', 89.2), 1)}°")
-            with col_side2:
-                st.metric("AZI", f"{round(res.get('azimut', 120.5), 1)}°")
-            
-            # Controles de navegación para el alumno
-            st.caption("Ajuste de Target")
-            target_tvd = st.number_input("Target TVD (m)", 1500.0, 5000.0, 2750.0, step=10.0)
-            st.info(f"Distancia al Target: {round(target_tvd - piz['profundidad_actual'], 2)} m")
-            
+            with st.expander("🛰️ Geonavegación", expanded=True):
+                col_s1, col_s2 = st.columns(2)
+                col_s1.metric("INC", f"{round(res.get('inclinacion', 89.2), 1)}°")
+                col_s2.metric("AZI", f"{round(res.get('azimut', 120.5), 1)}°")
+                target_tvd = st.number_input("Target TVD (m)", 1500.0, 5000.0, 2750.0, step=10.0, key="num_target_alu")
+                st.info(f"Distancia: {round(target_tvd - piz['profundidad_actual'], 2)} m")
         else:
             st.warning("⚠️ Controles bloqueados (Pozo Cerrado)")
 
-        if st.button("🛑 STOP TOTAL", width="stretch", type="primary", key="btn_stop_side"):
+        if st.button("🛑 STOP TOTAL", width="stretch", type="primary", key="btn_stop_alu"):
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
             st.rerun()
 
         st.divider()
-        
-        # 3. BIBLIOTECA TÉCNICA
-        st.subheader("📚 Biblioteca Técnica")
+        st.subheader("📚 Biblioteca")
         try:
             pdf_raw = manual_tecnico_maestro.generar_manual_completo()
-            # Fix de bytes para evitar AttributeError
-            pdf_data = bytes(pdf_raw) if isinstance(pdf_raw, (bytearray, memoryview)) else pdf_raw
-            
             st.download_button(
                 label="📥 Manual Maestro 3.0",
-                data=pdf_data, 
-                file_name="Manual_MENFA_V3.pdf",
+                data=bytes(pdf_raw) if isinstance(pdf_raw, (bytearray, memoryview)) else pdf_raw, 
+                file_name="Manual_MENFA.pdf",
                 mime="application/pdf",
                 width="stretch",
-                key="btn_dl_manual_side"
+                key="btn_manual_alu"
             )
-            st.success("Manual listo")
-        except Exception as e:
-            st.error(f"Error en manual: {e}")
+        except: st.error("Manual no disponible")
 
     # --- TABS PRINCIPALES ---
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
@@ -217,40 +195,34 @@ else:
         st.subheader(f"Capa Geológica: {piz.get('formacion', 'Analizando...')}")
         m1, m2, m3 = st.columns(3)
         m1.metric("Densidad Lodo", f"{piz['densidad_lodo']} ppg")
-        m2.metric("P. Hidrostática", f"{res.get('PH', 0)} psi")
+        m2.metric("P. Hidrostática", f"{round(res.get('PH', 0), 2)} psi")
         m3.metric("Fondo (TVD)", f"{piz['profundidad_actual']} m", delta=f"{round(res['ROP'], 2)} m/h")
         
         st.divider()
         c1, c2, c3 = st.columns(3)
-        # Agregamos sufijos a las keys para evitar DuplicateElementId
-        with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), width="stretch", key="gau_rop_v1")
-        with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), width="stretch", key="gau_wob_v1")
-        with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), width="stretch", key="gau_rpm_v1")
-        
-        c4, c5, c6 = st.columns(3)
-        with c4: st.plotly_chart(ui_components.crear_manometro(piz["presion_base"], "Presión SPP", "PSI", 5000, "red"), width="stretch", key="gau_spp_v1")
-        with c5: st.plotly_chart(ui_components.crear_manometro(res["HOOK_LOAD"], "Hook Load", "klbs", 350, "white"), width="stretch", key="gau_hook_v1")
-        with c6: st.plotly_chart(ui_components.crear_manometro(piz["nivel_tanques"], "Tanques", "%", 100, "yellow"), width="stretch", key="gau_tan_v1")
+        with c1: st.plotly_chart(ui_components.crear_manometro(res["ROP"], "ROP", "m/hr", 60, "lime"), use_container_width=True, key="gau_rop_alu")
+        with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True, key="gau_wob_alu")
+        with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), use_container_width=True, key="gau_rpm_alu")
 
     with tab_geo:
         st.subheader("Geonavegación en Tiempo Real")
         fig_geo = geonavegacion_pro.generar_grafico_trayectoria(piz["profundidad_actual"])
-        st.plotly_chart(fig_geo, width="stretch", key="geo_live_chart") # Key única aquí también
+        st.plotly_chart(fig_geo, use_container_width=True, key="chart_geo_alu")
         
         col_g1, col_g2, col_g3 = st.columns(3)
-        with col_g1: st.metric("Inclinación", f"{round(res.get('inclinacion', 89.2), 1)}°")
-        with col_g2: st.metric("Azimut", f"{round(res.get('azimut', 120.5), 1)}°")
-        with col_g3: st.info("🎯 Objetivo: Ventana de navegación 2600-2800m.")
+        col_g1.metric("Inclinación", f"{round(res.get('inclinacion', 89.2), 1)}°")
+        col_g2.metric("Azimut", f"{round(res.get('azimut', 120.5), 1)}°")
+        col_g3.info("🎯 Objetivo: Ventana 2600-2800m.")
 
     with tab4:
         st.header("📜 Emisión de Certificado")
-        if st.button("Finalizar y Generar PDF", type="primary", key="btn_final"):
+        if st.button("Finalizar y Generar PDF", type="primary", key="btn_cert_alu"):
             st.balloons()
-            pdf_cert = generador_reportes.crear_certificado_pdf(st.session_state.usuario, 95, piz["profundidad_actual"])
+            pdf_cert = generador_reportes.crear_certificado_pdf(st.session_state.get('usuario', 'Alumno'), 95, piz["profundidad_actual"])
             st.download_button(
                 label="📥 Descargar Certificado",
-                data=bytes(pdf_cert) if isinstance(pdf_cert, (bytearray, memoryview)) else pdf_cert,
-                file_name=f"Certificado_MENFA_{st.session_state.usuario}.pdf",
+                data=pdf_cert,
+                file_name=f"Certificado_MENFA_{st.session_state.get('usuario', 'Alumno')}.pdf",
                 mime="application/pdf",
-                width="stretch"
+                key="btn_dl_cert_alu"
             )
