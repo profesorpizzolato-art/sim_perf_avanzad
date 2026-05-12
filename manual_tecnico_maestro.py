@@ -114,25 +114,51 @@ def generar_manual_completo():
         pdf.multi_cell(0, 6, desc, align='J')
         pdf.ln(2)
 
-    # --- 4. FORMULAS ---
+   # --- 4. FORMULARIO TÉCNICO INTEGRAL ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "3. FORMULARIO DE INGENIERIA (UNIDADES DE CAMPO)", 0, 1, 'C')
+    pdf.cell(0, 10, "4. FORMULARIO DE INGENIERIA AVANZADO", 0, 1, 'C')
     pdf.ln(5)
     pdf.set_text_color(0, 0, 0)
     
-    formulas = [
-        "Presion Hidrostatica: Ph (psi) = 0.052 x Densidad (ppg) x TVD (ft)",
-        "Gradiente de Presion: Gp (psi/ft) = Densidad (ppg) x 0.052",
-        "Presion de Fondo (BHP): BHP = Ph + Caida de Presion Anular",
-        "Nueva Densidad de Matar (KMW): (SIDPP / (0.052 x TVD)) + Densidad Actual",
-        "Capacidad de Tuberia/Pozo: ID^2 / 1029.4 (bbl/ft)",
-        "Velocidad Anular (ft/min): (24.5 x Caudal [gpm]) / (Dh^2 - Dp^2)"
+    # Unificamos todas las fórmulas en una sola lista maestra
+    formulas_maestras = [
+        # --- Control de Pozos ---
+        "Presion en el Fondo (BHP): BHP = Ph + SIDPP (en cierre)",
+        "Densidad de Matar (KMW): (SIDPP / (0.052 x TVD)) + Densidad Actual",
+        "Presion Inicial de Circulacion (ICP): ICP = SIDPP + SCR",
+        "Presion Final de Circulacion (FCP): FCP = SCR x (KMW / Densidad Actual)",
+        "Presión Máxima de Cierre (MAASP): (Grad. Fractura - Grad. Lodo) x TVD Zapato",
+        "Gradiente del Influjo (psi/ft): [SICP - SIDPP] / Altura Influjo (ft)",
+        
+        # --- Hidráulica y Capacidades ---
+        "Capacidad de Tuberia (bbl/ft): ID^2 / 1029.4",
+        "Volumen de Fondo (bbl): Capacidad (bbl/ft) x Longitud (ft)",
+        "Velocidad Anular (ft/min): (24.5 x Caudal [gpm]) / (Dh^2 - Dp^2)",
+        "Área Total de Boquillas (TFA): (Boquilla1^2 + Boquilla2^2 + ...) / 1303.8",
+        "Fuerza de Impacto Hidráulico (lb): (Caudal x Densidad x Vel. Jet) / 1930",
+        "Caudal Real (gpm): Desplazamiento Teórico x Eficiencia Volumétrica",
+        
+        # --- Mecánica de Sarta ---
+        "Factor de Flotacion (FF): (65.5 - Densidad Lodo [ppg]) / 65.5",
+        "Peso de la Sarta en Lodo: Peso en Aire x Factor de Flotacion",
+        "Margen de Tension (MOP): Resistencia a la Cedencia - Peso de la Sarta",
+        "Punto Neutro (ft desde mecha): WOB / (Peso unitario DC x FF)",
+        "Tensión Máxima Permitida (lb): Resistencia Cedencia x 0.9",
+        
+        # --- Geometría y Tiempos ---
+        "Tiempo de Ciclo Total (min): Emboladas Totales / Velocidad Bomba (spm)",
+        "Relacion de Compresion: Presion de Salida / Presion de Entrada",
+        "Exceso de Presión (Overbalance): BHP - Presión de Poro"
     ]
-    for f in formulas:
-        pdf.set_font('Arial', '', 11)
-        pdf.multi_cell(0, 10, f, border=1, align='C') # Fórmulas centradas en su recuadro
+
+    # Un solo bucle para dibujar todas
+    for f in formulas_maestras:
+        pdf.set_font('Arial', '', 10)
+        # Fondo gris muy clarito para que parezca un formulario oficial
+        pdf.set_fill_color(252, 252, 252) 
+        pdf.multi_cell(0, 8, f, border=1, align='C', fill=True)
         pdf.ln(2)
 
  # --- 5. LOS 100 TIPS DE ORO ---
@@ -260,35 +286,68 @@ def generar_manual_completo():
         pdf.multi_cell(0, 5, t, 0, 'L')
         pdf.ln(1)
 
-    # --- 6. CONVERSIONES ---
+   # --- 6. TABLA DE CONVERSIONES CRITICAS ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "5. TABLA DE CONVERSIONES CRITICAS", 0, 1, 'C')
+    pdf.cell(0, 10, "6. TABLA DE CONVERSIONES CRITICAS", 0, 1, 'C')
     pdf.ln(5)
-    pdf.set_text_color(0, 0, 0)
     
     conversions = [
-        ["De Metros (m)", "a Pies (ft)", "x 3.281"],
-        ["De Barriles (bbl)", "a Metros Cubicos (m3)", "x 0.1589"],
-        ["De PPG (lb/gal)", "a gr/cm3 (SG)", "x 0.1198"],
-        ["De PSI (Presion)", "a BAR", "x 0.0689"],
-        ["De Pulgadas (in)", "a Milimetros (mm)", "x 25.4"]
+        # --- Longitud y Diámetro ---
+        ["Metros (m)", "Pies (ft)", "x 3.2808"],
+        ["Pulgadas (in)", "Milimetros (mm)", "x 25.4"],
+        ["Kilometros (km)", "Millas (mi)", "x 0.6214"],
+        
+        # --- Volumen y Capacidad ---
+        ["Barriles (bbl)", "Metros Cubicos (m3)", "x 0.1589"],
+        ["Galones (gal)", "Barriles (bbl)", "/ 42"],
+        ["Barriles (bbl)", "Litros (L)", "x 158.98"],
+        ["Barriles/Pie (bbl/ft)", "m3/m", "x 0.5216"], # Clave para capacidad de pozo
+        
+        # --- Peso y Densidad ---
+        ["Libras (lb)", "Kilogramos (kg)", "x 0.4536"],
+        ["PPG (lb/gal)", "gr/cm3 (SG)", "x 0.1198"],
+        ["PPG (lb/gal)", "PSI/ft (Gradiente)", "x 0.052"],
+        ["Libras/Pie (lb/ft)", "kg/m", "x 1.4882"], # Peso de la tubería (Nominal)
+        
+        # --- Presión y Fuerza ---
+        ["PSI", "Bar", "x 0.0689"],
+        ["PSI", "kg/cm2", "x 0.0703"],
+        ["PSI", "Kilopascales (kPa)", "x 6.8947"],
+        ["Libras (lb fuerza)", "Decanewtons (daN)", "x 0.4448"],
+        
+        # --- Caudal y Torque ---
+        ["GPM (gal/min)", "LPM (litros/min)", "x 3.785"],
+        ["ft-lb (Torque)", "N-m (Newton-Metro)", "x 1.3558"], # Fundamental para conexiones
+        ["ft-lb (Torque)", "m-kg", "x 0.1383"],
+        
+        # --- Potencia y Temperatura ---
+        ["HP (Horsepower)", "Kilowatts (kW)", "x 0.7457"],
+        ["Celsius (°C)", "Fahrenheit (°F)", "x 1.8 + 32"]
     ]
     
-    # Ancho total disponible es 210 - 20 - 20 = 170mm. Dividimos 170 / 3 = 56.6mm
+    # Ancho total disponible 170mm
     col_width = 56.6
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(col_width, 10, "Origen", 1, 0, 'C')
-    pdf.cell(col_width, 10, "Destino", 1, 0, 'C')
-    pdf.cell(col_width, 10, "Factor", 1, 1, 'C')
     
-    pdf.set_font('Arial', '', 10)
+    # Encabezado de Tabla Estilizado
+    pdf.set_fill_color(0, 51, 102)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(col_width, 10, "DATO ORIGEN", 1, 0, 'C', fill=True)
+    pdf.cell(col_width, 10, "A CONVERTIR", 1, 0, 'C', fill=True)
+    pdf.cell(col_width, 10, "OPERACION", 1, 1, 'C', fill=True)
+    
+    # Filas de la Tabla
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font('Arial', '', 9)
     for row in conversions:
-        pdf.cell(col_width, 10, row[0], 1, 0, 'C')
-        pdf.cell(col_width, 10, row[1], 1, 0, 'C')
-        pdf.cell(col_width, 10, row[2], 1, 1, 'C')
-
+        # Detectar si cambiamos de categoría para alternar un color suave (opcional)
+        pdf.cell(col_width, 8, row[0], 1, 0, 'C')
+        pdf.cell(col_width, 8, row[1], 1, 0, 'C')
+        pdf.set_font('Arial', 'B', 9)
+        pdf.cell(col_width, 8, row[2], 1, 1, 'C')
+        pdf.set_font('Arial', '', 9)
     return bytes(pdf.output(dest='S'))
 
 if __name__ == "__main__":
