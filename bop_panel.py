@@ -3,60 +3,69 @@
 def render_bop_ui(pizarra):
     st.header("🛡️ Unidad de Control de Surgencias")
     
-    # --- ESTADO FÍSICO DEL BOP ---
-    estado = "CERRADO" if pizarra["bop_cerrado"] else "ABIERTO"
-    color = "#FF4B4B" if pizarra["bop_cerrado"] else "#28a745"
+    # Estado dinámico
+    es_cerrado = pizarra.get("bop_cerrado", False)
+    estado_txt = "CERRADO" if es_cerrado else "ABIERTO (FLUYENDO)"
+    color_bg = "#FF4B4B" if es_cerrado else "#28a745"
     
     st.markdown(f"""
-        <div style="background-color:{color}; padding:10px; border-radius:10px; text-align:center;">
-            <h2 style="color:white; margin:0;">ESTADO DEL POZO: {estado}</h2>
+        <div style="background-color:{color_bg}; padding:15px; border-radius:10px; text-align:center;">
+            <h2 style="color:white; margin:0;">ESTADO DEL POZO: {estado_txt}</h2>
         </div>
     """, unsafe_allow_html=True)
 
     st.divider()
 
-    # --- MANDOS DE CIERRE ---
+    # Mandos de Presión
     c1, c2, c3 = st.columns(3)
     with c1:
-        if st.button("🔴 CIERRE ANULAR", use_container_width=True):
+        if st.button("🔴 CIERRE ANULAR", use_container_width=True, key="btn_anular"):
             pizarra["bop_cerrado"] = True
-            st.toast("Cerrando Anular...")
+            st.rerun()
     with c2:
-        if st.button("🔴 CIERRE RAMS", use_container_width=True):
+        if st.button("🔴 CIERRE RAMS", use_container_width=True, key="btn_rams"):
             pizarra["bop_cerrado"] = True
-            st.toast("Cerrando Rams...")
+            st.rerun()
     with c3:
-        if st.button("🟢 ABRIR POZO", use_container_width=True):
+        if st.button("🟢 ABRIR POZO", use_container_width=True, key="btn_abrir"):
             pizarra["bop_cerrado"] = False
-            st.success("Pozo Abierto - Monitorear flujo")
+            st.rerun()
 
-    # --- LÓGICA DE CONTROL DE POZOS (Solo si está cerrado) ---
-    if pizarra["bop_cerrado"]:
+    # --- SECCIÓN TÉCNICA DE CONTROL (Ingeniería) ---
+    if es_cerrado:
         st.divider()
-        st.subheader("📝 Protocolo de Control de Pozos")
+        st.subheader("📋 Parámetros de Ahogo")
         
-        metodo = st.selectbox("Seleccione Método de Control", 
-                             ["Seleccionar...", "Método del Perforador (Driller's Method)", "Esperar y Pesar (Wait & Weight)"])
+        col_ing1, col_ing2 = st.columns(2)
         
-        if metodo != "Seleccionar...":
-            col_inf1, col_inf2 = st.columns(2)
+        with col_ing1:
+            st.markdown("### 1. Registro de Presiones")
+            # El alumno debe ingresar las presiones estabilizadas
+            sidpp = st.number_input("SIDPP (Presión de Cierre TP) [psi]", 0, 3000, 500)
+            sicp = st.number_input("SICP (Presión de Cierre TR) [psi]", 0, 3000, 800)
+            st.caption("SIDPP: Shut-In Drill Pipe Pressure")
+        
+        with col_ing2:
+            st.markdown("### 2. Cálculo de Ingeniería")
+            # Fórmula de Control de Pozos
+            tvd_ft = pizarra["profundidad_actual"] * 3.2808  # Convertimos a pies para la fórmula estándar
+            mw_actual = pizarra["densidad_lodo"]
             
-            with col_inf1:
-                st.info(f"**Estrategia:** {metodo}")
-                sidpp = st.number_input("SIDPP (psi)", 0, 2000, 500)
-                sicp = st.number_input("SICP (psi)", 0, 2000, 750)
-                
-            with col_inf2:
-                # Cálculo dinámico de la nueva densidad de lodo (KMW)
-                prof_vert = pizarra["profundidad_actual"] * 3.28084 # Convertir a pies para la fórmula estándar
-                dens_actual = pizarra["densidad_lodo"]
-                kmw = dens_actual + (sidpp / (0.052 * prof_vert))
-                
-                st.metric("Lodo de Ahogo (KMW)", f"{round(kmw, 2)} ppg")
-                st.caption("Fórmula: MW + (SIDPP / (0.052 * TVD))")
-
-            # Botón para iniciar la circulación de ahogo
-            if st.button("🚀 Iniciar Circulación de Ahogo", type="primary"):
-                st.warning("Iniciando bombeo de lodo pesado... Mantenga presión en el casing.")
-                pizarra["densidad_lodo"] = round(kmw, 2)
-                pizarra["evento_activo"] = None # Normaliza el sistema al terminar
+            # Cálculo del Lodo de Ahogo (Kill Mud Weight)
+            kmw = mw_actual + (sidpp / (0.052 * tvd_ft))
+            
+            st.metric("Lodo de Ahogo Requerido (KMW)", f"{round(kmw, 2)} ppg", 
+                      delta=f"{round(kmw - mw_actual, 2)} ppg extra")
+            
+        st.divider()
+        st.subheader("⚙️ Método de Control Seleccionado")
+        metodo = st.radio("Procedimiento:", 
+                         ["Método del Perforador", "Esperar y Pesar"], 
+                         horizontal=True)
+        
+        if st.button("🚀 INICIAR OPERACIÓN DE AHOGO", type="primary", use_container_width=True):
+            st.warning(f"Iniciando {metodo}... Bombeando {round(kmw, 2)} ppg a emboladas constantes.")
+            # Actualizamos la densidad en la pizarra
+            pizarra["densidad_lodo"] = round(kmw, 2)
+            pizarra["evento_activo"] = None # El pozo se estabiliza
+            st.success("Presiones niveladas. Sistema normalizado.")
