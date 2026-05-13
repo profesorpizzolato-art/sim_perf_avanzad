@@ -2,9 +2,13 @@ import streamlit as st
 import pandas as pd
 import datetime
 from streamlit_autorefresh import st_autorefresh
-import auth, ui_components, logic_events, generador_reportes
-import motor_calculos_avanzados as motor 
-import bop_panel, geonavegacion_pro 
+import auth
+import ui_components
+import logic_events
+import generador_reportes
+import motor_calculos_avanzados as motor
+import bop_panel
+import geonavegacion_pro
 import manual_tecnico_maestro
 
 # 1. CONFIGURACIÓN E INICIALIZACIÓN
@@ -205,14 +209,14 @@ else:
         with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True, key="gau_wob_alu")
         with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), use_container_width=True, key="gau_rpm_alu")
 
-    # TAB 2: CONTROL DE POZOS (BOP)
+    # TAB 2: CONTROL DE POZOS (BOP + MÉTODOS)
     with tab2:
-        st.subheader("🛡️ Control de Pozos e Integridad")
+        st.subheader("🛡️ Unidad de Control de Pozos e Ingeniería")
         try:
-            # Llamamos al panel de control de surgencias
-            bop_panel.interfaz_bop(piz)
+            # Llamamos a la función de bop_panel.py pasándole la pizarra 'piz'
+            bop_panel.render_bop_ui(piz) 
         except Exception as e:
-            st.error(f"No se pudo cargar el panel BOP: {e}")
+            st.error(f"Error al cargar el panel técnico: {e}")
 
     # TAB GEO: GEONAVEGACIÓN
     with tab_geo:
