@@ -211,12 +211,10 @@ else:
 
     # TAB 2: CONTROL DE POZOS (BOP + MÉTODOS)
     with tab2:
-        st.subheader("🛡️ Unidad de Control de Pozos e Ingeniería")
         try:
-            # Llamamos a la función de bop_panel.py pasándole la pizarra 'piz'
             bop_panel.render_bop_ui(piz) 
         except Exception as e:
-            st.error(f"Error al cargar el panel técnico: {e}")
+            st.error(f"Error técnico: {e}")
 
     # TAB GEO: GEONAVEGACIÓN
     with tab_geo:
