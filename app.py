@@ -103,12 +103,41 @@ if st.session_state.rol == "instructor":
         st.session_state.autenticado = False
         st.rerun()
 
-# 4. INTERFAZ DEL ALUMNO (Línea 105 corregida)
+# 4. INTERFAZ DEL ALUMNO (Versión Unificada con Control de Pozos)
 else:
     st_autorefresh(interval=2000, key="ref_alu")
+    
+    # --- [A] INICIALIZACIÓN DE SISTEMAS DE SEGUIMIENTO ---
+    if "log_eventos" not in st.session_state:
+        st.session_state.log_eventos = []
+    if "strokes_totales" not in st.session_state:
+        st.session_state.strokes_totales = 0
+
+    # --- [B] LÓGICA DE INFLUJO DINÁMICO ---
+    # El pozo reacciona al evento activo y a la posición del Choke
+    if piz.get("evento_activo") == "KICK":
+        if not piz.get("bop_cerrado", False):
+            # Pozo abierto: Ganancia rápida de volumen
+            piz["nivel_tanques"] += 0.5 
+        else:
+            # Pozo cerrado: Si el Choke está abierto (>10/64), sigue entrando influjo
+            if piz.get("choke_pos", 0) > 10:
+                piz["nivel_tanques"] += 0.1
+                # Registro automático en bitácora por mala operación del Choke
+                if not st.session_state.log_eventos or "⚠️ Fuga" not in st.session_state.log_eventos[-1]:
+                    hora = datetime.datetime.now().strftime('%H:%M:%S')
+                    st.session_state.log_eventos.append(f"[{hora}] ⚠️ Fuga detectada: Presión insuficiente por Choke abierto.")
+
+    # --- [C] CONTADOR DE STROKES (BOMBAS) ---
+    if piz["caudal_maestro"] > 0:
+        # Estimación técnica: Caudal / factor de bomba (ej. 8)
+        spm_simulado = piz["caudal_maestro"] / 8
+        # 0.033 corresponde al refresco de 2 segundos (2/60 min)
+        st.session_state.strokes_totales += (spm_simulado * 0.033)
+
+    # --- [D] PROCESAMIENTO DE FALLAS Y FÍSICA ---
     logic_events.gestionar_fallas(piz)
     
-    # Cálculos físicos (Motor de simulación)
     res = motor.calcular_fisica_perforacion(
         float(piz["wob_maestro"]), 
         float(piz["rpm_maestro"]), 
@@ -118,7 +147,8 @@ else:
         float(piz["densidad_lodo"])
     )
 
-    # --- LÓGICA DE AVANCE Y GEOLOGÍA ---
+    # --- [E] LÓGICA DE AVANCE Y GEOLOGÍA ---
+    # Solo avanza si el pozo está abierto y hay parámetros de perforación
     if not piz.get("bop_cerrado", False) and piz["rpm_maestro"] > 0 and piz["caudal_maestro"] > 400:
         incremento = (res["ROP"] / 3600) * 2
         piz["profundidad_actual"] = round(piz["profundidad_actual"] + incremento, 4)
@@ -133,7 +163,6 @@ else:
             res["ROP"] *= 0.4  
     else:
         piz["formacion"] = "⏸️ Perforación Detenida"
-
     # --- ACTUALIZACIÓN DE HISTORIAL ---
     try:
         nuevo_punto = pd.DataFrame([{
