@@ -181,14 +181,34 @@ else:
 
         st.divider()
 
-        # 2. MANUAL TÉCNICO MAESTRO (Indumentaria corregida)
-        with st.expander("📖 Manual Técnico Maestro", expanded=False):
+        # 2. MANUAL TÉCNICO MAESTRO (CON BOTÓN DE DESCARGA)
+        with st.sidebar.expander("📖 Manual Técnico Maestro", expanded=False):
             try:
+                # 1. Mostramos la interfaz visual del manual
                 manual_tecnico_maestro.mostrar_manual_sidebar()
-            except:
-                st.info("Protocolos: Clase 11 y 12 - Verificar presiones antes de abrir BOP.")
-
-        st.divider()
+                
+                st.divider()
+                
+                # 2. Lógica para descargar el documento
+                # Asumimos que tienes el archivo en la carpeta root o assets
+                with open("Manual_Tecnico_Maestro_MENFA.pdf", "rb") as file:
+                    st.download_button(
+                        label="📥 Descargar Manual PDF",
+                        data=file,
+                        file_name="Manual_Tecnico_Maestro_MENFA.pdf",
+                        mime="application/pdf",
+                        use_container_width=True,
+                        key="btn_descarga_manual"
+                    )
+            except FileNotFoundError:
+                st.error("Archivo PDF no encontrado en el servidor.")
+                st.info("Protocolos Clase 11 y 12: Verificar presiones antes de abrir BOP.")
+            except Exception as e:
+                # Si el manual es generado por código y no es un archivo físico:
+                if st.button("Generar PDF del Manual", use_container_width=True):
+                    # Aquí llamarías a tu función de generación (ej. de generador_reportes)
+                    pdf_manual = generador_reportes.generar_pdf_estatico_manual() 
+                    st.download_button("📥 Descargar Copia", pdf_manual, "Manual_MENFA.pdf", "application/pdf")
 
         # 3. BOTÓN DE EMERGENCIA
         if st.button("🛑 STOP TOTAL", type="primary", use_container_width=True, key="btn_final_stop"):
@@ -214,7 +234,6 @@ else:
         with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True)
         with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), use_container_width=True)
 
-    # TAB 2: CONTROL DE POZOS (Lógica de BOP y Choke)
     with tab2:
         st.subheader("🛡️ Sistema de Control de Superficie")
         
