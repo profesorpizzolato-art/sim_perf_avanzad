@@ -408,3 +408,7 @@ if __name__ == "__main__":
         print("Manual generado con exito.")
     except Exception as e:
         print(f"Error: {e}")
+def mostrar_manual_sidebar():
+    """Función para que app.py no de error"""
+    st.markdown("### 📖 Manual Maestro 3.0")
+    st.write("Acceda a los protocolos técnicos y descargue el manual completo.")
