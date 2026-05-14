@@ -181,34 +181,29 @@ else:
 
         st.divider()
 
-        # 2. MANUAL TÉCNICO MAESTRO (CON BOTÓN DE DESCARGA)
-        with st.sidebar.expander("📖 Manual Técnico Maestro", expanded=False):
-            try:
-                # 1. Mostramos la interfaz visual del manual
-                manual_tecnico_maestro.mostrar_manual_sidebar()
+       with st.sidebar.expander("📖 Manual Técnico Maestro", expanded=False):
+    try:
+        # 1. Mostramos la interfaz (asegurate que esté el import streamlit as st en el otro archivo)
+        manual_tecnico_maestro.mostrar_manual_sidebar()
+        
+        st.divider()
+        
+        # 2. BOTÓN DE GENERACIÓN (Corregido para evitar el AttributeError)
+        # Usamos width='stretch' en lugar de use_container_width
+        if st.button("🚀 Generar PDF del Manual", width='stretch'):
+            with st.spinner("Compilando material..."):
+                # LLAMAMOS A LA FUNCIÓN QUE SÍ EXISTE EN TU ARCHIVO
+                pdf_data = manual_tecnico_maestro.generar_manual_completo()
                 
-                st.divider()
-                
-                # 2. Lógica para descargar el documento
-                # Asumimos que tienes el archivo en la carpeta root o assets
-                with open("Manual_Tecnico_Maestro_MENFA.pdf", "rb") as file:
-                    st.download_button(
-                        label="📥 Descargar Manual PDF",
-                        data=file,
-                        file_name="Manual_Tecnico_Maestro_MENFA.pdf",
-                        mime="application/pdf",
-                        use_container_width=True,
-                        key="btn_descarga_manual"
-                    )
-            except FileNotFoundError:
-                st.error("Archivo PDF no encontrado en el servidor.")
-                st.info("Protocolos Clase 11 y 12: Verificar presiones antes de abrir BOP.")
-            except Exception as e:
-                # Si el manual es generado por código y no es un archivo físico:
-                if st.button("Generar PDF del Manual", use_container_width=True):
-                    # Aquí llamarías a tu función de generación (ej. de generador_reportes)
-                    pdf_manual = generador_reportes.generar_pdf_estatico_manual() 
-                    st.download_button("📥 Descargar Copia", pdf_manual, "Manual_MENFA.pdf", "application/pdf")
+                st.download_button(
+                    label="📥 Descargar Copia", 
+                    data=pdf_data,
+                    file_name="Manual_Maestro_MENFA_3.0.pdf",
+                    mime="application/pdf",
+                    width='stretch'
+                )
+    except Exception as e:
+        st.error(f"Error al cargar el manual: {e}")
 
         # 3. BOTÓN DE EMERGENCIA
         if st.button("🛑 STOP TOTAL", type="primary", use_container_width=True, key="btn_final_stop"):
