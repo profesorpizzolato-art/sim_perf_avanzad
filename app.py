@@ -153,47 +153,47 @@ else:
     else:
         piz["formacion"] = "⏸️ Detenida"
 
-    # SIDEBAR INTEGRAL (MANDOS + NAVEGACIÓN)
+   # --- SIDEBAR FINAL (CORREGIDO SIN ERRORES DE INDENTACIÓN) ---
     with st.sidebar:
-        try: st.image("logo_menfa.png", width=150)
-        except: st.title("MENFA 3.0")
-        st.header(f"👤 Operador: {st.session_state.get('usuario', 'Invitado')}")
+        try:
+            st.image("logo_menfa.png", width=150)
+        except:
+            st.title("MENFA 3.0")
         
+        st.header(f"👤 Operador: {st.session_state.get('usuario', 'Invitado')}")
+        st.divider()
+
+        # 1. CONTROLES OPERATIVOS
         if not piz.get("bop_cerrado", False):
             with st.expander("🕹️ Consola de Mando", expanded=True):
-                piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]), key="sld_c")
-                piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]), key="sld_r")
-                piz["wob_maestro"] = st.number_input("WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), key="num_w")
-                piz["densidad_lodo"] = st.slider("Densidad (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1)
+                piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]), key="sld_c_f")
+                piz["rpm_maestro"] = st.slider("Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]), key="sld_r_f")
+                piz["wob_maestro"] = st.number_input("WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), key="num_w_f")
+                piz["densidad_lodo"] = st.slider("Densidad (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1, key="sld_den_f")
 
             with st.expander("🛰️ Control Direccional (MWD)", expanded=True):
-                piz["toolface"] = st.slider("Toolface (TF)", 0, 360, int(piz["toolface"]), 5)
-                piz["dls_set"] = st.slider("DLS (Agresividad)", 0.0, 10.0, float(piz["dls_set"]), 0.5)
+                piz["toolface"] = st.slider("Toolface (TF)", 0, 360, int(piz.get("toolface", 0)), 5)
+                piz["dls_set"] = st.slider("DLS (Agresividad)", 0.0, 10.0, float(piz.get("dls_set", 3.0)), 0.5)
                 st.divider()
-                c_inc, c_azi = st.columns(2)
-                c_inc.metric("INC", f"{round(res.get('inclinacion', 89.2), 1)}°")
-                c_azi.metric("AZI", f"{round(res.get('azimut', 120.5), 1)}°")
-                target_tvd = st.number_input("Target TVD (m)", 1500.0, 5000.0, 2750.0, key="tgt_alu")
-                st.info(f"Faltan: {round(target_tvd - piz['profundidad_actual'], 2)} m")
+                st.metric("INC / AZI", f"{round(res.get('inclinacion', 89.2), 1)}° / {round(res.get('azimut', 120.5), 1)}°")
         else:
-            st.warning("⚠️ Pozo Cerrado")
-             with st.expander("📖 Manual Técnico Maestro", expanded=False):
-            st.write("Consulta de Procedimientos:")
-            # Aquí llamamos a la función de tu módulo manual_tecnico_maestro
-            try:
-                manual_tecnico_maestro.mostrar_manual_sidebar()
-            except:
-                st.info("Manual cargado en la base de datos técnica.")
-                if st.button("Ver Protocolos de Intervención"):
-                    st.info("Protocolos: Verificar presiones antes de abrir BOP.")
+            st.warning("⚠️ Pozo Cerrado - Controles Bloqueados")
 
         st.divider()
 
-        
-        if st.button("🛑 STOP TOTAL", type="primary", use_container_width=True):
+        # 2. MANUAL TÉCNICO MAESTRO (Indumentaria corregida)
+        with st.expander("📖 Manual Técnico Maestro", expanded=False):
+            try:
+                manual_tecnico_maestro.mostrar_manual_sidebar()
+            except:
+                st.info("Protocolos: Clase 11 y 12 - Verificar presiones antes de abrir BOP.")
+
+        st.divider()
+
+        # 3. BOTÓN DE EMERGENCIA
+        if st.button("🛑 STOP TOTAL", type="primary", use_container_width=True, key="btn_final_stop"):
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
             st.rerun()
-
     # TABS
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
         "🎮 Panel Central", "🛡️ Control de Pozos", "🛰️ Geonavegación", "📈 Análisis", "🏆 Ranking", "📜 Certificado"
@@ -214,17 +214,82 @@ else:
         with c2: st.plotly_chart(ui_components.crear_manometro(piz["wob_maestro"], "WOB", "klbs", 50, "orange"), use_container_width=True)
         with c3: st.plotly_chart(ui_components.crear_manometro(piz["rpm_maestro"], "RPM", "rpm", 150, "skyblue"), use_container_width=True)
 
+    # TAB 2: CONTROL DE POZOS (Lógica de BOP y Choke)
     with tab2:
-        try: bop_panel.render_bop_ui(piz) 
-        except: st.error("Error en BOP")
+        st.subheader("🛡️ Sistema de Control de Superficie")
+        
+        # Intentamos renderizar la interfaz visual del BOP
+        try: 
+            bop_panel.render_bop_ui(piz) 
+        except: 
+            st.error("Error al cargar los controles visuales del BOP")
+
+        st.divider()
+        
+        # --- LÓGICA DE CONTROL OPERATIVO ---
+        col_bop1, col_bop2 = st.columns(2)
+        
+        with col_bop1:
+            st.write("🔧 **Accionamiento de Seguridad**")
+            # El botón cambia su etiqueta y color según el estado
+            if not piz.get("bop_cerrado", False):
+                if st.button("🔴 CERRAR POZO (Shut-In)", use_container_width=True, type="primary"):
+                    piz["bop_cerrado"] = True
+                    piz["rpm_maestro"] = 0  # Seguridad: No se puede rotar con BOP cerrado
+                    piz["alarma_activa"] = False # Apagamos la alarma sonora al tomar acción
+                    st.session_state.log_eventos.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 🛡️ POZO CERRADO: Protocolo de seguridad activado.")
+                    st.rerun()
+            else:
+                if st.button("🟢 ABRIR POZO (Open BOP)", use_container_width=True):
+                    piz["bop_cerrado"] = False
+                    st.session_state.log_eventos.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 🟢 POZO ABIERTO: Reinicio de operaciones.")
+                    st.rerun()
+
+        with col_bop2:
+            st.write("🔌 **Control de Presiones**")
+            # El Choke Manifold es vital para circular el influjo
+            piz["choke_pos"] = st.select_slider(
+                "Apertura de Choke (%)",
+                options=[0, 10, 25, 50, 75, 100],
+                value=piz.get("choke_pos", 0),
+                help="Controla la contrapresión para circular el kick."
+            )
+            
+            # Cálculo de contrapresión dinámica (Backpressure)
+            if piz.get("bop_cerrado", False):
+                # Si el choke está muy cerrado, la presión sube
+                backpressure = (100 - piz["choke_pos"]) * 5.5
+                piz["presion_base"] = 1200 + backpressure 
+                st.metric("Contrapresión (Backpressure)", f"{int(backpressure)} psi")
+            else:
+                piz["presion_base"] = 1200 # Presión normal de circulación
+
+        # --- INFO DE SEGURIDAD ---
+        if piz.get("evento_activo") == "KICK" and piz.get("bop_cerrado"):
+            st.success("✅ Influjo contenido. Proceda a circular con el Método del Perforador.")
+        elif piz.get("evento_activo") == "KICK" and not piz.get("bop_cerrado"):
+            st.warning("⚠️ ¡ALERTA! El pozo fluye. Cierre el BOP inmediatamente.")
 
     with tab_geo:
         st.plotly_chart(geonavegacion_pro.generar_grafico_trayectoria(piz["profundidad_actual"]), use_container_width=True)
 
     with tab_analisis:
+        st.subheader("📈 Tendencias en Tiempo Real")
+        
         if not piz["historial"].empty:
-            st.line_chart(piz["historial"].set_index("Tiempo")[["ROP", "SPP"]])
-            st.code("\n".join(reversed(st.session_state.log_eventos[-10:])))
+            # Graficamos ROP y SPP para ver el comportamiento del pozo
+            st.line_chart(piz["historial"].set_index("Tiempo")[["ROP", "SPP"]], height=300)
+            
+            st.divider()
+            st.subheader("📜 Bitácora de Operaciones")
+            # Mostramos los últimos 10 eventos registrados
+            if st.session_state.log_eventos:
+                log_texto = "\n".join(reversed(st.session_state.log_eventos[-10:]))
+                st.code(log_texto, language="bash")
+            else:
+                st.info("No hay eventos registrados en la bitácora aún.")
+        else:
+            st.warning("📊 Esperando la recolección de datos... Perfore unos metros para ver las tendencias.")
 
     with tab3:
         st.table(pd.DataFrame({"Operador": [st.session_state.get('usuario')], "Profundidad": [piz["profundidad_actual"]]}))
