@@ -181,29 +181,29 @@ else:
 
         st.divider()
 
-       with st.sidebar.expander("📖 Manual Técnico Maestro", expanded=False):
-    try:
-        # 1. Mostramos la interfaz (asegurate que esté el import streamlit as st en el otro archivo)
-        manual_tecnico_maestro.mostrar_manual_sidebar()
-        
-        st.divider()
-        
-        # 2. BOTÓN DE GENERACIÓN (Corregido para evitar el AttributeError)
-        # Usamos width='stretch' en lugar de use_container_width
-        if st.button("🚀 Generar PDF del Manual", width='stretch'):
-            with st.spinner("Compilando material..."):
-                # LLAMAMOS A LA FUNCIÓN QUE SÍ EXISTE EN TU ARCHIVO
-                pdf_data = manual_tecnico_maestro.generar_manual_completo()
+    # --- BLOQUE DEL MANUAL (Asegúrate de que este 'with' esté bien alineado) ---
+        with st.sidebar.expander("📖 Manual Técnico Maestro", expanded=False):
+            try:
+                # 1. Mostramos la interfaz
+                manual_tecnico_maestro.mostrar_manual_sidebar()
                 
-                st.download_button(
-                    label="📥 Descargar Copia", 
-                    data=pdf_data,
-                    file_name="Manual_Maestro_MENFA_3.0.pdf",
-                    mime="application/pdf",
-                    width='stretch'
-                )
-    except Exception as e:
-        st.error(f"Error al cargar el manual: {e}")
+                st.divider()
+                
+                # 2. Botón de generación (usando el nuevo estándar width='stretch')
+                if st.button("🚀 Generar PDF del Manual", width='stretch'):
+                    with st.spinner("Compilando material..."):
+                        # Llamamos a tu función de manual_tecnico_maestro
+                        pdf_data = manual_tecnico_maestro.generar_manual_completo()
+                        
+                        st.download_button(
+                            label="📥 Descargar Copia", 
+                            data=pdf_data,
+                            file_name="Manual_Maestro_MENFA_3.0.pdf",
+                            mime="application/pdf",
+                            width='stretch'
+                        )
+            except Exception as e:
+                st.error(f"Error al cargar el manual: {e}")
 
         # 3. BOTÓN DE EMERGENCIA
         if st.button("🛑 STOP TOTAL", type="primary", use_container_width=True, key="btn_final_stop"):
