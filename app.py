@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
+import base64  # >>> INTEGRACIÓN NUEVA: Necesario para el sonido
 from streamlit_autorefresh import st_autorefresh
 import auth
 import ui_components
@@ -32,7 +33,6 @@ def conectar_pizarra():
         "evento_activo": None, 
         "alarma_activa": False, 
         "bop_cerrado": False,
-        # AGREGADO: Memoria para gráficas
         "historial": pd.DataFrame(columns=["Tiempo", "ROP", "WOB", "SPP"])
     }
 
@@ -68,7 +68,6 @@ if st.session_state.rol == "instructor":
     st.title("👨‍🏫 Consola de Control - Instructor")
     st_autorefresh(interval=2000, key="ref_ins")
     
-    # --- [NUEVO] CONFIGURACIÓN DE SARTA PARA EL INSTRUCTOR ---
     with st.expander("🏗️ Configuración Técnica de la Sarta", expanded=False):
         modulo_sartas.configuracion_ui() 
     
@@ -109,7 +108,8 @@ if st.session_state.rol == "instructor":
     if st.button("Cerrar Sesión Instructor", use_container_width=True):
         st.session_state.autenticado = False
         st.rerun()
-# 4. INTERFAZ DEL ALUMNO (Versión Unificada con Control de Pozos)
+
+# 4. INTERFAZ DEL ALUMNO
 else:
     st_autorefresh(interval=2000, key="ref_alu")
     
@@ -119,11 +119,25 @@ else:
     if "strokes_totales" not in st.session_state:
         st.session_state.strokes_totales = 0
 
+    # >>> INTEGRACIÓN NUEVA: SONIDO DE ALARMA
+    if piz.get("alarma_activa", False):
+        try:
+            with open("assets/alarma.mp3", "rb") as f:
+                data = f.read()
+                b64 = base64.b64encode(data).decode()
+                st.markdown(f'<audio autoplay loop><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
+        except:
+            pass
+
     # --- [NUEVA INTEGRACIÓN] CÁLCULO DE SARTA API 5DP ---
     datos_sarta = modulo_sartas.modulo_sartas_api(piz)
     piz["hook_load"] = datos_sarta["hook_load"]
     piz["tension_max"] = datos_sarta["max_yield"]
     piz["margen_overpull"] = datos_sarta["margen"]
+
+    # >>> INTEGRACIÓN NUEVA: CÁLCULO DE ECD
+    friccion_anular = (piz["caudal_maestro"] / 1200) * 0.4
+    piz["ecd"] = round(piz["densidad_lodo"] + friccion_anular, 2)
 
     # Alerta de seguridad por tensión en Bitácora
     if piz["hook_load"] > piz["tension_max"] * 0.9:
@@ -164,6 +178,9 @@ else:
         incremento = (res["ROP"] / 3600) * 2
         piz["profundidad_actual"] = round(piz["profundidad_actual"] + incremento, 4)
         
+        # >>> INTEGRACIÓN NUEVA: TRIP TANK (Nivel baja por desplazamiento de acero)
+        piz["nivel_tanques"] -= 0.005
+
         if piz["profundidad_actual"] < 2550:
             piz["formacion"] = "🏜️ Arcilla Blanda (Alta ROP)"
         elif 2550 <= piz["profundidad_actual"] < 2800:
@@ -216,20 +233,26 @@ else:
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
             st.rerun()
 
-    # --- TABS PRINCIPALES (MANTENIENDO TODO) ---
+    # --- TABS PRINCIPALES ---
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
         "🎮 Panel Central", "🛡️ Control de Pozos", "🛰️ Geonavegación", 
         "📈 Análisis", "🏆 Ranking", "📜 Certificado"
     ])
     
-    # TAB 1: PANEL CENTRAL (Con nueva métrica de Hook Load)
+    # TAB 1: PANEL CENTRAL (ACTUALIZADO)
     with tab1:
         st.subheader(f"Capa Geológica: {piz.get('formacion', 'Analizando...')}")
-        m1, m2, m3, m4 = st.columns(4) # Expandido a 4 para incluir Hook Load
-        m1.metric("Densidad Lodo", f"{piz['densidad_lodo']} ppg")
-        m2.metric("P. Hidrostática", f"{round(res.get('PH', 0), 2)} psi")
+        m1, m2, m3, m4 = st.columns(4)
+        
+        # >>> INTEGRACIÓN NUEVA: MW vs ECD
+        m1.metric("Densidad (MW/ECD)", f"{piz['densidad_lodo']} / {piz['ecd']} ppg")
+        
+        # >>> INTEGRACIÓN NUEVA: PRESIÓN DE FONDO (BHP)
+        presion_fondo = round(res.get('PH', 0) + (piz['ecd'] - piz['densidad_lodo']) * 0.052 * piz['profundidad_actual'], 1)
+        m2.metric("P. Fondo (BHP)", f"{presion_fondo} psi")
+        
         m3.metric("Hook Load", f"{int(piz['hook_load'] / 1000)} klbs", delta=f"{int(piz['margen_overpull'] / 1000)} MOP")
-        m4.metric("Fondo (TVD)", f"{piz['profundidad_actual']} m", delta=f"{round(res['ROP'], 2)} m/h")
+        m4.metric("Nivel Tanques", f"{round(piz['nivel_tanques'], 1)} %", delta=f"{piz['profundidad_actual']} m")
         
         st.divider()
         c1, c2, c3 = st.columns(3)
@@ -242,13 +265,13 @@ else:
         try: bop_panel.render_bop_ui(piz) 
         except Exception as e: st.error(f"Error técnico: {e}")
 
-    # TAB GEO: GEONAVEGACIÓN (Se mantiene intacto)
+    # TAB GEO: GEONAVEGACIÓN
     with tab_geo:
         st.subheader("🛰️ Geonavegación en Tiempo Real")
         fig_geo = geonavegacion_pro.generar_grafico_trayectoria(piz["profundidad_actual"])
         st.plotly_chart(fig_geo, use_container_width=True, key="chart_geo_alu")
 
-    # TAB ANÁLISIS: GRÁFICOS (Se mantiene intacto)
+    # TAB ANÁLISIS: GRÁFICOS Y BITÁCORA
     with tab_analisis:
         st.subheader("📈 Análisis de Tendencias Técnicas")
         if not piz["historial"].empty:
@@ -259,7 +282,7 @@ else:
         else:
             st.info("Esperando datos...")
 
-    # TAB 3 y 4 (Se mantienen Ranking y Certificado igual que antes)
+    # TAB 3: RANKING
     with tab3:
         st.subheader("🏆 Cuadro de Mérito - MENFA")
         ranking_data = pd.DataFrame({
@@ -269,6 +292,7 @@ else:
         }).sort_values(by="Profundidad", ascending=False)
         st.table(ranking_data)
 
+    # TAB 4: CERTIFICADO
     with tab4:
         st.header("📜 Emisión de Certificado")
         if st.button("Finalizar y Generar PDF", type="primary", key="btn_cert_alu"):
@@ -281,5 +305,3 @@ else:
                 mime="application/pdf",
                 key="btn_dl_cert_alu"
             )
-   
-# ... (Tu código de certificado)
