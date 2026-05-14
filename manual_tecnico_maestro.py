@@ -69,8 +69,58 @@ def generar_manual_completo():
         pdf.set_font('Arial', '', 10)
         pdf.multi_cell(0, 6, desc, align='J') # Alineación justificada
         pdf.ln(2)
+    #  3. NAVEGACIÓN Y GEONAVEGACIÓN ---
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 16)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 10, "3. NAVEGACION Y GEONAVEGACION", 0, 1, 'L')
+    pdf.ln(5)
+    pdf.set_font('Arial', '', 11)
+    pdf.set_text_color(0, 0, 0)
+    
+    nav_text = (
+        "* Modo Rotacion (RPM > 0): Perforacion convencional. El pozo mantiene la direccion.\n"
+        "* Modo Deslizando (Sliding - RPM = 0): Se usa para direccionar.\n"
+        "  - Toolface 0 GRAD: Sube angulo (Build).\n"
+        "  - Toolface 180 GRAD: Cae angulo (Drop).\n"
+        "* DLS (Dogleg Severity): Un DLS > 4.0 se considera una curva agresiva que aumenta el torque y arrastre."
+    )
+    pdf.multi_cell(0, 7, nav_text)
+    pdf.ln(5)
 
-    # --- 3. PROTOCOLOS DE SEGURIDAD ---
+    #  4. HIDRÁULICA Y SARTA ---
+    pdf.set_font('Arial', 'B', 16)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 10, "4. HIDRAULICA Y SARTA (API 5DP)", 0, 1, 'L')
+    pdf.ln(5)
+    pdf.set_font('Arial', '', 11)
+    pdf.set_text_color(0, 0, 0)
+    
+    hidra_text = (
+        "* ECD (Equivalent Circulating Density): Densidad real que siente el pozo con bombas encendidas.\n"
+        "* BHP (Presion de Fondo): Debe ser mayor a la presion de poros para evitar un KICK.\n"
+        "* Trip Tank: Monitorear el nivel por desplazamiento de acero.\n"
+        "* Hook Load: Peso total en el gancho. Si se aplica WOB, el Hook Load disminuye.\n"
+        "* Margen de Overpull (MOP): Capacidad de tension restante antes de la deformacion.\n"
+        "* Factor de Flotacion: El lodo ayuda a sostener la sarta. A mas densidad, menos pesa en gancho."
+    )
+    pdf.multi_cell(0, 7, hidra_text)
+    pdf.ln(5)
+
+    # 5. CONTROL DE POZOS (BOP) ---
+    pdf.set_font('Arial', 'B', 16)
+    pdf.set_text_color(0, 51, 102)
+    pdf.cell(0, 10, "5. CONTROL DE POZOS (BOP)", 0, 1, 'L')
+    pdf.ln(5)
+    pdf.set_font('Arial', '', 11)
+    
+    bop_text = (
+        "* Cierre de Pozo (Shut-In): Ante aumento de nivel en tanques, cerrar BOP inmediatamente.\n"
+        "* Uso del Choke: Ajustar para generar contrapresion (Backpressure) y mantener BHP constante."
+    )
+    
+    pdf.multi_cell(0, 7, bop_text)
+    # 6. PROTOCOLOS DE SEGURIDAD ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
@@ -114,7 +164,7 @@ def generar_manual_completo():
         pdf.multi_cell(0, 6, desc, align='J')
         pdf.ln(2)
 
-   # --- 4. FORMULARIO TÉCNICO INTEGRAL ---
+   # 7. FORMULARIO TÉCNICO INTEGRAL ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
@@ -161,7 +211,7 @@ def generar_manual_completo():
         pdf.multi_cell(0, 8, f, border=1, align='C', fill=True)
         pdf.ln(2)
 
- # --- 5. LOS 100 TIPS DE ORO ---
+ # 8. LOS 100 TIPS DE ORO ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
@@ -286,7 +336,7 @@ def generar_manual_completo():
         pdf.multi_cell(0, 5, t, 0, 'L')
         pdf.ln(1)
 
-   # --- 6. TABLA DE CONVERSIONES CRITICAS ---
+   # 9. TABLA DE CONVERSIONES CRITICAS ---
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
