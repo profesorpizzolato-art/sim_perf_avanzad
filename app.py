@@ -177,7 +177,19 @@ else:
                 st.info(f"Faltan: {round(target_tvd - piz['profundidad_actual'], 2)} m")
         else:
             st.warning("⚠️ Pozo Cerrado")
+             with st.expander("📖 Manual Técnico Maestro", expanded=False):
+            st.write("Consulta de Procedimientos:")
+            # Aquí llamamos a la función de tu módulo manual_tecnico_maestro
+            try:
+                manual_tecnico_maestro.mostrar_manual_sidebar()
+            except:
+                st.info("Manual cargado en la base de datos técnica.")
+                if st.button("Ver Protocolos de Intervención"):
+                    st.info("Protocolos: Verificar presiones antes de abrir BOP.")
 
+        st.divider()
+
+        
         if st.button("🛑 STOP TOTAL", type="primary", use_container_width=True):
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
             st.rerun()
