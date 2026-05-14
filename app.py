@@ -10,7 +10,7 @@ import motor_calculos_avanzados as motor
 import bop_panel
 import geonavegacion_pro
 import manual_tecnico_maestro
-import modulo_sartas
+import sartas_perforacion
 
 # 1. CONFIGURACIÓN E INICIALIZACIÓN
 st.set_page_config(page_title="MENFA 3.0 - Simulador Pro", layout="wide")
