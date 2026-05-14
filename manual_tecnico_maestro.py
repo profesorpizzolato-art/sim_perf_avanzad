@@ -1,3 +1,4 @@
+import streamlit as st  # <--- ESTO ES LO QUE FALTA
 from fpdf import FPDF
 import datetime
 
