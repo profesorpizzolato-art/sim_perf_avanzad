@@ -138,22 +138,49 @@ else:
             if piz.get("choke_pos", 0) > 10:
                 piz["nivel_tanques"] += 0.1
 
-    # FÍSICA Y AVANCE
+  # =========================================================================
+    # --- FÍSICA Y AVANCE OPTIMIZADO (DESTRABADO) ---
+    # =========================================================================
     logic_events.gestionar_fallas(piz)
+    
+    # 1. Aseguramos que la profundidad se mueva en el session_state para no congelarse
+    if "profundidad_dinamica" not in st.session_state:
+        st.session_state["profundidad_dinamica"] = float(piz["profundidad_actual"])
+
+    # 2. Ejecutamos el cálculo físico enviando el valor dinámico acumulado
     res = motor.calcular_fisica_perforacion(
-        float(piz["wob_maestro"]), float(piz["rpm_maestro"]), 
-        float(piz["torque_maestro"]), float(piz["profundidad_actual"]), 
-        float(piz["caudal_maestro"]), float(piz["densidad_lodo"])
+        float(piz["wob_maestro"]), 
+        float(piz["rpm_maestro"]), 
+        float(piz["torque_maestro"]), 
+        float(st.session_state["profundidad_dinamica"]), 
+        float(piz["caudal_maestro"]), 
+        float(piz["densidad_lodo"])
     )
 
-    if not piz.get("bop_cerrado", False) and piz["rpm_maestro"] > 0 and piz["caudal_maestro"] > 400:
-        incremento = (res["ROP"] / 3600) * 2
-        piz["profundidad_actual"] = round(piz["profundidad_actual"] + incremento, 4)
-        piz["nivel_tanques"] -= 0.005 # Trip Tank
+    # 3. Validamos las condiciones operativas reales para perforar roca
+    bop_abierto = not piz.get("bop_cerrado", False)
+    rotaria_activa = int(piz["rpm_maestro"]) > 0
+    bombas_ok = int(piz["caudal_maestro"]) > 400
+    rop_real = float(res.get("ROP", 0))
+
+    if bop_abierto and rotaria_activa and bombas_ok and rop_real > 0:
+        # El autorefresh corre cada 2 segundos (2 / 3600 horas)
+        # Multiplicamos por el factor de aceleración del simulador (ej: 2) si se desea acelerar
+        factor_tiempo = 2 / 3600 
+        incremento = rop_real * factor_factor_tiempo * 2 
+        
+        # Acumulamos de manera persistente en la sesión del alumno
+        st.session_state["profundidad_dinamica"] += incremento
+        
+        # Sincronizamos con la pizarra global para los relojes y pantallas
+        piz["profundidad_actual"] = round(st.session_state["profundica_dinamica"], 4)
+        piz["nivel_tanques"] -= 0.005  # Consumo del Trip Tank en perforación
         piz["formacion"] = "🏜️ Perforando"
     else:
+        # Si no cumple parámetros o la ROP es 0 (ej: falta peso WOB), se detiene
+        piz["profundidad_actual"] = round(st.session_state["profundidad_dinamica"], 4)
         piz["formacion"] = "⏸️ Detenida"
-
+        
    # --- SIDEBAR FINAL (CORREGIDO SIN ERRORES DE INDENTACIÓN) ---
     with st.sidebar:
         try:
