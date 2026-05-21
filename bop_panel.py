@@ -1,16 +1,22 @@
-﻿import streamlit as st
+import streamlit as st
 import pandas as pd
-import datetime
+from datetime import datetime  # Optimizado para evitar el datetime.datetime
 
 def render_bop_ui(pizarra):
     st.header("🛡️ Control Avanzado de Pozos")
     
-    # --- MEJORA: CONTADOR DE STROKES ---
+    # --- SEGURIDAD: Inicialización de Bitácora si no existe ---
+    if "log_eventos" not in st.session_state:
+        st.session_state.log_eventos = []
+    if "strokes_totales" not in st.session_state:
+        st.session_state.strokes_totales = 0
+    
+    # --- CONTADOR DE STROKES ---
     c_st1, c_st2 = st.columns(2)
     with c_st1:
         st.metric("Total Strokes (Emboladas)", int(st.session_state.get('strokes_totales', 0)))
     with c_st2:
-        if st.button("Reset Counter"):
+        if st.button("Reset Counter", key="btn_reset_strokes"):
             st.session_state.strokes_totales = 0
             st.rerun()
 
@@ -22,10 +28,12 @@ def render_bop_ui(pizarra):
     st.subheader("🕹️ Control de Estrangulación (Choke)")
     col_c1, col_c2 = st.columns([2, 1])
     with col_c1:
-        choke_pos = st.slider("Apertura del Choke (1/64\")", 0, 64, pizarra.get("choke_pos", 0))
+        # Usamos una key única para evitar que se pise con el app.py
+        choke_pos = st.slider("Apertura del Choke (1/64\")", 0, 64, int(pizarra.get("choke_pos", 0)), key="bop_panel_choke_slider")
+        
         # Registramos en bitácora si hay cambios bruscos
         if abs(choke_pos - pizarra.get("choke_pos", 0)) > 5:
-            st.session_state.log_eventos.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] ⚙️ Choke ajustado a {choke_pos}/64")
+            st.session_state.log_eventos.append(f"[{datetime.now().strftime('%H:%M:%S')}] ⚙️ Choke ajustado a {choke_pos}/64")
         pizarra["choke_pos"] = choke_pos
     
     with col_c2:
@@ -34,32 +42,33 @@ def render_bop_ui(pizarra):
 
     st.divider()
 
-    # --- BLOQUE 2: ESTADO Y MANDOS (Conectados a Bitácora) ---
+    # --- BLOQUE 2: ESTADO Y MANDOS ---
     color_bg = "#FF4B4B" if es_cerrado else "#28a745"
     st.markdown(f"<div style='background-color:{color_bg}; padding:10px; border-radius:10px; text-align:center; color:white;'><h3>POZO: {'CERRADO' if es_cerrado else 'ABIERTO'}</h3></div>", unsafe_allow_html=True)
+    st.write("") # Espaciador visual
 
     c1, c2, c3 = st.columns(3)
     with c1: 
-        if st.button("🔴 CERRAR POZO", use_container_width=True): 
+        if st.button("🔴 CERRAR POZO", use_container_width=True, key="btn_bop_close_panel"): 
             pizarra["bop_cerrado"] = True
-            st.session_state.log_eventos.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 🛑 ACCIÓN: Pozo Cerrado por el operador.")
+            st.session_state.log_eventos.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 ACCIÓN: Pozo Cerrado por el operador.")
             st.rerun()
     with c3: 
-        if st.button("🟢 ABRIR POZO", use_container_width=True): 
+        if st.button("🟢 ABRIR POZO", use_container_width=True, key="btn_bop_open_panel"): 
             pizarra["bop_cerrado"] = False
-            st.session_state.log_eventos.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] ✅ ACCIÓN: Pozo Abierto.")
+            st.session_state.log_eventos.append(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ ACCIÓN: Pozo Abierto.")
             st.rerun()
 
-    # --- BLOQUE 3: KILL SHEET (Tu lógica original mejorada) ---
+    # --- BLOQUE 3: KILL SHEET ---
     if es_cerrado:
         st.divider()
         st.subheader("📝 Hoja de Ahogo (Kill Sheet)")
         with st.expander("Abrir Cálculos de Ingeniería", expanded=True):
-            # ... (Aquí va el mismo código de inputs y tabla que me pasaste) ...
             st.info(f"Método recomendado para esta profundidad: {pizarra.get('metodo_sugerido', 'Perforador')}")
 
-        # BITÁCORA VISUAL RÁPIDA
-        st.divider()
-        st.subheader("📑 Últimos Eventos")
-        for ev in reversed(st.session_state.log_eventos[-3:]):
-            st.caption(ev)
+        # BITÁCORA VISUAL RÁPIDA DE SEGURIDAD
+        if st.session_state.log_eventos:
+            st.divider()
+            st.subheader("📑 Últimos Eventos")
+            for ev in reversed(st.session_state.log_eventos[-3:]):
+                st.caption(ev)
