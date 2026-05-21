@@ -33,6 +33,7 @@ def conectar_pizarra():
         "evento_activo": None, 
         "alarma_activa": False, 
         "bop_cerrado": False,
+        "choke_pos": 0,
         "toolface": 0,
         "dls_set": 3.0,
         "historial": pd.DataFrame(columns=["Tiempo", "ROP", "WOB", "SPP"])
@@ -251,21 +252,36 @@ else:
                     piz["bop_cerrado"] = True
                     piz["rpm_maestro"] = 0  # Seguridad: No se puede rotar con BOP cerrado
                     piz["alarma_activa"] = False # Apagamos la alarma sonora al tomar acción
-                    st.session_state.log_eventos.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 🛡️ POZO CERRADO: Protocolo de seguridad activado.")
+                    st.session_state.log_eventos.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🛡️ POZO CERRADO: Protocolo de seguridad activado.")
                     st.rerun()
             else:
                 if st.button("🟢 ABRIR POZO (Open BOP)", use_container_width=True):
                     piz["bop_cerrado"] = False
-                    st.session_state.log_eventos.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 🟢 POZO ABIERTO: Reinicio de operaciones.")
+                    st.session_state.log_eventos.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🟢 POZO ABIERTO: Reinicio de operaciones.")
                     st.rerun()
 
         with col_bop2:
             st.write("🔌 **Control de Presiones**")
-            # El Choke Manifold es vital para circular el influjo
+            
+            # 1. Definición estricta de las opciones del Choke Manifold
+            opciones_choke = [0, 10, 25, 50, 75, 100]
+            
+            # 2. Rescate y sanitización segura del valor en memoria
+            try:
+                choke_actual = int(piz.get("choke_pos", 0))
+            except:
+                choke_actual = 0
+                
+            # Forzamos que esté dentro de las opciones válidas para evitar el ValueError
+            if choke_actual not in opciones_choke:
+                choke_actual = 0
+            
+            # 3. Renderizado seguro con clave única
             piz["choke_pos"] = st.select_slider(
                 "Apertura de Choke (%)",
-                options=[0, 10, 25, 50, 75, 100],
-                value=piz.get("choke_pos", 0),
+                options=opciones_choke,
+                value=choke_actual,
+                key="choke_control_secure_slider",
                 help="Controla la contrapresión para circular el kick."
             )
             
