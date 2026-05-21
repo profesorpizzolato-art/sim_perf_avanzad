@@ -64,7 +64,7 @@ def generar_manual_completo():
         ("KICK", "Entrada imprevista de fluidos de la formacion (gas o petroleo) al pozo."),
         ("MAASP", "Maxima presion anular superficial permitida antes de fracturar el zapato de la caneria."),
         ("ECD (Equivalent Circulating Density)", "Densidad real que siente el fondo del pozo sumando la friccion anular."),
-        ("STUCK PIPE", "Atrapamiento de la sarta por causas mecanicas o presiones diferenciales."),
+        ("STUCK PIPE", "Atrapamiento de la sarta por causas mecanicas o presiones differentials."),
         ("SWABBING", "Efecto de succion al sacar la herramienta muy rapido, causa principal de surgencias."),
         ("PORE PRESSURE", "Presion natural de los fluidos dentro de la roca (Presion de Poros).")
     ]
@@ -76,7 +76,7 @@ def generar_manual_completo():
         pdf.ln(2)
 
     # =========================================================================
-    # --- 3. NAVEGACIÓN Y GEONAVEGACIÓN (EXPANDIDO) ---
+    # --- 3. NAVEGACIÓN Y GEONAVEGACIÓN ---
     # =========================================================================
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
@@ -113,7 +113,7 @@ def generar_manual_completo():
     pdf.multi_cell(0, 6, dls_text, align='J')
 
     # =========================================================================
-    # --- 4. HIDRÁULICA Y SARTA (EXPANDIDO) ---
+    # --- 4. HIDRÁULICA Y SARTA ---
     # =========================================================================
     pdf.ln(5)
     pdf.set_font('Arial', 'B', 16)
@@ -159,18 +159,9 @@ def generar_manual_completo():
     pdf.set_text_color(0, 0, 0)
     
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 7, "Cierre de Pozo (Shut-In Protocol):
-    
-             
-             
-             
-             
-             
-             
-             
-             ", 0, 1)
+    pdf.cell(0, 7, "Cierre de Pozo (Shut-In Protocol):", 0, 1)
     pdf.set_font('Arial', '', 10)
-    shut_text = ("Ante variaciones o aumentos anomalos en el nivel de las piletas (Pit Gain), el pozo debe aislarse de inmediato activando hidraulicamente las valvulas del BOP (Preventor Anular o Ram de Tuberia). El confinamiento genera la transmision de presiones estabilizadas hacia la superficie, registrandose en la tuberia (SIDPP) y en el espacio anular (SICP).")
+    shut_text = ("Ante variaciones o aumentos anomalos en el nivel de las piletas (Pit Gain), el pozo debe aislarse de inmediato activando hidraulicamente las valvulas del BOP (Preventor Anular o Ram de Tuberia). El confinamiento genera la transmision de presiones estabilizadas hacia la superficie, registrandose en la tuberia (SIDPP) and en el espacio anular (SICP).")
     pdf.multi_cell(0, 6, shut_text, align='J')
     pdf.ln(4)
 
@@ -186,15 +177,14 @@ def generar_manual_completo():
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 10, "2. PROTOCOLOS DE SEGURIDAD OPERATIVA INTERNACIONAL", 0, 1, 'C')
+    pdf.cell(0, 10, "6. PROTOCOLOS DE SEGURIDAD OPERATIVA INTERNACIONAL", 0, 1, 'C')
     pdf.ln(5)
     pdf.set_text_color(0, 0, 0)
 
-    # Fusionamos tus dos listas para que se escriban los pasos de accion de forma extendida
     procedimientos = [
         ("DETECCION DE SURGENCIAS (KICK DETECTION)", 
          "1. Monitoreo de Piletas: Todo aumento en tanques > 5 bbl (Pit Gain) es una alarma critica mandatoria.\n"
-         "2. Flow Check: Levantá herramienta, apagá bombas y observá la linea de retorno (Flowline). Si fluye sola, se confirma la surgencia."),
+         "2. Flow Check: Levanta herramienta, apaga bombas y observa la linea de retorno (Flowline). Si fluye sola, se confirma la surgencia."),
         
         ("CIERRE DURO (HARD SHUT-IN METHOD)", 
          "1. Espaciar: Levantar la sarta para asegurar que ninguna junta de conexion (tool joint) quede frente a los arietes del BOP.\n"
@@ -262,7 +252,7 @@ def generar_manual_completo():
          "3. Monitoreo: Detener la prueba al alcanzar la presion de diseno estipulada por ingenieria sin fracturar la roca.\n"
          "4. Aplicacion: Calcular la presion maxima superficial permitida (MAASP) para la densidad de lodo actual."),
         
-        ("DESCONEXION DE EMERGENCIA EN SARTAS (API RP 17G)", 
+        ("DESCONEXION DE EMBERGENCIA EN SARTAS (API RP 17G)", 
          "1. Diagnostico: Determinar el punto libre mediante perfiles o calculos de estiramiento elastico del acero.\n"
          "2. Mecanica (Back-Off): Aplicar torque a la izquierda y detonar una microcarga explosiva en la junta libre.\n"
          "3. Emergencia Extrema: Accionar las cuchillas de cizallamiento (Blind Shear Rams) del BOP para cortar el tubo.\n"
@@ -276,7 +266,7 @@ def generar_manual_completo():
         
         ("AISLAMIENTO HIDRAULICO DE BARRERAS (API STD 53)", 
          "1. Redundancia: Mantener de forma obligatoria dos barreras de control independientes (columna de lodo y BOP).\n"
-         "2. Prueba de Presion: Realizar ensayos hidraulicos de baja (250 psi) y alta presion cada 14 o 21 dias.\n"
+         "2. Prueba de Presion: Realizar ensayos hidraulicos de baja (250 psi) and alta presion cada 14 o 21 dias.\n"
          "3. Tiempos (Koomey): El acumulador de presion debe cerrar cualquier preventor ram en menos de 30 segundos.\n"
          "4. Registro: Archivar de forma obligatoria las cartas graficas de presion para auditoria de entes reguladores."),
 
@@ -349,7 +339,7 @@ def generar_manual_completo():
         ("CONTROL DE KICK EN POZOS HORIZONTALES (IWCF AVANZADO)", 
          "1. Comportamiento: El gas no se expande significativamente mientras migra por la seccion 100 por ciento horizontal.\n"
          "2. Monitoreo: El brote solo mostrara una expansion critica al ingresar a la seccion curva (KOP) hacia la superficie.\n"
-         "3. Desplazamiento: Mantener caudales de circulacion optimos para evitar que el gas se desplace por el "high side" del tubo.\n"
+         "3. Desplazamiento: Mantener caudales de circulacion optimos para evitar que el gas se desplace por el \"high side\" del tubo.\n"
          "4. Ajuste: Extremar la precision en el manejo del Choke durante la transicion de la curva a la vertical."),
         
         ("CEMENTACION DE REMEDIO O RESCATE / SQUEEZE (API RP 10B-2)", 
@@ -377,7 +367,7 @@ def generar_manual_completo():
          "4. Reduccion: Si el evento persiste, levantar de fondo para evitar la rotura de los cortadores PDC o del MWD."),
         
         ("PROTOCOLO ANTE PRESENCIA DE ARCILLAS REACTIVAS (ISO 13500)", 
-         "1. Sintoma: Incremento de torque, arrastre en maniobras (Drag) y embolamiento de la mecha por arcillas hinchables.\n"
+         "1. Sintoma: Incremento de torque, arrastre en maniobras (Drag) and embolamiento de la mecha por arcillas hinchables.\n"
          "2. Inhibicion: Adicionar potasio (KCl) o glicoles al lodo para estabilizar quimicamente las capas de arcilla shale.\n"
          "3. Mecanica: Realizar viajes de limpieza (Wiper Trips) periodicos para calibrar las zonas con tendencia al cierre.\n"
          "4. Control: Mantener el filtrado del lodo al minimo para evitar la hidratacion profunda de la roca expuesta."),
@@ -400,7 +390,7 @@ def generar_manual_completo():
          "3. Prueba: Validar la hermeticidad de cada tapon mediante ensayos de presion (Inflow Test) y asentamiento de peso.\n"
          "4. Superficie: Cortar las canerias de revestimiento a una profundidad minima de 2 metros bajo el nivel del suelo y soldar tapa."),
 
-         ("DETECCION DE AGUJERO REDUCIDO / UNDERGAUGE HOLE (API)", 
+        ("DETECCION DE AGUJERO REDUCIDO / UNDERGAUGE HOLE (API)", 
          "1. Causa: Desgaste abrasivo del diametro externo de la mecha o estabilizadores al perforar rocas muy duras.\n"
          "2. Riesgo: Al bajar una mecha nueva con el diametro nominal correcto, esta puede acuñarse y pegarse en el tramo estrecho.\n"
          "3. Procedimiento: Detener la bajada de la sarta varios tiros antes de la profundidad de la mecha anterior.\n"
@@ -460,13 +450,16 @@ def generar_manual_completo():
          "3. Monitoreo: Aislar el pozo y observar los manometros de superficie durante un tiempo minimo de 30 minutos continuos.\n"
          "4. Aprobacion: La prueba es exitosa si la presion permanece en cero, confirmando que no hay flujo a traves de la barrera.")
     ]
-    
-    for titulo, desc in procedimientos:
+
+    # Iteramos y agregamos de forma dinamica los 34 protocolos al PDF
+    for titulo, pasos in procedimientos:
         pdf.set_font('Arial', 'B', 11)
-        pdf.cell(0, 7, f"■ {titulo}:", 0, 1)
+        pdf.cell(0, 7, f"- {titulo}:", 0, 1) 
         pdf.set_font('Arial', '', 10)
-        pdf.multi_cell(0, 6, desc, align='L')
-        pdf.ln(4)
+        pdf.multi_cell(0, 6, pasos, align='J') 
+        pdf.ln(3)
+
+    return pdf.output(dest='S').encode('latin-1')
 
     # =========================================================================
     # --- 7. FORMULARIO TÉCNICO INTEGRAL ---
