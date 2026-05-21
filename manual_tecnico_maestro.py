@@ -56,7 +56,7 @@ def generar_manual_completo():
     pdf.set_text_color(0, 0, 0)
     
     glosario = [
-        ("BHA (Bottom Hole Assembly)", "Conjunto de herramientas e instrumentos de medicion al final de la sarta (mecha, portamechas, estabilizadores, motores de fondo, MWD/LWD) diseñado para cumplir objetivos mecanicos y de trayectoria."),
+        ("BHA (Bottom Hole Assembly)", "Conjunto de herramientas e instrumentos de medicion al final de la sarta (mecha, portamechas, estabilizadores, motores de fondo, MWD/LWD) disenado para cumplir objetivos mecanicos y de trayectoria."),
         ("WOB (Weight on Bit)", "Fuerza o carga axial hacia abajo aplicada directamente sobre la mecha de perforacion para lograr triturar o cortar la roca eficazmente."),
         ("KICK (Surgencia)", "Entrada imprevista y no controlada de fluidos de la formacion (gas, petroleo o agua salada) hacia el interior del pozo, ocurrida cuando la presion hidrostatica es menor que la presion de poros."),
         ("MAASP (Max. Allowable Annular Surface Pressure)", "Maxima presion anular superficial permitida. Es el limite critico de presion en superficie durante el control de un kick antes de fracturar la roca en el zapato de la caneria de aislacion."),
@@ -92,11 +92,11 @@ def generar_manual_completo():
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 7, "Modo Deslizando (Sliding Drill Mode):", 0, 1)
     pdf.set_font('Arial', '', 10)
-    slide_text = ("Ocurre cuando la sarta se mantiene fija sin rotacion superficial (RPM = 0) y el avance es comandado por la fuerza hidraulica sobre un motor de fondo (PDM). La orientacion del Bent Housing dicta la trayectoria del pozo mediante el Toolface (TF):\n"
+    slide_text = ("Ocurre cuando la sarta se mantiene fija sin rotacion superficial (RPM = 0) and el avance es comandado por la fuerza hidraulica sobre un motor de fondo (PDM). La orientacion del Bent Housing dicta la trayectoria del pozo mediante el Toolface (TF):\n"
                   "  - Toolface a 0 GRAD (High Side): Produce un incremento agresivo de inclinacion (Build Rate).\n"
                   "  - Toolface a 180 GRAD (Low Side): Produce una caida controlada del angulo de inclinacion (Drop Rate).\n"
                   "  - Toolface a 90 o 270 GRAD: Modifica directamente el Azimut (giros hacia el Este u Oeste).\n"
-                  "Formula Matematica de Cambio: Delta Angulo = (DLS_set / 30) x Delta Profundidad.")
+                  "Formula Matematica de Cambio: Delta Angulo = (DLS_set / 30) * Delta Profundidad.")
     pdf.multi_cell(0, 6, slide_text, align='J')
     pdf.ln(4)
 
@@ -107,7 +107,7 @@ def generar_manual_completo():
     pdf.multi_cell(0, 6, dls_text, align='J')
 
     # =========================================================================
-    # --- 4. FORMULARIO MAESTRO DE INGENIERÍA (ECUACIONES COMPLETAS) ---
+    # --- 4. FORMULARIO MAESTRO DE INGENIERÍA ---
     # =========================================================================
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
@@ -116,16 +116,17 @@ def generar_manual_completo():
     pdf.ln(5)
     pdf.set_text_color(0, 0, 0)
     
+    # Se cambio el "•" por "-" para evitar incompatibilidad con Helvetica/Arial
     formulas = [
         ("Presion Hidrostatica (Ph)", "Formula: Ph = Densidad (ppg) * 0.052 * TVD (ft)\nAplicacion: Determina la presion ejercida por la columna de fluido en reposo absoluto. Es la base para mantener el control primario del pozo."),
         ("Densidad Circulante Equivalente (ECD)", "Formula: ECD = Densidad Lodo (ppg) + [Perdida Presion Anular (psi) / (0.052 * TVD (ft))]\nAplicacion: Crucial para asegurar que la presion dinamica en el fondo no supere el gradiente de fractura de las formaciones expuestas."),
-        ("Capacidad Interna de Cañerias o Pozos", "Formula: Capacidad (bbl/ft) = ID (pulgadas)^2 / 1029.4\nAplicacion: Permite calcular los volumenes exactos del pozo abiertos y cerrados para el correcto desplazamiento de fluidos y pildoras."),
+        ("Capacidad Interna de Canerias o Pozos", "Formula: Capacidad (bbl/ft) = ID (pulgadas)^2 / 1029.4\nAplicacion: Permite calcular los volumenes exactos del pozo abiertos y cerrados para el correcto desplazamiento de fluidos y pildoras."),
         ("Dogleg Severity (DLS)", "Formula: DLS = { acos[ cos(I1)*cos(I2) + sin(I1)*sin(I2)*cos(A2-A1) ] * (30 / Intervalo) }\nAplicacion: Monitorea la severidad del cambio angular tridimensional por cada 30 metros perforados para mitigar fatiga en la sarta."),
-        ("Velocidad Anular de Limpieza (VA)", "Formula: VA (ft/min) = [ 24.51 * Caudal (gpm) ] / [ (ID_pozo o Csg)^2 - (OD_sarta)^2 ]\nAplicacion: Determina la capacidad del flujo ascendente para transportar eficazmente los recortes de perforacion hacia la superficie.")
+        ("Velocidad Anular de Limpieza (VA)", "Formula: VA (ft/min) = [ 24.51 * Caudal (gpm) ] / [ ID_pozo^2 - OD_sarta^2 ]\nAplicacion: Determina la capacidad del flujo ascendente para transportar eficazmente los recortes de perforacion hacia la superficie.")
     ]
     for titulo, form in formulas:
         pdf.set_font('Arial', 'B', 11)
-        pdf.cell(0, 6, f"• {titulo}:", 0, 1)
+        pdf.cell(0, 6, f"- {titulo}:", 0, 1)
         pdf.set_font('Arial', '', 10)
         pdf.multi_cell(0, 5, form, align='J')
         pdf.ln(4)
@@ -142,7 +143,7 @@ def generar_manual_completo():
     
     protocolos = [
         ("Protocolo Clase 11: Control ante Surgencias Inesperadas (Kick)", 
-         "1. Detener inmediatamente la rotacion de la sarta e izar la herramienta hasta que los safe joints queden despejados de las cuñas.\n"
+         "1. Detener inmediatamente la rotacion de la sarta e izar la herramienta hasta que los safe joints queden despejados de las cunas.\n"
          "2. Apagar las bombas de lodo por completo y realizar un Flow Check (Verificacion de Flujo Anular) obligatorio de 5 minutos.\n"
          "3. Si el pozo fluye con bombas apagadas, aplicar el protocolo de cierre rapido: Cerrar el preventor anular o la esclusa superior (BOP).\n"
          "4. Abrir la valvula de la linea del manifold de control (Choke Manifold) para canalizar las lecturas estabilizadas de presion.\n"
@@ -152,7 +153,7 @@ def generar_manual_completo():
          "1. Antes de iniciar la sacada (Trip Out), calibrar y alinear la linea directamente hacia el Tanque de Maniobras (Trip Tank).\n"
          "2. Completar de forma manual y rigurosa la Planilla de Llenado, registrando el volumen teorico desplazado por cada tiro de tuberia.\n"
          "3. Monitorear que el pozo tome el volumen exacto de lodo correspondiente al acero extraido de la perforacion.\n"
-         "4. Ante cualquier desvio o anomalia volumetrica volumetrica superior a los 5 barriles, suspender de inmediato la maniobra.\n"
+         "4. Ante cualquier desvio o anomalia volumetrica superior a los 5 barriles, suspender de inmediato la maniobra.\n"
          "5. Volver a bajar la sarta a fondo (Trip In) con precaucion controlada y proceder a circular el lodo hasta homogeneizar el pozo."),
         
         ("Protocolo de Contingencia ante Aprisionamiento Mecanico (Stuck Pipe)", 
@@ -170,7 +171,7 @@ def generar_manual_completo():
         pdf.ln(5)
 
     # =========================================================================
-    # --- 6. 100 TIPS OPERATIVOS PARA EL CAMPO (LISTA COMPLETA 1 A 100) ---
+    # --- 6. 100 TIPS OPERATIVOS PARA EL CAMPO ---
     # =========================================================================
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
@@ -179,7 +180,6 @@ def generar_manual_completo():
     pdf.ln(5)
     pdf.set_text_color(0, 0, 0)
     
-    # Base tecnica estructurada con los tips operativos reales de la industria
     base_tips = [
         "Monitorear el torque continuamente en superficie; un incremento erratico es sintoma inminente de empaquetamiento.",
         "En formaciones arcillosas activas, mantener el filtrado API bajo para evitar la hidratacion e hinchamiento de las arcillas.",
@@ -198,9 +198,7 @@ def generar_manual_completo():
         "El golpe de ariete hidraulico por conectar las bombas de forma brusca puede fracturar formaciones con ventanas operativas estrechas."
     ]
     
-    # Renderizado y generacion real de las 100 entradas operativas consecutivas
     for i in range(1, 101):
-        # Seleccion dinamica basada en el indice para garantizar que los 100 renglones tengan informacion tecnica real
         tip_especifico = base_tips[(i - 1) % len(base_tips)]
         
         if pdf.get_y() > 265:
@@ -245,7 +243,6 @@ def generar_manual_completo():
     
     col_width = 56.6
     
-    # Encabezado
     pdf.set_fill_color(0, 51, 102)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Arial', 'B', 10)
@@ -253,7 +250,6 @@ def generar_manual_completo():
     pdf.cell(col_width, 10, "A CONVERTIR", 1, 0, 'C', fill=True)
     pdf.cell(col_width, 10, "OPERACION", 1, 1, 'C', fill=True)
     
-    # Filas
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Arial', '', 9)
     for row in conversions:
@@ -269,12 +265,10 @@ def generar_manual_completo():
 
 @st.cache_data(show_spinner="Compilando Manual Maestro de MENFA...")
 def _obtener_bytes_manual():
-    """Función interna con caché para evitar compilar el PDF en cada re-run de la app"""
     return generar_manual_completo()
 
 def mostrar_manual_sidebar():
-    """Renderiza el boton de descarga directo en el sidebar de app.py sin generar latencia"""
-    st.sidebar.markdown("### 📖 Manual Maestro 3.0")
+    st.sidebar.markdown("### ### 📖 Manual Maestro 3.0")
     st.sidebar.write("Acceda a los protocolos tecnicos y descargue el manual completo de MENFA en formato PDF.")
     
     try:
