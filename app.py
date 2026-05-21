@@ -165,15 +165,16 @@ else:
 
     if bop_abierto and rotaria_activa and bombas_ok and rop_real > 0:
         # El autorefresh corre cada 2 segundos (2 / 3600 horas)
-        # Multiplicamos por el factor de aceleración del simulador (ej: 2) si se desea acelerar
         factor_tiempo = 2 / 3600 
-        incremento = rop_real * factor_factor_tiempo * 2 
+        
+        # CORREGIDO: Usamos el nombre correcto de la variable
+        incremento = rop_real * factor_tiempo * 2 
         
         # Acumulamos de manera persistente en la sesión del alumno
         st.session_state["profundidad_dinamica"] += incremento
         
         # Sincronizamos con la pizarra global para los relojes y pantallas
-        piz["profundidad_actual"] = round(st.session_state["profundica_dinamica"], 4)
+        piz["profundidad_actual"] = round(st.session_state["profundidad_dinamica"], 4)
         piz["nivel_tanques"] -= 0.005  # Consumo del Trip Tank en perforación
         piz["formacion"] = "🏜️ Perforando"
     else:
