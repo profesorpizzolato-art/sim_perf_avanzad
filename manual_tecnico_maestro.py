@@ -459,7 +459,7 @@ def generar_manual_completo():
         pdf.multi_cell(0, 6, pasos, align='J') 
         pdf.ln(3)
 
-    return pdf.output(dest='S').encode('latin-1')
+    return bytes(pdf.output(dest='S'))
 
     # =========================================================================
     # --- 7. FORMULARIO TÉCNICO INTEGRAL ---
@@ -673,13 +673,21 @@ def generar_manual_completo():
     return bytes(pdf.output(dest='S'))
 
 # --- INTERFAZ COMPATIBLE CON STREAMLIT ---
+
+@st.cache_data(show_spinner="Compilando Manual Maestro de MENFA...")
+def _obtener_bytes_manual():
+    """Función interna con caché para evitar compilar el PDF en cada re-run de la app"""
+    return generar_manual_completo()
+
 def mostrar_manual_sidebar():
-    """Renderiza el boton de descarga directo en el sidebar de app.py"""
+    """Renderiza el boton de descarga directo en el sidebar de app.py sin generar latencia"""
     st.markdown("### 📖 Manual Maestro 3.0")
     st.write("Acceda a los protocolos tecnicos y descargue el manual completo de MENFA en formato PDF.")
     
     try:
-        pdf_data = generar_manual_completo()
+        # Streamlit busca en caché; si ya se generó antes, la respuesta es instantánea (0 ms)
+        pdf_data = _obtener_bytes_manual()
+        
         st.download_button(
             label="📥 Descargar Manual Maestro (PDF)",
             data=pdf_data,
