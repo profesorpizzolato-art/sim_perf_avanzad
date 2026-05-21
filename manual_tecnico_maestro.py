@@ -116,7 +116,6 @@ def generar_manual_completo():
     pdf.ln(5)
     pdf.set_text_color(0, 0, 0)
     
-    # Se cambio el "•" por "-" para evitar incompatibilidad con Helvetica/Arial
     formulas = [
         ("Presion Hidrostatica (Ph)", "Formula: Ph = Densidad (ppg) * 0.052 * TVD (ft)\nAplicacion: Determina la presion ejercida por la columna de fluido en reposo absoluto. Es la base para mantener el control primario del pozo."),
         ("Densidad Circulante Equivalente (ECD)", "Formula: ECD = Densidad Lodo (ppg) + [Perdida Presion Anular (psi) / (0.052 * TVD (ft))]\nAplicacion: Crucial para asegurar que la presion dinamica en el fondo no supere el gradiente de fractura de las formaciones expuestas."),
@@ -153,7 +152,7 @@ def generar_manual_completo():
          "1. Antes de iniciar la sacada (Trip Out), calibrar y alinear la linea directamente hacia el Tanque de Maniobras (Trip Tank).\n"
          "2. Completar de forma manual y rigurosa la Planilla de Llenado, registrando el volumen teorico desplazado por cada tiro de tuberia.\n"
          "3. Monitorear que el pozo tome el volumen exacto de lodo correspondiente al acero extraido de la perforacion.\n"
-         "4. Ante cualquier desvio o anomalia volumetrica superior a los 5 barriles, suspender de inmediato la maniobra.\n"
+         "4. Ante cualquier desvio o anomalia volumetrica superior a los 5 barriles, suspendender de inmediato la maniobra.\n"
          "5. Volver a bajar la sarta a fondo (Trip In) con precaucion controlada y proceder a circular el lodo hasta homogeneizar el pozo."),
         
         ("Protocolo de Contingencia ante Aprisionamiento Mecanico (Stuck Pipe)", 
@@ -193,7 +192,7 @@ def generar_manual_completo():
         "El exito de la cementacion primaria depende directamente de una correcta y eficiente limpieza hidraulica previa del anular.",
         "Verificar el estado fisico de las boquillas de la mecha antes de bajarla; una boquilla obstruida arruina la hidraulica.",
         "Mantener la presion anular superficial controlada por debajo de la MAASP calculada durante todo el metodo del perforador.",
-        "Registrar y asentar el peso de la sarta en movimiento (Up/Down Weight) al iniciar cada turno para mapear tendencias de friccion.",
+        "Registrar and asentar el peso de la sarta en movimiento (Up/Down Weight) al iniciar cada turno para mapear tendencias de friccion.",
         "Ante perdidas de circulacion severas, bajar regimen de bombeo inmediatamente y evaluar el uso de materiales de obturacion (LCM).",
         "El golpe de ariete hidraulico por conectar las bombas de forma brusca puede fracturar formaciones con ventanas operativas estrechas."
     ]
@@ -241,7 +240,8 @@ def generar_manual_completo():
         ["Celsius (C)", "Fahrenheit (F)", "x 1.8 + 32"]
     ]
     
-    col_width = 56.6
+    # MODIFICADO A 56.0: Deja espacio de tolerancia con respecto a los margenes de 20mm
+    col_width = 56.0
     
     pdf.set_fill_color(0, 51, 102)
     pdf.set_text_color(255, 255, 255)
@@ -268,7 +268,7 @@ def _obtener_bytes_manual():
     return generar_manual_completo()
 
 def mostrar_manual_sidebar():
-    st.sidebar.markdown("### ### 📖 Manual Maestro 3.0")
+    st.sidebar.markdown("### 📖 Manual Maestro 3.0")
     st.sidebar.write("Acceda a los protocolos tecnicos y descargue el manual completo de MENFA en formato PDF.")
     
     try:
