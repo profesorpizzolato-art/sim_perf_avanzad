@@ -138,7 +138,7 @@ else:
             if piz.get("choke_pos", 0) > 10:
                 piz["nivel_tanques"] += 0.1
 
-  # =========================================================================
+ # =========================================================================
     # --- FÍSICA Y AVANCE OPTIMIZADO (DESTRABADO) ---
     # =========================================================================
     logic_events.gestionar_fallas(piz)
@@ -167,7 +167,7 @@ else:
         # El autorefresh corre cada 2 segundos (2 / 3600 horas)
         factor_tiempo = 2 / 3600 
         
-        # CORREGIDO: Usamos el nombre correcto de la variable
+        # Incremento calculado de forma segura
         incremento = rop_real * factor_tiempo * 2 
         
         # Acumulamos de manera persistente en la sesión del alumno
@@ -182,7 +182,8 @@ else:
         piz["profundidad_actual"] = round(st.session_state["profundidad_dinamica"], 4)
         piz["formacion"] = "⏸️ Detenida"
         
-   # --- SIDEBAR FINAL (CORREGIDO SIN ERRORES DE INDENTACIÓN) ---
+    # --- SIDEBAR FINAL (CORREGIDO DE INDENTACIÓN Y FLUJO) ---
+    # Sacamos este bloque afuera del 'if/else' para que no desaparezca al perforar
     with st.sidebar:
         try:
             st.image("logo_menfa.png", width=150)
