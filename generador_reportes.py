@@ -7,16 +7,16 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.graphics.shapes import Drawing, Polygon, Rect, String
 
 def crear_certificado_pdf(nombre_alumno, score=95, profundidad=2500.0):
-    # Validamos que el nombre contenga texto válido
+    # Control de fallos para nombres vacíos
     if not nombre_alumno or str(nombre_alumno).strip() == "": 
-        nombre_alumno = "ALUMNO"
+        nombre_alumno = "ALUMNO EN ENTRENAMIENTO"
         
     alumno_text = str(nombre_alumno).upper()
     fecha_text = datetime.now().strftime("%B / %Y").capitalize()
     
     nombre_archivo = f"Certificado_{alumno_text.replace(' ', '_')}.pdf"
     
-    # Configuración de página apaisada sin márgenes para permitir el trazado de los bordes azul/gris
+    # Setup del documento en formato horizontal estricto
     doc = SimpleDocTemplate(
         nombre_archivo,
         pagesize=landscape(letter),
@@ -24,37 +24,37 @@ def crear_certificado_pdf(nombre_alumno, score=95, profundidad=2500.0):
     )
     
     story = []
-    width, height = landscape(letter) # Medidas estables: 792 x 612 puntos
+    width, height = landscape(letter) # Dimensiones de lienzo: 792 x 612 puntos
     
-    # --- RENDERIZADO DEL LIENZO GEOMÉTRICO (Identidad Visual MENFA) ---
+    # --- CAPA VECTORIAL: MAQUETA GEOMÉTRICA DE ALTA FIDELIDAD ---
     d = Drawing(width, height)
     
-    # Color de fondo institucional crema claro
+    # Fondo base crema corporativo tenue
     d.add(Rect(0, 0, width, height, fillColor=colors.HexColor("#F9F9F6"), strokeColor=None))
     
-    # Esquina Superior Izquierda: Ala Azul Oscuro y Línea de acento Gris
+    # Ala Superior Izquierda: Polígono Azul de Control y línea Gris de realce técnico
     d.add(Polygon(points=[0, height, 250, height, 110, 0, 0, 0], fillColor=colors.HexColor("#0B1D33"), strokeColor=None))
     d.add(Polygon(points=[250, height, 275, height, 125, 0, 110, 0], fillColor=colors.HexColor("#7E8B9B"), strokeColor=None))
     
-    # Esquina Inferior Derecha: Ala Azul Oscuro y Línea de acento Gris (Espejo)
+    # Ala Inferior Derecha: Polígono de simetría en espejo
     d.add(Polygon(points=[width-250, 0, width, 0, width, 250, width-110, 250], fillColor=colors.HexColor("#0B1D33"), strokeColor=None))
     d.add(Polygon(points=[width-275, 0, width-240, 0, width-110, 250, width-125, 250], fillColor=colors.HexColor("#7E8B9B"), strokeColor=None))
     
-    # Contenedor central blanco para realzar los textos
+    # Paspartú / Recuadro Blanco de Contención de Texto
     margin_frame = 35
     d.add(Rect(margin_frame, margin_frame, width - (margin_frame*2), height - (margin_frame*2), fillColor=colors.white, strokeColor=colors.HexColor("#E2E8F0"), strokeWidth=1))
     
-    # Bloque superior para el Isotipo MENFA
+    # Emblema de la Institución MENFA (Bloque superior sólido)
     center_x = width / 2
     d.add(Rect(center_x - 45, height - 105, 90, 45, fillColor=colors.HexColor("#0B1D33"), strokeColor=None, rx=3, ry=3))
     d.add(String(center_x, height - 91, "MENFA", textAnchor='middle', fontName='Helvetica-Bold', fontSize=14, fillColor=colors.HexColor("#FBBF24")))
     
     story.append(d)
     
-    # Ajuste de posición del cursor al interior del recuadro blanco
+    # Desplazamiento inverso para comenzar las líneas de texto dentro del marco blanco
     story.append(Spacer(1, -height + 160))
     
-    # --- DEFINICIÓN DE ESTILOS TIPOGRÁFICOS ---
+    # --- ESTILOS TIPOGRÁFICOS SANITIZADOS (Sin HTML crudo) ---
     styles = getSampleStyleSheet()
     
     style_menfa_header = ParagraphStyle(
@@ -70,7 +70,7 @@ def crear_certificado_pdf(nombre_alumno, score=95, profundidad=2500.0):
         textColor=colors.HexColor("#7D1E43"), alignment=1, spaceAfter=25
     )
     style_student_name = ParagraphStyle(
-        'SName', fontName='Helvetica-Bold', fontSize=48, leading=54,
+        'SName', fontName='Helvetica-Bold', fontSize=44, leading=50,
         textColor=colors.HexColor("#0B1D33"), alignment=1, spaceAfter=30
     )
     style_course_name = ParagraphStyle(
@@ -82,7 +82,7 @@ def crear_certificado_pdf(nombre_alumno, score=95, profundidad=2500.0):
         textColor=colors.HexColor("#64748B"), alignment=1, spaceAfter=50
     )
     
-    # --- CARGA DINÁMICA DE TEXTOS ---
+    # --- ASIGNACIÓN DE CONTENIDO AL STORY ---
     story.append(Paragraph("MENFA CAPACITACIONES", style_menfa_header))
     story.append(Paragraph("Certificado de finalización", style_cert_title))
     story.append(Paragraph("Curso", style_course_label))
@@ -90,11 +90,12 @@ def crear_certificado_pdf(nombre_alumno, score=95, profundidad=2500.0):
     story.append(Paragraph("Curso de perforación y producción petrolera", style_course_name))
     story.append(Paragraph(fecha_text, style_date_footer))
     
-    # --- ÁREA NATIVA DE FIRMA ---
+    # --- LÍNEA DE ACREDITACIÓN DE AUTORÍA Y DICTADO ---
     style_director = ParagraphStyle('DirName', fontName='Helvetica-Bold', fontSize=14, leading=16, textColor=colors.HexColor("#7D1E43"), alignment=1)
     style_rank = ParagraphStyle('DirRank', fontName='Helvetica', fontSize=11, leading=13, textColor=colors.HexColor("#64748B"), alignment=1)
     style_hash = ParagraphStyle('HashBlock', fontName='Helvetica', fontSize=8, leading=11, textColor=colors.HexColor("#94A3B8"), alignment=2)
     
+    # Trazado de línea de firma
     d_linea_firma = Drawing(width, 30)
     d_linea_firma.add(Rect(center_x - 110, 15, 220, 1, fillColor=colors.HexColor("#0B1D33"), strokeColor=None))
     story.append(d_linea_firma)
@@ -103,11 +104,11 @@ def crear_certificado_pdf(nombre_alumno, score=95, profundidad=2500.0):
     story.append(Paragraph("Fabricio Pizzolato", style_director))
     story.append(Paragraph("Dirección general", style_rank))
     
-    # Identificación técnica y hash operacional libre de caracteres especiales
+    # Bloque de metadatos del simulador (ID único de verificación analítica)
     story.append(Spacer(1, -15))
     story.append(Paragraph(f"ID Verificacion: MNF-{profundidad:.0f}-{score}<br>Validacion Operacional", style_hash))
     
-    # Construcción final del PDF binario
+    # Compilación y cierre de buffer
     doc.build(story)
     
     with open(nombre_archivo, "rb") as f:
