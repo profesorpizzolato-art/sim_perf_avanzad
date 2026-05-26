@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 
 def render_bop_ui(pizarra):
@@ -14,31 +13,30 @@ def render_bop_ui(pizarra):
     # --- CONTADOR DE STROKES (EMBOLADAS) ---
     c_st1, c_st2 = st.columns(2)
     with c_st1:
-        # Corregido: eliminados los espacios dentro del string 'strokes_totales'
         strokes = int(st.session_state.get('strokes_totales', 0))
         st.metric("Total Strokes (Emboladas)", strokes)
     with c_st2:
-        if st.button("Reiniciar contador", key="btn_reset_strokes"):
+        st.write("") # Alineación vertical
+        if st.button("Reiniciar contador", key="btn_reset_strokes_inner"):
             st.session_state.strokes_totales = 0  
             st.rerun()
 
     st.divider()
     
+    # Recuperamos el estado de forma segura
     es_cerrado = pizarra.get("bop_cerrado", False)
     
     # --- BLOQUE 1: COLECTOR O CHOKE ---
     st.subheader("🕹️ Control de Estrangulación (Choke)")
     col_c1, col_c2 = st.columns([2, 1])
     with col_c1:
-        # Control deslizante para la apertura del Choke
         choke_pos = st.slider(
             'Apertura del Choke (1/64")', 
             0, 64, 
             int(pizarra.get("choke_pos", 0)), 
-            key="bop_panel_choke_slider"
+            key="bop_panel_choke_slider_unique"
         )
         
-        # Registramos en bitácora si hay cambios bruscos de posición
         if abs(choke_pos - pizarra.get("choke_pos", 0)) > 5:
             st.session_state.log_eventos.append(
                 f"[{datetime.now().strftime('%H:%M:%S')}] ⚙️ Choke ajustado a {choke_pos}/64"
@@ -59,19 +57,20 @@ def render_bop_ui(pizarra):
         f"</div>", 
         unsafe_allow_html=True
     )
-    st.write("") # Espaciador visual
+    st.write("") 
 
-    c1, c2, c3 = st.columns(3)
+    c1, _, c3 = st.columns([1.2, 0.6, 1.2]) # Distribución simétrica
     with c1: 
-        if st.button("🔴 CERRAR POZO", use_container_width=True, key="btn_bop_close_panel"): 
+        if st.button("🔴 CERRAR POZO", use_container_width=True, key="btn_bop_close_panel_unique"): 
             pizarra["bop_cerrado"] = True
+            pizarra["rpm_maestro"] = 0
             st.session_state.log_eventos.append(
                 f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 ACCIÓN: Pozo Cerrado por el operador."
             )
             st.rerun()
             
     with c3:
-        if st.button("🟢 ABRIR POZO", use_container_width=True, key="btn_bop_open_panel"):
+        if st.button("🟢 ABRIR POZO", use_container_width=True, key="btn_bop_open_panel_unique"):
             pizarra["bop_cerrado"] = False
             st.session_state.log_eventos.append(
                 f"[{datetime.now().strftime('%H:%M:%S')}] ✅ ACCIÓN: Pozo Abierto."
@@ -83,11 +82,13 @@ def render_bop_ui(pizarra):
         st.divider()
         st.subheader("📝 Hoja de Ahogo (Kill Sheet)")
         with st.expander("Abrir Cálculos de Ingeniería", expanded=True):
-            st.info(f"Método recomendado para esta profundidad: {pizarra.get('metodo_sugerido', 'Perforador')}")
+            # .get seguro para evitar levantar excepciones si la clave no fue declarada en el app.py
+            metodo = pizarra.get('metodo_sugerido', 'Perforador')
+            st.info(f"Método recomendado para esta profundidad: {metodo}")
 
-        # BITÁCORA VISUAL RÁPIDA DE SEGURIDAD
-        if st.session_state.log_eventos:
-            st.divider()
-            st.subheader("📑 Últimos Eventos")
-            for ev in reversed(st.session_state.log_eventos[-3:]):
-                st.caption(ev)
+    # BITÁCORA VISUAL RÁPIDA DE SEGURIDAD
+    if st.session_state.log_eventos:
+        st.divider()
+        st.subheader("📑 Últimos Eventos")
+        for ev in reversed(st.session_state.log_eventos[-3:]):
+            st.caption(ev)
