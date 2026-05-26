@@ -16,8 +16,8 @@ def render_bop_ui(pizarra):
         strokes = int(st.session_state.get('strokes_totales', 0))
         st.metric("Total Strokes (Emboladas)", strokes)
     with c_st2:
-        st.write("")  # Espaciador para alineación vertical
-        if st.button("Reset Counter", key="btn_reset_strokes_clean"):
+        st.write("")  # Alineador simétrico
+        if st.button("Reset Counter", key="btn_bop_reset_final_ver"):
             st.session_state.strokes_totales = 0  
             st.rerun()
 
@@ -33,7 +33,7 @@ def render_bop_ui(pizarra):
             'Apertura del Choke (1/64")', 
             0, 64, 
             int(pizarra.get("choke_pos", 0)), 
-            key="bop_clean_choke_slider"
+            key="slider_choke_bop_operaciones"
         )
         
         if abs(choke_pos - pizarra.get("choke_pos", 0)) > 5:
@@ -60,7 +60,7 @@ def render_bop_ui(pizarra):
 
     c1, _, c3 = st.columns([1.2, 0.6, 1.2])
     with c1: 
-        if st.button("🔴 CERRAR POZO", use_container_width=True, key="btn_bop_close_clean"): 
+        if st.button("🔴 CERRAR POZO", use_container_width=True, key="btn_bop_close_final"): 
             pizarra["bop_cerrado"] = True
             st.session_state.log_eventos.append(
                 f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 ACCIÓN: Pozo Cerrado por el operador."
@@ -68,7 +68,7 @@ def render_bop_ui(pizarra):
             st.rerun()
             
     with c3:
-        if st.button("🟢 ABRIR POZO", use_container_width=True, key="btn_bop_open_clean"):
+        if st.button("🟢 ABRIR POZO", use_container_width=True, key="btn_bop_open_final"):
             pizarra["bop_cerrado"] = False
             st.session_state.log_eventos.append(
                 f"[{datetime.now().strftime('%H:%M:%S')}] ✅ ACCIÓN: Pozo Abierto."
