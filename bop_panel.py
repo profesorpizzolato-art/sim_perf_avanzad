@@ -16,14 +16,13 @@ def render_bop_ui(pizarra):
         strokes = int(st.session_state.get('strokes_totales', 0))
         st.metric("Total Strokes (Emboladas)", strokes)
     with c_st2:
-        st.write("") # Alineación vertical
-        if st.button("Reiniciar contador", key="btn_reset_strokes_inner"):
+        st.write("")  # Espaciador para alineación vertical
+        if st.button("Reset Counter", key="btn_reset_strokes_clean"):
             st.session_state.strokes_totales = 0  
             st.rerun()
 
     st.divider()
     
-    # Recuperamos el estado de forma segura
     es_cerrado = pizarra.get("bop_cerrado", False)
     
     # --- BLOQUE 1: COLECTOR O CHOKE ---
@@ -34,7 +33,7 @@ def render_bop_ui(pizarra):
             'Apertura del Choke (1/64")', 
             0, 64, 
             int(pizarra.get("choke_pos", 0)), 
-            key="bop_panel_choke_slider_unique"
+            key="bop_clean_choke_slider"
         )
         
         if abs(choke_pos - pizarra.get("choke_pos", 0)) > 5:
@@ -59,18 +58,17 @@ def render_bop_ui(pizarra):
     )
     st.write("") 
 
-    c1, _, c3 = st.columns([1.2, 0.6, 1.2]) # Distribución simétrica
+    c1, _, c3 = st.columns([1.2, 0.6, 1.2])
     with c1: 
-        if st.button("🔴 CERRAR POZO", use_container_width=True, key="btn_bop_close_panel_unique"): 
+        if st.button("🔴 CERRAR POZO", use_container_width=True, key="btn_bop_close_clean"): 
             pizarra["bop_cerrado"] = True
-            pizarra["rpm_maestro"] = 0
             st.session_state.log_eventos.append(
                 f"[{datetime.now().strftime('%H:%M:%S')}] 🛑 ACCIÓN: Pozo Cerrado por el operador."
             )
             st.rerun()
             
     with c3:
-        if st.button("🟢 ABRIR POZO", use_container_width=True, key="btn_bop_open_panel_unique"):
+        if st.button("🟢 ABRIR POZO", use_container_width=True, key="btn_bop_open_clean"):
             pizarra["bop_cerrado"] = False
             st.session_state.log_eventos.append(
                 f"[{datetime.now().strftime('%H:%M:%S')}] ✅ ACCIÓN: Pozo Abierto."
@@ -82,11 +80,9 @@ def render_bop_ui(pizarra):
         st.divider()
         st.subheader("📝 Hoja de Ahogo (Kill Sheet)")
         with st.expander("Abrir Cálculos de Ingeniería", expanded=True):
-            # .get seguro para evitar levantar excepciones si la clave no fue declarada en el app.py
             metodo = pizarra.get('metodo_sugerido', 'Perforador')
             st.info(f"Método recomendado para esta profundidad: {metodo}")
 
-    # BITÁCORA VISUAL RÁPIDA DE SEGURIDAD
     if st.session_state.log_eventos:
         st.divider()
         st.subheader("📑 Últimos Eventos")
