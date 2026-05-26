@@ -14,7 +14,7 @@ def crear_certificado_pdf(nombre_alumno, desempeno=95, profundidad=2500.0):
     
     nombre_archivo = f"Certificado_{alumno_text.replace(' ', '_')}.pdf"
     
-    # Definimos el documento en formato horizontal (A4/Letter Landscape) sin márgenes para pintar los bordes
+    # Documento horizontal sin márgenes externos para la pintura geométrica de los bordes
     doc = SimpleDocTemplate(
         nombre_archivo,
         pagesize=landscape(letter),
@@ -22,94 +22,91 @@ def crear_certificado_pdf(nombre_alumno, desempeno=95, profundidad=2500.0):
     )
     
     story = []
-    width, height = landscape(letter) # Dimensiones reales: 792 x 612 puntos
+    width, height = landscape(letter) # 792 x 612 puntos
     
-    # --- DIBUJO VECTORIAL DEL TEMPLATE ---
+    # --- CONSTRUCCIÓN DEL LIENZO GEOMÉTRICO (Fiel a la imagen corporativa) ---
     d = Drawing(width, height)
     
-    # 1. Fondo de lienzo (Crema Corporativo muy tenue)
-    d.add(Rect(0, 0, width, height, fillColor=colors.HexColor("#F8FAFC"), strokeColor=None))
+    # Fondo Crema Suave de fondo
+    d.add(Rect(0, 0, width, height, fillColor=colors.HexColor("#F9F9F6"), strokeColor=None))
     
-    # 2. Vector de Esquina Superior Izquierda (Azul Oscuro y Franja Gris)
-    d.add(Polygon(points=[0, height, 240, height, 110, 0, 0, 0], fillColor=colors.HexColor("#1E293B"), strokeColor=None))
-    d.add(Polygon(points=[240, height, 265, height, 125, 0, 110, 0], fillColor=colors.HexColor("#64748B"), strokeColor=None))
+    # Esquina Superior Izquierda: Polígono Azul y Gris
+    d.add(Polygon(points=[0, height, 250, height, 110, 0, 0, 0], fillColor=colors.HexColor("#112233"), strokeColor=None))
+    d.add(Polygon(points=[250, height, 275, height, 125, 0, 110, 0], fillColor=colors.HexColor("#7A8A9E"), strokeColor=None))
     
-    # 3. Vector de Esquina Inferior Derecha (Espejo simétrico)
-    d.add(Polygon(points=[width-240, 0, width, 0, width, 250, width-110, 250], fillColor=colors.HexColor("#1E293B"), strokeColor=None))
-    d.add(Polygon(points=[width-265, 0, width-240, 0, width-110, 250, width-125, 250], fillColor=colors.HexColor("#64748B"), strokeColor=None))
+    # Esquina Inferior Derecha: Polígono Azul y Gris (Efecto espejo)
+    d.add(Polygon(points=[width-250, 0, width, 0, width, 250, width-110, 250], fillColor=colors.HexColor("#112233"), strokeColor=None))
+    d.add(Polygon(points=[width-275, 0, width-240, 0, width-110, 250, width-125, 250], fillColor=colors.HexColor("#7A8A9E"), strokeColor=None))
     
-    # 4. Recuadro Blanco Interno (Da el efecto de paspartú o marco fino)
+    # Recuadro Blanco Interno (Contenedor del texto)
     m_pad = 35
-    d.add(Rect(m_pad, m_pad, width - (m_pad*2), height - (m_pad*2), fillColor=colors.white, strokeColor=colors.HexColor("#CBD5E1"), strokeWidth=1))
+    d.add(Rect(m_pad, m_pad, width - (m_pad*2), height - (m_pad*2), fillColor=colors.white, strokeColor=colors.HexColor("#E2E8F0"), strokeWidth=1))
     
-    # 5. Isotipo MENFA Superior Centrado
+    # Contenedor del Logo Superior Centrado "MENFA"
     cx = width / 2
-    d.add(Rect(cx - 40, height - 105, 80, 42, fillColor=colors.HexColor("#1E293B"), strokeColor=None, rx=4, ry=4))
-    d.add(String(cx, height - 90, "MENFA", textAnchor='middle', fontName='Helvetica-Bold', fontSize=13, fillColor=colors.HexColor("#FBBF24")))
+    d.add(Rect(cx - 45, height - 105, 90, 45, fillColor=colors.HexColor("#112233"), strokeColor=None, rx=3, ry=3))
+    d.add(String(cx, height - 91, "MENFA", textAnchor='middle', fontName='Helvetica-Bold', fontSize=14, fillColor=colors.HexColor("#FBBF24")))
     
     story.append(d)
     
-    # Llevamos el cursor de ReportLab hacia arriba para empezar a escribir dentro del recuadro blanco
-    story.append(Spacer(1, -height + 155))
+    # Desplazamos el eje de escritura hacia arriba para posicionarlo dentro del contenedor blanco
+    story.append(Spacer(1, -height + 160))
     
-    # --- ESTILOS TIPOGRÁFICOS ---
+    # --- ESTILOS DE TEXTO LIMPIOS (Sin etiquetas HTML conflictivas) ---
     styles = getSampleStyleSheet()
     
-    style_institucion = ParagraphStyle(
-        'Inst', fontName='Helvetica-Bold', fontSize=13, leading=15,
-        textColor=colors.HexColor("#1E293B"), alignment=1, spaceAfter=35
+    style_menfa = ParagraphStyle(
+        'MenfaText', fontName='Helvetica', fontSize=15, leading=18,
+        textColor=colors.HexColor("#112233"), alignment=1, spaceAfter=40
     )
-    style_titulo = ParagraphStyle(
-        'Tit', fontName='Helvetica', fontSize=24, leading=28,
-        textColor=colors.HexColor("#94A3B8"), alignment=1, spaceAfter=6
+    style_certificacion = ParagraphStyle(
+        'CertText', fontName='Helvetica', fontSize=22, leading=26,
+        textColor=colors.HexColor("#8A254B"), alignment=1, spaceAfter=6
     )
-    style_sub = ParagraphStyle(
-        'SubTit', fontName='Helvetica', fontSize=16, leading=20,
-        textColor=colors.HexColor("#94A3B8"), alignment=1, spaceAfter=30
+    style_curso_label = ParagraphStyle(
+        'CursoLabel', fontName='Helvetica', fontSize=18, leading=22,
+        textColor=colors.HexColor("#8A254B"), alignment=1, spaceAfter=25
     )
     style_alumno = ParagraphStyle(
-        'Alum', fontName='Helvetica-Bold', fontSize=44, leading=50,
-        textColor=colors.HexColor("#1E293B"), alignment=1, spaceAfter=30
+        'AlumnoName', fontName='Helvetica-Bold', fontSize=48, leading=54,
+        textColor=colors.HexColor("#112233"), alignment=1, spaceAfter=30
     )
-    style_curso = ParagraphStyle(
-        'Curs', fontName='Helvetica-Bold', fontSize=26, leading=32,
-        textColor=colors.HexColor("#1E293B"), alignment=1, spaceAfter=12
+    style_nombre_curso = ParagraphStyle(
+        'CursoName', fontName='Helvetica-Bold', fontSize=24, leading=28,
+        textColor=colors.HexColor("#8A254B"), alignment=1, spaceAfter=12
     )
     style_fecha = ParagraphStyle(
-        'Fech', fontName='Helvetica', fontSize=13, leading=15,
-        textColor=colors.HexColor("#64748B"), alignment=1, spaceAfter=45
+        'FechaText', fontName='Helvetica', fontSize=12, leading=15,
+        textColor=colors.HexColor("#64748B"), alignment=1, spaceAfter=50
     )
     
-    # --- INYECCIÓN DE CONTENIDO ---
-    story.append(Paragraph("MENFA CAPACITACIONES", style_institucion))
-    story.append(Paragraph("CERTIFICADO DE FINALIZACIÓN", style_titulo))
-    story.append(Paragraph("Del Curso:", style_sub))
+    # --- FLUJO DE ELEMENTOS EN EL PANEL ---
+    story.append(Paragraph("MENFA CAPACITACIONES", style_menfa))
+    story.append(Paragraph("Certificado de finalización", style_certificacion))
+    story.append(Paragraph("Curso", style_curso_label))
     story.append(Paragraph(alumno_text, style_alumno))
-    story.append(Paragraph("Control Avanzado de Pozos", style_curso))
+    story.append(Paragraph("Curso de perforación y producción petrolera", style_nombre_curso))
     story.append(Paragraph(fecha_text, style_fecha))
     
-    # --- BLOQUE DE FIRMA Y VERIFICACIÓN ---
-    style_linea_firma = ParagraphStyle('LineF', fontName='Helvetica', fontSize=12, leading=14, textColor=colors.HexColor("#1E293B"), alignment=1)
-    style_cargo_firma = ParagraphStyle('CargoF', fontName='Helvetica', fontSize=10, leading=12, textColor=colors.HexColor("#64748B"), alignment=1)
-    style_metadata = ParagraphStyle('MetaD', fontName='Helvetica', fontSize=8, leading=11, textColor=colors.HexColor("#94A3B8"), alignment=2)
+    # --- LÍNEA DE FIRMA Y DATOS DE VERIFICACIÓN ---
+    style_autor = ParagraphStyle('AutorFirma', fontName='Helvetica-Bold', fontSize=14, leading=16, textColor=colors.HexColor("#8A254B"), alignment=1)
+    style_cargo = ParagraphStyle('CargoFirma', fontName='Helvetica', fontSize=11, leading=13, textColor=colors.HexColor("#64748B"), alignment=1)
+    style_valida = ParagraphStyle('ValidaMeta', fontName='Helvetica', fontSize=8, leading=11, textColor=colors.HexColor("#94A3B8"), alignment=2)
     
-    # Dibujamos la línea de firma horizontal de forma limpia
-    d_linea = Drawing(width, 40)
-    d_linea.add(Rect(cx - 100, 25, 200, 1, fillColor=colors.HexColor("#1E293B"), strokeColor=None))
-    story.append(d_linea)
+    d_line = Drawing(width, 30)
+    d_line.add(Rect(cx - 110, 15, 220, 1, fillColor=colors.HexColor("#112233"), strokeColor=None))
+    story.append(d_line)
     
-    story.append(Spacer(1, -20))
-    story.append(Paragraph("Fabricio Pizzolato", style_linea_firma))
-    story.append(Paragraph("Dirección General", style_cargo_firma))
+    story.append(Spacer(1, -10))
+    story.append(Paragraph("Fabricio Pizzolato", style_autor))
+    story.append(Paragraph("Dirección general", style_cargo))
     
-    # Identificador único en la esquina inferior derecha
     story.append(Spacer(1, -15))
-    story.append(Paragraph(f"ID Verificación: MNF-{profundidad:.0f}<br>Certificación Operacional", style_metadata))
+    story.append(Paragraph(f"ID: MNF-{profundidad:.0f}-{desempeño}<br>Validación Operacional", style_valida))
     
-    # Compilar archivo
+    # Compilación del documento final
     doc.build(story)
     
-    # Retornar flujo de bytes e higiene de archivos locales
     with open(nombre_archivo, "rb") as f:
         pdf_bytes = f.read()
         
