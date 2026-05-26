@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import datetime
+from datetime import datetime
 import base64  
 from streamlit_autorefresh import st_autorefresh
 import auth
@@ -13,15 +13,17 @@ import geonavegacion_pro
 import manual_tecnico_maestro
 import sartas_perforacion as modulo_sartas
 
-# 1. CONFIGURACIÓN E INICIALIZACIÓN
+# 1. CONFIGURACIÓN E INICIALIZACIÓN ABSOLUTA
 st.set_page_config(page_title="MENFA 3.0 - Simulador Pro", layout="wide")
 
 st.title("🏗️ Room de Operaciones MENFA")
 st.info("Bienvenido al simulador. Asegúrese de tener su Manual Maestro a mano y registrar sus parámetros cada 15 minutos.")
 
-@st.cache_resource
-def conectar_pizarra():
-    return {
+# ==============================================================================
+# 🛡️ PERSISTENCIA INDIVIDUAL: LA PIZARRA VIVE EN EL SESSION STATE DE CADA ALUMNO
+# ==============================================================================
+if "pizarra" not in st.session_state:
+    st.session_state.pizarra = {
         "profundidad_actual": 2500.0, 
         "caudal_maestro": 500.0,
         "wob_maestro": 12.0, 
@@ -39,11 +41,15 @@ def conectar_pizarra():
         "historial": pd.DataFrame(columns=["Tiempo", "ROP", "WOB", "SPP"])
     }
 
-piz = conectar_pizarra()
+if "log_eventos" not in st.session_state:
+    st.session_state.log_eventos = []
 
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.rol = None
+
+# Variable de referencia directa para simplificar la escritura en los módulos
+piz = st.session_state.pizarra
 
 # 2. SISTEMA DE LOGIN DUAL
 if not st.session_state.autenticado:
@@ -106,11 +112,6 @@ if st.session_state.rol == "instructor":
 # 4. INTERFAZ DEL ALUMNO
 else:
     st_autorefresh(interval=2000, key="ref_alu")
-    
-    if "log_eventos" not in st.session_state:
-        st.session_state.log_eventos = []
-    if "strokes_totales" not in st.session_state:
-        st.session_state.strokes_totales = 0
 
     # SONIDO DE ALARMA
     if piz.get("alarma_activa", False):
@@ -119,7 +120,8 @@ else:
                 data = f.read()
                 b64 = base64.b64encode(data).decode()
                 st.markdown(f'<audio autoplay loop><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>', unsafe_allow_html=True)
-        except: pass
+        except: 
+            pass
 
     # CÁLCULOS TÉCNICOS (SARTA Y ECD)
     datos_sarta = modulo_sartas.modulo_sartas_api(piz)
@@ -138,16 +140,14 @@ else:
             if piz.get("choke_pos", 0) > 10:
                 piz["nivel_tanques"] += 0.1
 
- # =========================================================================
-    # --- FÍSICA Y AVANCE OPTIMIZADO (DESTRABADO) ---
+    # =========================================================================
+    # --- FÍSICA Y AVANCE OPTIMIZADO POR SESIÓN ---
     # =========================================================================
     logic_events.gestionar_fallas(piz)
     
-    # 1. Aseguramos que la profundidad se mueva en el session_state para no congelarse
     if "profundidad_dinamica" not in st.session_state:
         st.session_state["profundidad_dinamica"] = float(piz["profundidad_actual"])
 
-    # 2. Ejecutamos el cálculo físico enviando el valor dinámico acumulado
     res = motor.calcular_fisica_perforacion(
         float(piz["wob_maestro"]), 
         float(piz["rpm_maestro"]), 
@@ -157,33 +157,24 @@ else:
         float(piz["densidad_lodo"])
     )
 
-    # 3. Validamos las condiciones operativas reales para perforar roca
     bop_abierto = not piz.get("bop_cerrado", False)
     rotaria_activa = int(piz["rpm_maestro"]) > 0
     bombas_ok = int(piz["caudal_maestro"]) > 400
     rop_real = float(res.get("ROP", 0))
 
     if bop_abierto and rotaria_activa and bombas_ok and rop_real > 0:
-        # El autorefresh corre cada 2 segundos (2 / 3600 horas)
         factor_tiempo = 2 / 3600 
-        
-        # Incremento calculado de forma segura
         incremento = rop_real * factor_tiempo * 2 
         
-        # Acumulamos de manera persistente en la sesión del alumno
         st.session_state["profundidad_dinamica"] += incremento
-        
-        # Sincronizamos con la pizarra global para los relojes y pantallas
         piz["profundidad_actual"] = round(st.session_state["profundidad_dinamica"], 4)
-        piz["nivel_tanques"] -= 0.005  # Consumo del Trip Tank en perforación
+        piz["nivel_tanques"] -= 0.005  
         piz["formacion"] = "🏜️ Perforando"
     else:
-        # Si no cumple parámetros o la ROP es 0 (ej: falta peso WOB), se detiene
         piz["profundidad_actual"] = round(st.session_state["profundidad_dinamica"], 4)
         piz["formacion"] = "⏸️ Detenida"
         
-    # --- SIDEBAR FINAL (CORREGIDO DE INDENTACIÓN Y FLUJO) ---
-    # Sacamos este bloque afuera del 'if/else' para que no desaparezca al perforar
+    # --- SIDEBAR LATERAL ---
     with st.sidebar:
         try:
             st.image("logo_menfa.png", width=150)
@@ -193,7 +184,7 @@ else:
         st.header(f"👤 Operador: {st.session_state.get('usuario', 'Invitado')}")
         st.divider()
 
-        # 1. CONTROLES OPERATIVOS
+        # CONTROLES OPERATIVOS (Habilitados solo si el pozo está abierto)
         if not piz.get("bop_cerrado", False):
             with st.expander("🕹️ Consola de Mando", expanded=True):
                 piz["caudal_maestro"] = st.slider("Bombas (GPM)", 0, 1200, int(piz["caudal_maestro"]), key="sld_c_f")
@@ -211,35 +202,30 @@ else:
 
         st.divider()
 
-    # --- BLOQUE DEL MANUAL (Asegúrate de que este 'with' esté bien alineado) ---
+        # MANUAL TÉCNICO MAESTRO
         with st.sidebar.expander("📖 Manual Técnico Maestro", expanded=False):
             try:
-                # 1. Mostramos la interfaz
                 manual_tecnico_maestro.mostrar_manual_sidebar()
-                
                 st.divider()
-                
-                # 2. Botón de generación (usando el nuevo estándar width='stretch')
-                if st.button("🚀 Generar PDF del Manual", width='stretch'):
+                if st.button("🚀 Generar PDF del Manual", use_container_width=True):
                     with st.spinner("Compilando material..."):
-                        # Llamamos a tu función de manual_tecnico_maestro
                         pdf_data = manual_tecnico_maestro.generar_manual_completo()
-                        
                         st.download_button(
                             label="📥 Descargar Copia", 
                             data=pdf_data,
                             file_name="Manual_Maestro_MENFA_3.0.pdf",
                             mime="application/pdf",
-                            width='stretch'
+                            use_container_width=True
                         )
             except Exception as e:
                 st.error(f"Error al cargar el manual: {e}")
 
-        # 3. BOTÓN DE EMERGENCIA
+        # BOTÓN DE EMERGENCIA
         if st.button("🛑 STOP TOTAL", type="primary", use_container_width=True, key="btn_final_stop"):
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
             st.rerun()
-    # TABS
+
+    # VISTAS CENTRALES (TABS)
     tab1, tab2, tab_geo, tab_analisis, tab3, tab4 = st.tabs([
         "🎮 Panel Central", "🛡️ Control de Pozos", "🛰️ Geonavegación", "📈 Análisis", "🏆 Ranking", "📜 Certificado"
     ])
@@ -262,25 +248,22 @@ else:
     with tab2:
         st.subheader("🛡️ Sistema de Control de Superficie")
         
-        # Intentamos renderizar la interfaz visual del BOP
         try: 
             bop_panel.render_bop_ui(piz) 
         except: 
             st.error("Error al cargar los controles visuales del BOP")
 
         st.divider()
-        
-        # --- LÓGICA DE CONTROL OPERATIVO ---
         col_bop1, col_bop2 = st.columns(2)
         
         with col_bop1:
             st.write("🔧 **Accionamiento de Seguridad**")
-            # El botón cambia su etiqueta y color según el estado
+            # Controlamos el estado de manera transaccional directa sin forzar rerun abrupto
             if not piz.get("bop_cerrado", False):
                 if st.button("🔴 CERRAR POZO (Shut-In)", use_container_width=True, type="primary"):
                     piz["bop_cerrado"] = True
-                    piz["rpm_maestro"] = 0  # Seguridad: No se puede rotar con BOP cerrado
-                    piz["alarma_activa"] = False # Apagamos la alarma sonora al tomar acción
+                    piz["rpm_maestro"] = 0  
+                    piz["alarma_activa"] = False 
                     st.session_state.log_eventos.append(f"[{datetime.now().strftime('%H:%M:%S')}] 🛡️ POZO CERRADO: Protocolo de seguridad activado.")
                     st.rerun()
             else:
@@ -291,21 +274,16 @@ else:
 
         with col_bop2:
             st.write("🔌 **Control de Presiones**")
-            
-            # 1. Definición estricta de las opciones del Choke Manifold
             opciones_choke = [0, 10, 25, 50, 75, 100]
             
-            # 2. Rescate y sanitización segura del valor en memoria
             try:
                 choke_actual = int(piz.get("choke_pos", 0))
             except:
                 choke_actual = 0
                 
-            # Forzamos que esté dentro de las opciones válidas para evitar el ValueError
             if choke_actual not in opciones_choke:
                 choke_actual = 0
             
-            # 3. Renderizado seguro con clave única
             piz["choke_pos"] = st.select_slider(
                 "Apertura de Choke (%)",
                 options=opciones_choke,
@@ -314,16 +292,14 @@ else:
                 help="Controla la contrapresión para circular el kick."
             )
             
-            # Cálculo de contrapresión dinámica (Backpressure)
             if piz.get("bop_cerrado", False):
-                # Si el choke está muy cerrado, la presión sube
                 backpressure = (100 - piz["choke_pos"]) * 5.5
                 piz["presion_base"] = 1200 + backpressure 
                 st.metric("Contrapresión (Backpressure)", f"{int(backpressure)} psi")
             else:
-                piz["presion_base"] = 1200 # Presión normal de circulación
+                piz["presion_base"] = 1200 
 
-        # --- INFO DE SEGURIDAD ---
+        # Mensajes dinámicos de seguridad operacional
         if piz.get("evento_activo") == "KICK" and piz.get("bop_cerrado"):
             st.success("✅ Influjo contenido. Proceda a circular con el Método del Perforador.")
         elif piz.get("evento_activo") == "KICK" and not piz.get("bop_cerrado"):
@@ -334,14 +310,10 @@ else:
 
     with tab_analisis:
         st.subheader("📈 Tendencias en Tiempo Real")
-        
         if not piz["historial"].empty:
-            # Graficamos ROP y SPP para ver el comportamiento del pozo
             st.line_chart(piz["historial"].set_index("Tiempo")[["ROP", "SPP"]], height=300)
-            
             st.divider()
             st.subheader("📜 Bitácora de Operaciones")
-            # Mostramos los últimos 10 eventos registrados
             if st.session_state.log_eventos:
                 log_texto = "\n".join(reversed(st.session_state.log_eventos[-10:]))
                 st.code(log_texto, language="bash")
