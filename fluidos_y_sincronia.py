@@ -72,7 +72,8 @@ def evaluar_sincronia_operativa(caudal_gpm, densidad_lodo, presion_standpipe, rp
     factor_friccion_lodo = 0.28  # Un buen lodo reduce este factor
     torque_estimado = factor_friccion_lodo * wob * (diametro_hoyo / 12) if wob > 0 else 1.0
     
-    if rop_actual > 0 and rpm_`actual` > 0:
+    # CORRECCIÓN SINTÁCTICA: Evaluación de variables limpias
+    if rop_actual > 0 and rpm > 0:
         term_rot = (480 * torque_estimado * rpm) / (diametro_hoyo**2 * rop_actual)
         term_axl = (4 * wob) / (np.pi * diametro_hoyo**2)
         mse = term_rot + term_axl
