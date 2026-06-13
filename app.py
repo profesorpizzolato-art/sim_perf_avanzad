@@ -65,17 +65,19 @@ if not st.session_state.autenticado:
         u = st.text_input("Usuario (Apellido)")
         c = st.text_input("Clave de Acceso", type="password")
         if st.button("Ingresar al Sistema"):
+            # Validación para el Instructor
             if u.lower() == "instructor" and c == "menfa2026":
                 st.session_state.autenticado = True
                 st.session_state.rol = "instructor"
                 st.rerun()
-            elif auth.validar_acceso(u, c, "alumno"):
+            # Nueva validación para el Alumno (Cualquier apellido con clave fija)
+            elif u.strip() != "" and c == "alumno2026":
                 st.session_state.autenticado = True
                 st.session_state.rol = "alumno"
-                st.session_state.usuario = u
+                st.session_state.usuario = u.strip().capitalize()  # Guarda el apellido prolijo (ej: "Pizzolato")
                 st.rerun()
             else:
-                st.error("Credenciales inválidas")
+                st.error("Credenciales inválidas. Verifique el usuario o la clave.")
     st.stop()
 
 # 3. INTERFAZ DEL INSTRUCTOR
