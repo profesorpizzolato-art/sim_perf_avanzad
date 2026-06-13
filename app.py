@@ -12,9 +12,11 @@ import bop_panel
 import geonavegacion_pro
 import manual_tecnico_maestro
 import sartas_perforacion as modulo_sartas
+# --- NUEVA IMPORTACIÓN DEL MÓDULO EXPERTO ---
+import fluidos_y_sincronia as modulo_fluidos 
 
 # 1. CONFIGURACIÓN E INICIALIZACIÓN ABSOLUTA
-st.set_page_config(page_title="MENFA 3.0 - Simulador Pro", layout="wide")
+st.set_page_config(page_title="MENFA 3.0 - Simulador Pro", layout="wide", page_icon="🏗️")
 
 st.title("🏗️ Room de Operaciones MENFA")
 st.info("Bienvenido al simulador. Asegúrese de tener su Manual Maestro a mano y registrar sus parámetros cada 15 minutos.")
@@ -38,7 +40,11 @@ if "pizarra" not in st.session_state:
         "choke_pos": 0,
         "toolface": 0,
         "dls_set": 3.0,
-        "historial": pd.DataFrame(columns=["Tiempo", "ROP", "WOB", "SPP"])
+        "historial": pd.DataFrame(columns=["Tiempo", "ROP", "WOB", "SPP"]),
+        # Variables de inicialización para el nuevo módulo de fluidos
+        "ecd": 10.5,
+        "eficiencia_limpieza": 100.0,
+        "mse": 0
     }
 
 if "log_eventos" not in st.session_state:
@@ -123,14 +129,11 @@ else:
         except: 
             pass
 
-    # CÁLCULOS TÉCNICOS (SARTA Y ECD)
+    # CÁLCULOS TÉCNICOS (SARTA)
     datos_sarta = modulo_sartas.modulo_sartas_api(piz)
     piz["hook_load"] = datos_sarta["hook_load"]
     piz["tension_max"] = datos_sarta["max_yield"]
     piz["margen_overpull"] = datos_sarta["margen"]
-
-    friccion_anular = (piz["caudal_maestro"] / 1200) * 0.4
-    piz["ecd"] = round(piz["densidad_lodo"] + friccion_anular, 2)
 
     # LÓGICA DE INFLUJO (KICK)
     if piz.get("evento_activo") == "KICK":
@@ -173,6 +176,25 @@ else:
     else:
         piz["profundidad_actual"] = round(st.session_state["profundidad_dinamica"], 4)
         piz["formacion"] = "⏸️ Detenida"
+
+    # =========================================================================
+    # --- INTERSECCIÓN DINÁMICA: 12 FUNCIONES DEL FLUIDO ---
+    # =========================================================================
+    analisis_fluido = modulo_fluidos.evaluar_sincronia_operativa(
+        caudal_gpm=float(piz["caudal_maestro"]),
+        densidad_lodo=float(piz["densidad_lodo"]),
+        presion_standpipe=float(piz["presion_base"]),
+        rpm=float(piz["rpm_maestro"]),
+        wob=float(piz["wob_maestro"]),
+        rop_actual=rop_real,
+        profundidad_m=float(piz["profundidad_actual"])
+    )
+    
+    # Asignamos los cálculos avanzados de vuelta a la pizarra
+    piz["ecd"] = analisis_fluido["ecd"]
+    piz["eficiencia_limpieza"] = analisis_fluido["eficiencia_limpieza"]
+    piz["mse"] = analisis_fluido["mse"]
+    piz["torque_maestro"] = analisis_fluido["torque"]
         
     # --- SIDEBAR LATERAL ---
     with st.sidebar:
@@ -220,7 +242,7 @@ else:
             except Exception as e:
                 st.error(f"Error al cargar el manual: {e}")
 
-        # BOTÓN DE EMERGENCIA
+        # BOTÓN DE EMERGENCY STOP
         if st.button("🛑 STOP TOTAL", type="primary", use_container_width=True, key="btn_final_stop"):
             piz["rpm_maestro"], piz["caudal_maestro"] = 0, 0
             st.rerun()
@@ -232,12 +254,23 @@ else:
     
     with tab1:
         st.subheader(f"Estado: {piz['formacion']}")
+        
+        # DESPLIEGUE DE ALERTAS DE FLUIDOS EN TIEMPO REAL
+        for alerta in analisis_fluido["alertas"]:
+            if alerta["tipo"] == "ERROR":
+                st.error(alerta["msg"])
+                # Inyección automatizada en la bitácora de control
+                if f"⚠️ {alerta['msg']}" not in st.session_state.log_eventos:
+                    st.session_state.log_eventos.append(f"[{datetime.now().strftime('%H:%M:%S')}] CRÍTICO: {alerta['msg']}")
+            else:
+                st.warning(alerta["msg"])
+
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Densidad (MW/ECD)", f"{piz['densidad_lodo']} / {piz['ecd']} ppg")
         presion_fondo = round(res.get('PH', 0) + (piz['ecd'] - piz['densidad_lodo']) * 0.052 * piz['profundidad_actual'], 1)
         m2.metric("P. Fondo (BHP)", f"{presion_fondo} psi")
         m3.metric("Hook Load", f"{int(piz['hook_load'] / 1000)} klbs", delta=f"{int(piz['margen_overpull'] / 1000)} MOP")
-        m4.metric("Nivel Tanques", f"{round(piz['nivel_tanques'], 1)} %", delta=f"{piz['profundidad_actual']} m")
+        m4.metric("Limpieza Anular", f"{piz['eficiencia_limpieza']} %", delta=f"MSE: {piz['mse']} psi", delta_color="inverse" if piz['mse'] > 40000 else "normal")
         
         st.divider()
         c1, c2, c3 = st.columns(3)
@@ -258,7 +291,6 @@ else:
         
         with col_bop1:
             st.write("🔧 **Accionamiento de Seguridad**")
-            # Controlamos el estado de manera transaccional directa sin forzar rerun abrupto
             if not piz.get("bop_cerrado", False):
                 if st.button("🔴 CERRAR POZO (Shut-In)", use_container_width=True, type="primary"):
                     piz["bop_cerrado"] = True
