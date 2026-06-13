@@ -28,6 +28,7 @@ with st.expander("📋 HOJA DE RUTA EXPRESA PARA EL OPERADOR", expanded=True):
     * **Limpieza Anular:** Mantener la eficiencia por encima del **70%** para evitar el asentamiento de ripio y pegas de sarta.
     * **Torque y MSE:** Vigilar las fluctuaciones continuas. Cambios bruscos indican desgaste de trépano o nueva formación.
     """)
+
 # ==============================================================================
 # 🛡️ PERSISTENCIA INDIVIDUAL: LA PIZARRA VIVE EN EL SESSION STATE DE CADA ALUMNO
 # ==============================================================================
@@ -51,7 +52,12 @@ if "pizarra" not in st.session_state:
         # Variables de inicialización para el nuevo módulo de fluidos
         "ecd": 10.5,
         "eficiencia_limpieza": 100.0,
-        "mse": 0
+        "mse": 0,
+        
+        # 🔧 INICIALIZACIÓN DE VARIABLES PARA CONTROL DE POZOS Y BOP UI
+        "total_strokes": 0,       # Contador físico de emboladas acumuladas
+        "bop_annular": "Abierto",  # Estado del preventor anular
+        "bop_pipe": "Abierto"      # Estado del preventor de arietes
     }
 
 if "log_eventos" not in st.session_state:
@@ -81,7 +87,7 @@ if not st.session_state.autenticado:
             elif u.strip() != "" and c == "alumno2026":
                 st.session_state.autenticado = True
                 st.session_state.rol = "alumno"
-                st.session_state.usuario = u.strip().capitalize()  # Guarda el apellido prolijo (ej: "Pizzolato")
+                st.session_state.usuario = u.strip().capitalize()  # Guarda el apellido prolijo
                 st.rerun()
             else:
                 st.error("Credenciales inválidas. Verifique el usuario o la clave.")
@@ -152,7 +158,7 @@ else:
             if piz.get("choke_pos", 0) > 10:
                 piz["nivel_tanques"] += 0.1
 
-   # =========================================================================
+    # =========================================================================
     # --- FÍSICA Y AVANCE OPTIMIZADO POR SESIÓN CON HISTORIAL DINÁMICO ---
     # =========================================================================
     logic_events.gestionar_fallas(piz)
@@ -173,6 +179,13 @@ else:
     rotaria_activa = int(piz["rpm_maestro"]) > 0
     bombas_ok = int(piz["caudal_maestro"]) > 400
     rop_real = float(res.get("ROP", 0))
+
+    # 🔄 ACUMULACIÓN DE EMBOLADAS (Física de bombeo continuo de lodo)
+    if int(piz["caudal_maestro"]) > 0:
+        # Relación promedio en yacimientos: ~0.11 bbl/stk. 
+        # Calculamos los strokes generados en la ventana de refresco de 2 segundos.
+        emboladas_ciclo = (int(piz["caudal_maestro"]) / 60) * 2 * 0.95
+        piz["total_strokes"] += int(max(emboladas_ciclo, 1))
 
     if bop_abierto and rotaria_activa and bombas_ok and rop_real > 0:
         factor_tiempo = 2 / 3600 
@@ -301,11 +314,25 @@ else:
 
     with tab2:
         st.subheader("🛡️ Sistema de Control de Superficie")
+        st.markdown("### 💔 Control Avanzado de Pozos")
         
+        # Layout unificado en una línea prolija para visualización y acción de reseteo
+        col_str, col_btn_rst = st.columns([2, 1])
+        with col_str:
+            st.metric(label="Total Strokes (Emboladas Acumuladas)", value=f"{piz.get('total_strokes', 0):,}")
+        with col_btn_rst:
+            st.write("")  # Espaciador vertical
+            if st.button("🔄 Reiniciar Contador de Emboladas", use_container_width=True):
+                piz["total_strokes"] = 0
+                st.rerun()
+                
+        st.divider()
+        
+        # Renderizado del panel gráfico del BOP protegido contra caídas
         try: 
             bop_panel.render_bop_ui(piz) 
-        except: 
-            st.error("Error al cargar los controles visuales del BOP")
+        except Exception as e: 
+            st.error(f"🔧 Diagnóstico de Interfaz BOP: Verifique el diccionario base -> {e}")
 
         st.divider()
         col_bop1, col_bop2 = st.columns(2)
