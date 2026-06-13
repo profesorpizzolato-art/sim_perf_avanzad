@@ -152,8 +152,8 @@ else:
             if piz.get("choke_pos", 0) > 10:
                 piz["nivel_tanques"] += 0.1
 
-    # =========================================================================
-    # --- FÍSICA Y AVANCE OPTIMIZADO POR SESIÓN ---
+   # =========================================================================
+    # --- FÍSICA Y AVANCE OPTIMIZADO POR SESIÓN CON HISTORIAL DINÁMICO ---
     # =========================================================================
     logic_events.gestionar_fallas(piz)
     
@@ -182,6 +182,18 @@ else:
         piz["profundidad_actual"] = round(st.session_state["profundidad_dinamica"], 4)
         piz["nivel_tanques"] -= 0.005  
         piz["formacion"] = "🏜️ Perforando"
+        
+        # 📈 GUARDA EL REGISTRO EN CADA CICLO PARA GENERAR LA TENDENCIA EN VIVO
+        nuevo_registro = pd.DataFrame([{
+            "Tiempo": datetime.now().strftime("%H:%M:%S"),
+            "ROP": round(rop_real, 2),
+            "WOB": round(float(piz["wob_maestro"]), 2),
+            "SPP": round(float(piz["presion_base"]), 2)
+        }])
+        
+        # Concatenamos al historial de la pizarra y acotamos a los últimos 30 registros
+        piz["historial"] = pd.concat([piz["historial"], nuevo_registro], ignore_index=True).tail(30)
+        
     else:
         piz["profundidad_actual"] = round(st.session_state["profundidad_dinamica"], 4)
         piz["formacion"] = "⏸️ Detenida"
