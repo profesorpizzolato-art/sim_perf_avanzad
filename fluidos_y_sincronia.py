@@ -1,33 +1,32 @@
 # =====================================================================
-# MENFA 3.0 - MÓDULO EXPERTO DE FLUIDOS DE PERFORACIÓN Y SINCRONÍA
+# MENFA 3.0 - MÓDULO EXPERTO DE FLUIDOS DE PERFORACIÓN Y SINCRONÍA (DINÁMICO)
 # Desarrollado por: Inst. Fabricio Pizzolato (Mendoza, Argentina)
 # =====================================================================
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+import random
 
 def evaluar_sincronia_operativa(caudal_gpm, densidad_lodo, presion_standpipe, rpm, wob, rop_actual, profundidad_m):
     """
     Simula la interacción de los sistemas mecánico, hidráulico y geológico
-    basado en las 12 funciones críticas del fluido de perforación.
+    generando fluctuaciones dinámicas en tiempo real para simular movimiento continuo.
     """
     alertas = []
     penalizaciones = []
     
-    # Conversión útil: Profundidad a pies para fórmulas API
-    tvd_ft = profundidad_m * 3.28084
-    
-    # --- 1. GEOMECÁNICA: Ventana de Lodos (Funciones 2 y 5) ---
-    # Gradientes simulados para la geología típica de Mendoza (ej. Cacheuta)
+    # --- 1. GEOMECÁNICA: Ventana de Lodos ---
     gradiente_poro = 9.8      # ppg equivalente
     gradiente_fractura = 15.5  # ppg equivalente
     
-    # --- 2. HIDRÁULICA DINÁMICA: Cálculo de ECD (Funciones 2, 7 y 10) ---
-    viscosidad_plastica = 25.0  # cP (Valor por defecto o dinámico)
-    # Pérdida de carga anular aproximada (APL)
+    # --- 2. HIDRÁULICA DINÁMICA: Cálculo de ECD con Fluctuación de Bombeo ---
+    viscosidad_plastica = 25.0  # cP
+    # Si las bombas están encendidas, el fluido genera micro-presiones dinámicas
+    ruido_hidraulico = random.uniform(-0.03, 0.03) if caudal_gpm > 0 else 0.0
+    
     apl = (viscosidad_plastica * caudal_gpm / 2000) / 10 if caudal_gpm > 0 else 0.0
-    ecd = densidad_lodo + apl
+    ecd = densidad_lodo + apl + ruido_hidraulico
     
     # Verificación de integridad del pozo
     if ecd < gradiente_poro:
@@ -43,22 +42,21 @@ def evaluar_sincronia_operativa(caudal_gpm, densidad_lodo, presion_standpipe, rp
         })
         penalizaciones.append("Fractura de formación por exceso de presión hidráulica.")
 
-    # --- 3. TRANSPORTE DE RECORTES: Limpieza de Hoyo (Funciones 1, 3 y 8) ---
+    # --- 3. TRANSPORTE DE RECORTES: Limpieza de Hoyo Dinámica ---
     punto_cedente_yp = 20.0  # lb/100ft2
     diametro_hoyo = 8.5      # pulgadas
     diametro_tuberia = 5.0   # pulgadas
     
     if caudal_gpm > 0:
-        # Velocidad Anular (ft/min)
         v_anular = (24.5 * caudal_gpm) / (diametro_hoyo**2 - diametro_tuberia**2)
-        # Velocidad de deslizamiento del ripio (Fórmula de Walker simplificada)
         v_deslizamiento = 0.45 * (punto_cedente_yp / densidad_lodo)**0.5 * 60
-        eficiencia_limpieza = ((v_anular - v_deslizamiento) / v_anular) * 100
+        # Agregamos una pequeña oscilación por el régimen de flujo
+        ruido_limpieza = random.uniform(-1.5, 1.5)
+        eficiencia_limpieza = (((v_anular - v_deslizamiento) / v_anular) * 100) + ruido_limpieza
     else:
         v_anular = 0
         eficiencia_limpieza = 0
 
-    # Lógica de acumulación si está perforando sin limpiar
     if rop_actual > 0 and eficiencia_limpieza < 70:
         alertas.append({
             "tipo": "WARNING",
@@ -67,26 +65,31 @@ def evaluar_sincronia_operativa(caudal_gpm, densidad_lodo, presion_standpipe, rp
         if eficiencia_limpieza < 50:
             penalizaciones.append("Perforación con limpieza crítica de hoyo (Riesgo de Embocamiento).")
 
-    # --- 4. OPTIMIZACIÓN MECÁNICA: Energía Específica Mecánica (MSE) (Función 7 y 8) ---
-    # Simulación de torque correlacionado con lubricación del lodo, WOB y RPM
-    factor_friccion_lodo = 0.28  # Un buen lodo reduce este factor
-    torque_estimado = factor_friccion_lodo * wob * (diametro_hoyo / 12) if wob > 0 else 1.0
-    
-    # CORRECCIÓN SINTÁCTICA: Evaluación de variables limpias
+    # --- 4. OPTIMIZACIÓN MECÁNICA Y TORQUE DINÁMICO (MOVIMIENTO CONTINUO) ---
+    # El torque real en campo nunca es fijo, vibra por la interacción trépano-roca
+    if rpm > 0 and wob > 0:
+        factor_friccion_base = 0.28
+        # Micro-vibraciones tensionales del acero (Stick-Slip simulado)
+        vibracion_torque = random.uniform(-150.0, 150.0) if rpm < 50 else random.uniform(-60.0, 60.0)
+        torque_base = factor_friccion_base * wob * (diametro_hoyo / 12) * 1000 # Escala a ft-lbs
+        torque_estimado = torque_base + vibracion_torque
+    else:
+        torque_estimado = 0.0
+
+    # Cálculo de Energía Específica Mecánica (MSE) reactiva
     if rop_actual > 0 and rpm > 0:
-        term_rot = (480 * torque_estimado * rpm) / (diametro_hoyo**2 * rop_actual)
+        term_rot = (480 * (torque_estimado / 1000) * rpm) / (diametro_hoyo**2 * rop_actual)
         term_axl = (4 * wob) / (np.pi * diametro_hoyo**2)
-        mse = term_rot + term_axl
+        mse = (term_rot + term_axl) * 1000  # PSI reales
     else:
         mse = 0.0
 
-    # Retornamos un diccionario con todo procesado para los relojes y lógicas del app.py
     return {
         "ecd": round(ecd, 2),
         "apl": round(apl, 2),
         "eficiencia_limpieza": round(min(max(eficiencia_limpieza, 0.0), 100.0), 1),
         "mse": int(mse),
-        "torque": round(torque_estimado, 2),
+        "torque": round(max(torque_estimado, 0.0), 1),
         "alertas": alertas,
         "penalizaciones": penalizaciones,
         "poro": gradiente_poro,
