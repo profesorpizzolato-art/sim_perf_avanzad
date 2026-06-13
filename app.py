@@ -19,8 +19,15 @@ import fluidos_y_sincronia as modulo_fluidos
 st.set_page_config(page_title="MENFA 3.0 - Simulador Pro", layout="wide", page_icon="🏗️")
 
 st.title("🏗️ Room de Operaciones MENFA")
-st.info("Bienvenido al simulador. Asegúrese de tener su Manual Maestro a mano y registrar sus parámetros cada 15 minutos.")
 
+# NUEVO REQUISITO OPERATIVO DE 1 MINUTO
+st.error("⏱️ **CONTROL OPERATIVO ESTRICTO: REGISTRAR PARÁMETROS CADA 1 MINUTO**")
+with st.expander("📋 HOJA DE RUTA EXPRESA PARA EL OPERADOR", expanded=True):
+    st.markdown("""
+    * **Densidad (ECD):** Monitorear que flote entre **9.8 ppg** (riesgo de brote) y **15.5 ppg** (riesgo de fractura).
+    * **Limpieza Anular:** Mantener la eficiencia por encima del **70%** para evitar el asentamiento de ripio y pegas de sarta.
+    * **Torque y MSE:** Vigilar las fluctuaciones continuas. Cambios bruscos indican desgaste de trépano o nueva formación.
+    """)
 # ==============================================================================
 # 🛡️ PERSISTENCIA INDIVIDUAL: LA PIZARRA VIVE EN EL SESSION STATE DE CADA ALUMNO
 # ==============================================================================
