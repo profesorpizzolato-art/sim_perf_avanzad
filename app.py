@@ -31,11 +31,12 @@ st.title("🏗️ Room de Operaciones MENFA")
 
 # NUEVO REQUISITO OPERATIVO DE 1 MINUTO
 st.error("⏱️ **CONTROL OPERATIVO ESTRICTO: REGISTRAR PARÁMETROS CADA 1 MINUTO**")
-with st.expander("📋 HOJA DE RUTA EXPRESA PARA EL OPERADOR", expanded=True):
+with st.expander("📋 HOJA DE RUTA EXPRESA PARA EL OPERADOR (EXXONMOBIL TOP 40 COMPLIANT)", expanded=True):
     st.markdown("""
     * **Densidad (ECD):** Monitorear que flote entre **9.8 ppg** (riesgo de brote) y **15.5 ppg** (riesgo de fractura).
-    * **Limpieza Anular:** Mantener la eficiencia por encima del **70%** para evitar el asentamiento de ripio y pegas de sarta.
-    * **Torque y MSE:** Vigilar las fluctuaciones continuas. Cambios bruscos indican desgaste de trépano o nueva formación.
+    * **Limpieza Anular (Pozos >40°):** Es mandatorio mantener las RPM y revoques firmes. Las píldoras de limpieza (*sweeps*) no reemplazan la reología base.
+    * **Maniobras de Sacada (POOH):** Si el sobrepulso (*overpull*) supera las **30,000 lbs**, ¡no jale! Conecte Top Drive y recircule (*MR MC*).
+    * **Optimización Fast Drill:** Ante vibraciones de *Stick-Slip*, ajuste las RPM inmediatamente entre 60 y 80 RPM y optimice WOB.
     """)
 
 # ==============================================================================
@@ -64,10 +65,10 @@ if "pizarra" not in st.session_state:
         "eficiencia_limpieza": 100.0,
         "mse": 0,
         
-        # 🔧 SOLUCIÓN PARA TELEMETRÍA BOP UI (Tipos corregidos a booleanos y presiones agregadas)
+        # 🔧 SOLUCIÓN PARA TELEMETRÍA BOP UI
         "total_strokes": 0,       
-        "bop_annular": False,     # False significa Abierto estructuralmente en bop_panel
-        "bop_pipe": False,        # False significa Abierto estructuralmente en bop_panel
+        "bop_annular": False,     
+        "bop_pipe": False,        
         "presion_acumulador": 3000.0,  
         "presion_manifold": 1500.0,    
 
@@ -77,7 +78,14 @@ if "pizarra" not in st.session_state:
         "geo_actual": "Cacheuta",  
         "geo_desc": "Formación compacta lutítica. Monitorear torque por riesgo de aprisionamiento.",
         "bit_balling_activo": False,
-        "rop_consigna": 0.0          # Nueva llave para control automático de ROP
+        "rop_consigna": 0.0,
+
+        # 🚀 INTEGRACIÓN EXXONMOBIL TOP 40: NUEVAS LLAVES LÓGICAS
+        "angulo_pozo": 45.0,              # Activador de pozo inclinado (>40°)
+        "sobrepulso_real": 12000.0,       # lbs de Overpull simulado en viajes
+        "npt_overpull_atascado": False,   # Estado de pega mecánica
+        "stick_slip_activo": False,        # Vibración torsional destructiva
+        "whirl_activo": False             # Vibración severa del BHA
     }
 
 if "log_eventos" not in st.session_state:
@@ -115,8 +123,10 @@ if st.session_state.rol == "instructor":
     st.title("👨‍🏫 Consola de Control - Instructor")
     st_autorefresh(interval=2000, key="ref_ins")
     
-    with st.expander("🏗️ Configuración Técnica de la Sarta", expanded=False):
+    with st.expander("🏗️ Configuración Técnica de la Sarta y Pozo", expanded=False):
         modulo_sartas.configuracion_ui() 
+        # 🚀 INTEGRACIÓN EXXONMOBIL: Setear ángulo para activar lógicas críticas de limpieza
+        piz["angulo_pozo"] = st.slider("Ángulo de Inclinación del Pozo (°)", 0.0, 90.0, float(piz["angulo_pozo"]))
     
     st.divider()
     col_ctrl, col_fail = st.columns([1, 1])
@@ -129,13 +139,22 @@ if st.session_state.rol == "instructor":
         piz["densidad_lodo"] = st.slider("Densidad Lodo (ppg)", 8.3, 19.0, float(piz["densidad_lodo"]), step=0.1)
     
     with col_fail:
-        st.subheader("Inyectar Fallas Técnicas")
+        st.subheader("Inyectar Fallas Técnicas (ExxonMobil Lógicas)")
         if st.button("🚨 DISPARAR KICK (Surgencia)", use_container_width=True):
             piz["evento_activo"] = "KICK"
             piz["alarma_activa"] = True
         if st.button("📉 PÉRDIDA DE RETORNO", use_container_width=True):
             piz["evento_activo"] = "PERDIDA"
             piz["alarma_activa"] = True
+            
+        # 🚀 INTEGRACIÓN EXXONMOBIL: Inyectores específicos del Top 40
+        if st.button("⛓️ INYECTAR EXCESO DE ARRASTRE (>30,000 lbs POOH)", use_container_width=True):
+            piz["sobrepulso_real"] = 35000.0
+            st.session_state.log_eventos.append(f"[{datetime.now().strftime('%H:%M:%S')}] [INST] Inyección de alto arrastre en sarta.")
+        if st.button("🌀 INYECTAR VIBRACIÓN STICK-SLIP", use_container_width=True):
+            piz["stick_slip_activo"] = True
+            piz["alarma_activa"] = True
+            
         if st.button("✅ NORMALIZAR SISTEMA", use_container_width=True, type="primary"):
             piz["evento_activo"] = None
             piz["alarma_activa"] = False
@@ -144,6 +163,10 @@ if st.session_state.rol == "instructor":
             piz["vida_trepano"] = 100.0
             piz["contaminacion_lodo"] = 0.0
             piz["bit_balling_activo"] = False
+            piz["sobrepulso_real"] = 12000.0
+            piz["npt_overpull_atascado"] = False
+            piz["stick_slip_activo"] = False
+            piz["whirl_activo"] = False
 
     st.divider()
     if st.button("Cerrar Sesión Instructor", use_container_width=True):
@@ -203,7 +226,7 @@ else:
         piz["total_strokes"] += int(max(emboladas_ciclo, 1))
 
     # --- LÓGICA INTEGRADORA DEL CONTROL DE ROP (AUTO-DRILLER) ---
-    if bop_abierto and rotaria_activa and bombas_ok:
+    if bop_abierto and rotaria_activa and bombas_ok and not piz.get("npt_overpull_atascado", False):
         # Determinar ROP base según el switch de cabina
         if piz.get("rop_consigna", 0.0) > 0.0:
             rop_base = float(piz["rop_consigna"])
@@ -219,6 +242,11 @@ else:
         if piz.get("bit_balling_activo", False):
             rop_real *= 0.15  
             
+        # 🚀 INTEGRACIÓN EXXONMOBIL: Penalización por Vibración Torsional (Stick-Slip)
+        if piz.get("stick_slip_activo", False):
+            rop_real *= 0.4
+            piz["vida_trepano"] = max(piz["vida_trepano"] - 0.1, 0.0) # Desgaste severo acelerado
+            
         # Integración de profundidad en tiempo real
         factor_tiempo = 2 / 3600 
         incremento = rop_real * factor_tiempo * 2 
@@ -229,6 +257,8 @@ else:
         
         if piz.get("bit_balling_activo", False):
             piz["formacion"] = "🚨 EMBOZADO (Bit Balling)"
+        elif piz.get("stick_slip_activo", False):
+            piz["formacion"] = "🌀 ALERTA: Vibración Stick-Slip Detectada"
         else:
             piz["formacion"] = f"🏜️ Perforando Tramo {piz.get('geo_actual', 'Cacheuta')}"
         
@@ -243,7 +273,10 @@ else:
     else:
         rop_real = 0.0
         piz["profundidad_actual"] = round(st.session_state["profundidad_dinamica"], 4)
-        piz["formacion"] = "⏸️ Operación Detenida / Fuera de Parámetros"
+        if piz.get("npt_overpull_atascado", False):
+            piz["formacion"] = "❌ NPT CRÍTICO: Sarta Atascada Mecánicamente por jalar >30 klbs"
+        else:
+            piz["formacion"] = "⏸️ Operación Detenida / Fuera de Parámetros"
 
     # EVALUACIÓN HIDRÁULICA DE FLUIDOS Y SINCRONÍA
     analisis_fluido = modulo_fluidos.evaluar_sincronia_operativa(
@@ -258,6 +291,15 @@ else:
     
     piz["ecd"] = analisis_fluido["ecd"]
     piz["eficiencia_limpieza"] = analisis_fluido["eficiencia_limpieza"]
+    
+    # 🚀 INTEGRACIÓN EXXONMOBIL: Si el pozo supera los 40°, se castiga automáticamente la limpieza 
+    # si las RPM o el caudal no acompañan la remoción de lechos de recortes
+    if piz["angulo_pozo"] > 40.0:
+        if piz["rpm_maestro"] < 80 or piz["caudal_maestro"] < 600:
+            piz["eficiencia_limpieza"] = max(piz["eficiencia_limpieza"] - 25.0, 30.0)
+            if "Riesgo de embachamiento por ángulo de inclinación >40°" not in [a["msg"] for a in analisis_fluido["alertas"]]:
+                analisis_fluido["alertas"].append({"tipo": "WARN", "msg": "Riesgo de embachamiento por ángulo de inclinación >40° (Top 40 Rule)"})
+
     piz["mse"] = analisis_fluido["mse"]
     piz["torque_maestro"] = analisis_fluido["torque"]
         
@@ -286,13 +328,17 @@ else:
                 piz["caudal_maestro"] = st.slider("Bombas de Lodo (GPM)", 0, 1200, int(piz["caudal_maestro"]), key="sld_c_f")
                 piz["rpm_maestro"] = st.slider("Mesa Rotaria (RPM)", 0, 160, int(piz["rpm_maestro"]), key="sld_r_f")
                 
+                # 🚀 INTEGRACIÓN EXXONMOBIL: Acción correctiva para mitigar Stick-Slip
+                if piz.get("stick_slip_activo", False) and 60 <= piz["rpm_maestro"] <= 80 and piz["wob_maestro"] > 15:
+                    piz["stick_slip_activo"] = False
+                    piz["alarma_activa"] = False
+                    st.toast("✅ ¡Práctica Correctiva ExxonMobil! Vibración Stick-slip mitigada por ajuste de RPM/WOB.")
+
                 if modo_perforacion == "Manual (Setear WOB)":
                     piz["wob_maestro"] = st.number_input("Peso sobre Trépano - WOB (klbs)", 0.0, 60.0, float(piz["wob_maestro"]), step=1.0, key="num_w_f")
                     piz["rop_consigna"] = 0.0  
                 else:
-                    # El alumno asume el control del freno por ROP
                     piz["rop_consigna"] = st.slider("Consigna ROP Destacada (m/hr)", 0.0, 45.0, float(piz.get("rop_consigna", 15.0)), step=0.5, key="sld_rop_ctrl")
-                    # Física reactiva inversa para calcular el peso colgado resultante
                     factor_wob_reactivo = (piz["rop_consigna"] * 1.4) / max(piz["rpm_maestro"] / 70, 0.4)
                     piz["wob_maestro"] = round(min(factor_wob_reactivo, 45.0), 1)
                     st.caption(f"🤖 Peso regulado automáticamente: **{piz['wob_maestro']} klbs**")
@@ -334,6 +380,22 @@ else:
         if piz.get("bit_balling_activo", False):
             st.error("💩 **ALERTA MECÁNICA:** Trépano embozado por arcillas reactivas. ROP severamente penalizada.")
 
+        # 🚀 INTEGRACIÓN EXXONMOBIL: Alertas de Interfaz del Top 40
+        if piz.get("sobrepulso_real", 0.0) > 30000.0:
+            st.error(f"⚠️ **ALERTA DE SEGURIDAD (ARRASTRE):** Sobrepulso actual de {piz['sobrepulso_real']:,} lbs supera el límite de 30k lbs.")
+            col_exxon1, col_exxon2 = st.columns(2)
+            with col_exxon1:
+                if st.button("🚨 SEGUIR JALANDO SARTA", use_container_width=True, type="primary"):
+                    piz["npt_overpull_atascado"] = True
+                    piz["alarma_activa"] = True
+                    st.session_state.log_eventos.append(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ ERROR OPERATIVO: Sarta rota/atascada por exceso de tensión.")
+            with col_exxon2:
+                if st.button("🔄 APLICAR MR MC (Bajar y rotar/circular)", use_container_width=True):
+                    piz["sobrepulso_real"] = 12000.0
+                    piz["npt_overpull_atascado"] = False
+                    st.success("Sarta liberada siguiendo protocolo ExxonMobil.")
+                    st.rerun()
+
         # Panel de Telemetría Principal (KPIs)
         st.markdown("### 📊 Telemetría de Fondo en Tiempo Real")
         m1, m2, m3, m4 = st.columns(4)
@@ -356,7 +418,7 @@ else:
         col_acc1, col_acc2, col_acc3 = st.columns(3)
         
         with col_acc1:
-            st.info(f"**Formación Activa:** {piz['geo_actual']}\n\n*Detalle:* {piz['geo_desc']}")
+            st.info(f"**Formación Activa:** {piz['geo_actual']}\n\n*Detalle:* {piz['geo_desc']}\n\n*Ángulo del Pozo:* {piz['angulo_pozo']}°")
         with col_acc2:
             st.metric("Contaminación del Fluido", f"{piz['contaminacion_lodo']:.1f} %")
             if st.button("🧪 Dosificar Químicos / Filtrar Lodo", use_container_width=True):
