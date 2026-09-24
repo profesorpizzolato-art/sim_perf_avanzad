@@ -16,14 +16,61 @@ import fluidos_y_sincronia as modulo_fluidos
 # --- IMPORTACIÓN DEL NUEVO MÓDULO DE CONTROL OPERATIVO DINÁMICO ---
 import control_operativo as modulo_operativo
 
-# 1. CONFIGURACIÓN E INICIALIZACIÓN ABSOLUTA
-st.set_page_config(page_title="MENFA 3.0 - Simulador Pro", layout="wide", page_icon="🏗️")
-
-# Inyección de estilo CSS para mejorar la UI oscura de la cabina
+# --- INYECCIÓN DE ESTILOS BRANDING MENFA ---
 st.markdown("""
     <style>
-    .metric-box { background-color: #1e2430; padding: 15px; border-radius: 10px; border-left: 5px solid #ff4b4b; }
-    .stTabs [data-baseweb="tab"] { font-size: 16px; font-weight: bold; }
+    /* Fondo principal y textos */
+    .stApp {
+        background-color: #1C1E21;
+        color: #E2E8F0;
+    }
+    
+    /* Contenedor de Métricas */
+    [data-testid="stMetricValue"] {
+        color: #FF5B00 !important;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 800;
+    }
+    
+    /* Pestañas / Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #121315;
+        border-bottom: 2px solid #2A2D32;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #A0AEC0;
+        font-size: 15px;
+        font-weight: 700;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #FF5B00 !important;
+        border-bottom-color: #FF5B00 !important;
+    }
+
+    /* Botones primarios (Acciones MENFA) */
+    div.stButton > button:first-child {
+        background-color: #FF5B00;
+        color: #FFFFFF;
+        border: none;
+        font-weight: 700;
+        border-radius: 6px;
+        transition: all 0.2s ease-in-out;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #E05000;
+        box-shadow: 0 0 15px rgba(255, 91, 0, 0.4);
+    }
+
+    /* Botones Secundarios / Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #121315;
+        border-right: 1px solid #2A2D32;
+    }
+
+    /* Ajuste para modo embebido (iframe) */
+    header[data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0);
+    }
     </style>
 """, unsafe_allow_html=True)
 
